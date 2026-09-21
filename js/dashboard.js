@@ -43,29 +43,183 @@ export function viewDashboard() {
     `);
   }
 
-  const alerts = pets.flatMap(p => [
-    ...(p.vaccines || []).filter(v => v.nextDate && careAlertStatus(v.nextDate, v.alertType, v.alertDays).status !== 'al_dia')
-      .map(v => ({ ...v, icon: 'flask', status: careAlertStatus(v.nextDate, v.alertType, v.alertDays) })),
-    ...(p.deworming || []).filter(d => d.nextDate && careAlertStatus(d.nextDate, d.alertType, d.alertDays).status !== 'al_dia')
-      .map(d => ({ ...d, name: d.product, icon: 'bug', status: careAlertStatus(d.nextDate, d.alertType, d.alertDays) })),
-    ...(p.medications || []).filter(m => m.endDate && m.endDate <= today)
-      .map(m => ({ ...m, icon: 'pill', status: { status: 'vencido', label: 'Tratamiento finalizado', badge: 'bg-red-100 text-red-600' } })),
-  ]);
-  const overdueCount = alerts.filter(a => a.status.status === 'vencido').length;
+  // Solo cuenta el registro MÁS RECIENTE de cada vacuna / producto: una dosis
+  // vieja cuyo "próximo" ya pasó no es una alerta si después se aplicó otra
+  // (antes, cada renovación dejaba una alerta vencida eterna del registro anterior).
+  const latestBy = (records, keyFn) => {
+    const latest = {};
+    records.forEach(r => { const k = keyFn(r); if (!latest[k] || (r.date || '') > (latest[k].date || '')) latest[k] = r; });
+    return Object.values(latest);
+  };
+  const dueLabel = (st, nextDate) => st.status === 'vencido' ? `Venció el ${formatDate(nextDate)}` : st.label;
+
+  // Lista única de "qué necesita atención": alertas de fechas (nivel 0 vencido,
+  // 1 por vencer) + recomendaciones (nivel 2), en vez de dos listas separadas
+  // que podían contradecirse (0 alertas pero "lleva un año sin vacunas").
+  const attention = [];
+  pets.forEach(p => {
+    const name = esc(p.name);
+    let hasVaccineAlert = false;
+    latestBy(p.vaccines || [], v => v.name).filter(v => v.nextDate).forEach(v => {
+      const st = careAlertStatus(v.nextDate, v.alertType, v.alertDays);
+      if (st.status === 'al_dia') return;
+      hasVaccineAlert = true;
+      attention.push({ petId: p.id, level: st.status === 'vencido' ? 0 : 1, date: v.nextDate, title: esc(v.name), sub: `${name} · ${dueLabel(st, v.nextDate)}`, actionLabel: 'Registrar vacuna', action: `openVaccineModal('${p.id}')` });
+    });
+    latestBy(p.deworming || [], d => d.product).filter(d => d.nextDate).forEach(d => {
+      const st = careAlertStatus(d.nextDate, d.alertType, d.alertDays);
+      if (st.status === 'al_dia') return;
+      attention.push({ petId: p.id, level: st.status === 'vencido' ? 0 : 1, date: d.nextDate, title: `Desparasitación · ${esc(d.product)}`, sub: `${name} · ${dueLabel(st, d.nextDate)}`, actionLabel: 'Registrar dosis', action: `openDewormModal('${p.id}')` });
+    });
+    (p.medications || []).filter(m => m.active && m.endDate && m.endDate <= today).forEach(m => {
+      attention.push({ petId: p.id, level: 1, date: m.endDate, title: `Tratamiento terminado · ${esc(m.name)}`, sub: `${name} · Terminó el ${formatDate(m.endDate)} y sigue marcado como activo`, actionLabel: 'Revisar', action: `navigate('petProfile',{currentPetId:'${p.id}',currentTab:'medicamentos'})` });
+    });
+
+    const ageYears = p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (365.25*86400000)) : 0;
+    const lastVaccDate = (p.vaccines || []).reduce((max, v) => v.date > max ? v.date : max, '');
+    const vaccineAge = lastVaccDate ? Math.floor((Date.now() - new Date(lastVaccDate).getTime()) / (30.44*86400000)) : 999;
+    const rec = (title, actionLabel, action) => attention.push({ petId: p.id, level: 2, date: '', title, sub: '', actionLabel, action });
+    // Si ya hay una vacuna vencida/por vencer para esta mascota, esa alerta ya dice lo mismo.
+    if (vaccineAge >= 12 && !hasVaccineAlert) rec(`${name} lleva más de un año sin registrar vacunas`, 'Registrar vacuna', `openVaccineModal('${p.id}')`);
+    if (!p.vet?.name) rec(`${name} no tiene veterinario registrado. Agrégalo para tenerlo a mano en emergencias`, 'Agregar', `openEditPetModal('${p.id}')`);
+    if (p.species === 'Perro' && ageYears >= 7) rec(`${name} tiene ${ageYears} años. Considera análisis de sangre anual para detección temprana`, 'Ver ficha', `openPet('${p.id}')`);
+    if (p.species === 'Perro' && (p.breed || '').match(/Golden Retriever|Labrador/i)) rec(`Los ${esc(p.breed)}s son propensos a displasia de cadera. Consulta con tu vet sobre control radiológico`, 'Ver ficha', `openPet('${p.id}')`);
+    if (p.species === 'Gato' && ageYears >= 10) rec(`${name} es un gato senior (${ageYears} años). Necesita revisiones veterinarias cada 6 meses`, 'Ver ficha', `openPet('${p.id}')`);
+  });
+  attention.sort((a, b) => a.level - b.level || (a.date || '9999').localeCompare(b.date || '9999'));
+  const overdueCount = attention.filter(a => a.level === 0).length;
+  const soonCount = attention.filter(a => a.level === 1).length;
+  const ATTN_LIMIT = 4;
+  const shownAttention = state.dashAttnAll ? attention : attention.slice(0, ATTN_LIMIT);
+  const levelDot = ['bg-red-500', 'bg-amber-500', 'bg-brand-400'];
+  const petStatus = (petId) => {
+    const mine = attention.filter(a => a.petId === petId);
+    const overdue = mine.filter(a => a.level === 0).length;
+    const soon = mine.filter(a => a.level === 1).length;
+    if (overdue) return `<span class="badge bg-red-100 text-red-600 text-xs flex-shrink-0">${overdue} vencida${overdue !== 1 ? 's' : ''}</span>`;
+    if (soon) return `<span class="badge bg-amber-100 text-amber-600 text-xs flex-shrink-0">${soon} por vencer</span>`;
+    const tips = mine.length;
+    if (tips) return `<span class="badge bg-brand-100 text-brand-700 text-xs flex-shrink-0">${tips} sugerencia${tips !== 1 ? 's' : ''}</span>`;
+    return `<span class="badge bg-green-100 text-green-700 text-xs flex-shrink-0">Al día</span>`;
+  };
+
   const upcoming = (state.events || []).filter(e => e.date >= today).slice(0, 3);
   const todayMeds = pets.flatMap(p => (p.medications || []).filter(m => m.active));
+  const thisMonth = today.slice(0, 7);
+  const monthSpend = getFinanceExpenses().filter(e => e.date?.startsWith(thisMonth)).reduce((sum, e) => sum + Number(e.amount || 0), 0);
   const dateStr = new Date().toLocaleDateString('es-CL', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
+  // Rachas y cumpleaños: extras de bienestar, debajo de lo accionable.
+  const now = new Date();
+  const streakCards = pets.map(p => {
+    const activeMeds = (p.medications || []).filter(m => m.active);
+    if (!activeMeds.length) return null;
+    const doseLog = p.doseLog || [];
+    let streak = 0;
+    let checkDate = new Date(today + 'T12:00:00');
+    for (let i = 0; i < 365; i++) {
+      const d = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
+      if (doseLog.some(dl => dl.date === d && dl.given)) { streak++; checkDate.setDate(checkDate.getDate() - 1); } else break;
+    }
+    return { name: p.name, streak };
+  }).filter(Boolean);
+  const birthdayPets = pets.map(p => {
+    if (!p.dateOfBirth) return null;
+    const dob = new Date(p.dateOfBirth + 'T12:00:00');
+    const thisYear = now.getFullYear();
+    let next = new Date(thisYear, dob.getMonth(), dob.getDate());
+    if (next < now) next = new Date(thisYear + 1, dob.getMonth(), dob.getDate());
+    const diffDays = Math.round((next - now) / 86400000);
+    if (diffDays > 30) return null;
+    return { name: p.name, days: diffDays, age: next.getFullYear() - dob.getFullYear() };
+  }).filter(Boolean);
+  const extraCards = [
+    streakCards.length ? `
+      <div class="bg-white rounded-2xl shadow-sm p-4 md:p-5">
+        <h2 class="font-semibold text-gray-900 mb-3 flex items-center gap-1.5">${icon('fire','w-4 h-4 text-orange-500')} Rachas de medicamentos</h2>
+        <div class="space-y-2">
+          ${streakCards.map(s => s.streak > 0
+            ? `<div class="flex items-center gap-2 p-2.5 bg-orange-50 rounded-xl">
+                 <span class="text-orange-500">${icon('fire','w-5 h-5')}</span>
+                 <div><div class="text-sm font-semibold text-gray-800">${esc(s.name)}</div>
+                 <div class="text-xs text-orange-600">${s.streak} día${s.streak!==1?'s':''} seguido${s.streak!==1?'s':''} sin saltarse una dosis</div></div>
+               </div>`
+            : `<div class="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl">
+                 <span class="text-gray-400">${icon('fire','w-5 h-5')}</span>
+                 <div class="text-sm text-gray-600">¡Empieza hoy tu racha con ${esc(s.name)}!</div>
+               </div>`).join('')}
+        </div>
+      </div>` : '',
+    birthdayPets.length ? `
+      <div class="bg-white rounded-2xl shadow-sm p-4 md:p-5">
+        <h2 class="font-semibold text-gray-900 mb-3">🎂 Próximos cumpleaños</h2>
+        <div class="space-y-2">
+          ${birthdayPets.map(b => `
+            <div class="flex items-center gap-2 p-2.5 bg-pink-50 rounded-xl">
+              <span class="text-xl">🎂</span>
+              <div>
+                <div class="text-sm font-semibold text-gray-800">${esc(b.name)} cumple ${b.age} año${b.age!==1?'s':''}</div>
+                <div class="text-xs text-pink-600">${b.days === 0 ? '¡Hoy es su cumpleaños! 🎉' : `En ${b.days} día${b.days!==1?'s':''}`}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>` : '',
+  ].filter(Boolean);
+
   return appShell(`
-    <div class="mb-5">
-      <h1 class="text-xl md:text-2xl font-bold text-gray-900">Hola, ${esc(state.user?.name?.split(' ')[0] || 'Tutor')} 👋</h1>
-      <p class="text-sm text-gray-400 mt-0.5 capitalize">${dateStr}</p>
+    <div class="flex items-start justify-between gap-3 mb-5">
+      <div class="min-w-0">
+        <h1 class="text-xl md:text-2xl font-bold text-gray-900">Hola, ${esc(state.user?.name?.split(' ')[0] || 'Tutor')} 👋</h1>
+        <p class="text-sm text-gray-400 mt-0.5 capitalize">${dateStr}</p>
+      </div>
+      <button onclick="openEventModal()" class="btn-primary flex-shrink-0 flex items-center gap-1.5">${icon('plus','w-4 h-4')}<span class="hidden sm:inline">Agendar evento</span><span class="sm:hidden">Evento</span></button>
     </div>
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 stagger">
-      ${statCard(icon('paw','w-5 h-5 md:w-6 md:h-6'), 'Mascotas', pets.length, 'brand')}
-      ${statCard(icon('bell','w-5 h-5 md:w-6 md:h-6'), 'Alertas activas', alerts.length, 'red')}
-      ${statCard(icon('calendar','w-5 h-5 md:w-6 md:h-6'), 'Eventos próximos', upcoming.length, 'amber')}
-      ${statCard(icon('pill','w-5 h-5 md:w-6 md:h-6'), 'Medicamentos hoy', todayMeds.length, 'teal')}
+
+    <!-- Pendientes -->
+    <div id="dashboard-attention" class="bg-white rounded-2xl shadow-sm p-4 md:p-5 mb-4">
+      ${attention.length === 0 ? `
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0">${icon('check','w-5 h-5')}</div>
+          <div>
+            <div class="font-semibold text-gray-900 text-sm">Todo al día</div>
+            <div class="text-xs text-gray-500">No hay vacunas, desparasitaciones ni tratamientos pendientes.</div>
+          </div>
+        </div>` : `
+        <h2 class="font-semibold text-gray-900 flex items-center gap-2 mb-1">
+          ${icon('warning', `w-4 h-4 ${overdueCount ? 'text-red-500' : soonCount ? 'text-amber-500' : 'text-brand-400'}`)} Necesita atención
+          <span class="badge ${overdueCount ? 'bg-red-100 text-red-600' : soonCount ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-600'} text-xs">${attention.length}</span>
+        </h2>
+        <div>
+          ${shownAttention.map(a => `
+            <div class="flex items-center gap-3 py-3 border-t border-gray-100 first:border-t-0">
+              <span class="w-2 h-2 rounded-full flex-shrink-0 ${levelDot[a.level]}"></span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-gray-900 leading-snug">${a.title}</div>
+                ${a.sub ? `<div class="text-xs text-gray-500 mt-0.5">${a.sub}</div>` : ''}
+              </div>
+              <button onclick="${a.action}" class="btn-secondary text-xs !py-1.5 !px-3 flex-shrink-0">${a.actionLabel}</button>
+            </div>`).join('')}
+        </div>
+        ${attention.length > ATTN_LIMIT ? `
+        <button onclick="state.dashAttnAll=${!state.dashAttnAll};render()" class="w-full pt-3 mt-1 border-t border-gray-100 text-sm text-brand-600 hover:underline font-medium">
+          ${state.dashAttnAll ? 'Ver menos' : `Ver los ${attention.length - ATTN_LIMIT} restantes`}
+        </button>` : ''}`}
+    </div>
+
+    <!-- Franja de hoy -->
+    <div class="grid grid-cols-3 gap-2 md:gap-4 bg-white rounded-2xl shadow-sm p-3 md:p-4 mb-6">
+      <button onclick="navigate('pets')" class="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 text-center sm:text-left p-1 rounded-xl hover:bg-gray-50 transition-colors">
+        <span class="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center flex-shrink-0">${icon('pill','w-4.5 h-4.5')}</span>
+        <span class="min-w-0"><span class="block text-sm md:text-base font-bold text-gray-900 leading-tight">${todayMeds.length}</span><span class="block text-xs text-gray-500 leading-tight">Medicamentos hoy</span></span>
+      </button>
+      <button onclick="navigate('calendar')" class="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 text-center sm:text-left p-1 rounded-xl hover:bg-gray-50 transition-colors">
+        <span class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">${icon('calendar','w-4.5 h-4.5')}</span>
+        <span class="min-w-0"><span class="block text-sm md:text-base font-bold text-gray-900 leading-tight">${upcoming.length}</span><span class="block text-xs text-gray-500 leading-tight">Eventos próximos</span></span>
+      </button>
+      <button onclick="navigate('finance')" class="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 text-center sm:text-left p-1 rounded-xl hover:bg-gray-50 transition-colors">
+        <span class="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0">${icon('money','w-4.5 h-4.5')}</span>
+        <span class="min-w-0"><span class="block text-sm md:text-base font-bold text-gray-900 leading-tight tabular-nums">${fmtCLP(monthSpend)}</span><span class="block text-xs text-gray-500 leading-tight">Gasto del mes</span></span>
+      </button>
     </div>
 
     <div class="grid md:grid-cols-2 gap-4 md:gap-6">
@@ -74,24 +228,19 @@ export function viewDashboard() {
           <h2 class="font-semibold text-gray-900">Mis Mascotas</h2>
           <button onclick="navigate('pets')" class="text-sm text-brand-600 hover:underline font-medium">Ver todas →</button>
         </div>
-        ${pets.length === 0
-          ? `<div class="text-center py-8">
-               <div class="mb-2 flex justify-center text-gray-300">${icon('paw','w-10 h-10')}</div>
-               <p class="text-sm text-gray-400 mb-3">Aún no tienes mascotas registradas</p>
-               <button onclick="navigate('addPet')" class="btn-primary text-sm">+ Agregar mascota</button>
-             </div>`
-          : `<div class="space-y-3">
-               ${pets.slice(0, 4).map(p => `
-                 <div onclick="openPet('${p.id}')" class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
-                   ${petAvatar(p)}
-                   <div class="flex-1 min-w-0">
-                     <div class="font-medium text-gray-900 text-sm">${esc(p.name)}</div>
-                     <div class="text-xs text-gray-400">${p.species} · ${getAge(p.dateOfBirth)}</div>
-                   </div>
-                   <span class="text-gray-300 text-lg">›</span>
-                 </div>`).join('')}
-               <button onclick="navigate('addPet')" class="w-full mt-1 py-2 text-sm text-brand-600 hover:bg-brand-50 rounded-xl transition-colors font-medium">+ Agregar mascota</button>
-             </div>`}
+        <div class="space-y-1">
+          ${pets.slice(0, 4).map(p => `
+            <div onclick="openPet('${p.id}')" class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+              ${petAvatar(p)}
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-gray-900 text-sm">${esc(p.name)}</div>
+                <div class="text-xs text-gray-400">${p.species} · ${getAge(p.dateOfBirth)}</div>
+              </div>
+              ${petStatus(p.id)}
+              <span class="text-gray-300 text-lg">›</span>
+            </div>`).join('')}
+          <button onclick="navigate('addPet')" class="w-full mt-1 py-2 text-sm text-brand-600 hover:bg-brand-50 rounded-xl transition-colors font-medium">+ Agregar mascota</button>
+        </div>
       </div>
 
       <div class="bg-white rounded-2xl shadow-sm p-4 md:p-5">
@@ -103,7 +252,7 @@ export function viewDashboard() {
           ? `<div class="text-center py-8">
                <div class="mb-2 flex justify-center text-gray-300">${icon('calendar','w-10 h-10')}</div>
                <p class="text-sm text-gray-400 mb-3">Sin eventos próximos</p>
-               <button onclick="navigate('calendar')" class="btn-primary text-sm">Agendar evento</button>
+               <button onclick="navigate('calendar')" class="btn-secondary text-sm">Ver agenda</button>
              </div>`
           : upcoming.map(e => `
               <div class="flex items-start gap-3 p-3 rounded-xl border border-gray-100 mb-2">
@@ -114,122 +263,9 @@ export function viewDashboard() {
                 </div>
               </div>`).join('')}
       </div>
-
-      ${alerts.length > 0 ? `
-      <div class="md:col-span-2 ${overdueCount > 0 ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'} border rounded-2xl p-5">
-        <h2 class="font-semibold ${overdueCount > 0 ? 'text-red-700' : 'text-amber-700'} mb-3 flex items-center gap-1.5">${icon('warning','w-4 h-4')} Alertas${overdueCount > 0 ? ` (${overdueCount} vencida${overdueCount!==1?'s':''})` : ''}</h2>
-        <div class="space-y-2">
-          ${alerts.slice(0,4).map(a => `
-            <div class="flex items-center gap-3 bg-white rounded-xl p-3">
-              <span class="text-gray-500">${icon(a.icon,'w-5 h-5')}</span>
-              <div class="flex-1"><div class="text-sm font-medium text-gray-800">${esc(a.name)}</div>
-              <div class="text-xs text-gray-400">Vence: ${formatDate(a.nextDate || a.endDate)}</div></div>
-              <span class="badge ${a.status.badge} text-xs flex-shrink-0">${a.status.label}</span>
-            </div>`).join('')}
-        </div>
-      </div>` : ''}
     </div>
 
-    ${(() => {
-      // Streaks de medicamentos
-      const streakCards = pets.map(p => {
-        const activeMeds = (p.medications||[]).filter(m => m.active);
-        if (!activeMeds.length) return null;
-        const doseLog = p.doseLog || [];
-        // Count consecutive days backwards from today
-        let streak = 0;
-        let checkDate = new Date(today + 'T12:00:00');
-        for (let i = 0; i < 365; i++) {
-          const dateStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
-          if (doseLog.some(dl => dl.date === dateStr && dl.given)) {
-            streak++;
-            checkDate.setDate(checkDate.getDate()-1);
-          } else {
-            break;
-          }
-        }
-        return { name: p.name, streak };
-      }).filter(Boolean);
-
-      // Próximos cumpleaños (30 días)
-      const now = new Date();
-      const birthdayPets = pets.map(p => {
-        if (!p.dateOfBirth) return null;
-        const dob = new Date(p.dateOfBirth + 'T12:00:00');
-        const thisYear = now.getFullYear();
-        let next = new Date(thisYear, dob.getMonth(), dob.getDate());
-        if (next < now) next = new Date(thisYear+1, dob.getMonth(), dob.getDate());
-        const diffDays = Math.round((next - now) / 86400000);
-        if (diffDays > 30) return null;
-        const age = next.getFullYear() - dob.getFullYear();
-        return { name: p.name, days: diffDays, age };
-      }).filter(Boolean);
-
-      // Recomendaciones inteligentes
-      const recs = [];
-      pets.forEach(p => {
-        const ageYears = p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (365.25*86400000)) : 0;
-        const lastVaccDate = (p.vaccines||[]).reduce((max,v) => v.date>max?v.date:max, '');
-        const vaccineAge = lastVaccDate ? Math.floor((Date.now()-new Date(lastVaccDate).getTime())/(30.44*86400000)) : 999;
-        if (p.species === 'Perro' && ageYears >= 7) recs.push({ icon:'flask', text:`${esc(p.name)} tiene ${ageYears} años. Considera análisis de sangre anual para detección temprana.` });
-        if (p.species === 'Perro' && (p.breed||'').match(/Golden Retriever|Labrador/i)) recs.push({ icon:'warning', text:`Los ${esc(p.breed)}s son propensos a displasia de cadera. Consulta con tu vet sobre control radiológico.` });
-        if (p.species === 'Gato' && ageYears >= 10) recs.push({ icon:'heart', text:`${esc(p.name)} es un gato senior (${ageYears} años). Necesita revisiones veterinarias cada 6 meses.` });
-        if (!p.vet?.name) recs.push({ icon:'clipboard', text:`${esc(p.name)} no tiene datos de veterinario. Regístralos para tener acceso rápido en emergencias.` });
-        if (vaccineAge >= 12) recs.push({ icon:'flask', text:`${esc(p.name)} lleva más de un año sin registrar vacunas. Revisa el calendario de vacunación.` });
-      });
-
-      const shownRecs = recs.slice(0,2);
-      const hasExtras = streakCards.length || birthdayPets.length || shownRecs.length;
-      if (!hasExtras) return '';
-
-      return `
-      <div class="grid md:grid-cols-3 gap-4 mt-4">
-        ${streakCards.length ? `
-        <div class="bg-white rounded-2xl shadow-sm p-4 md:p-5">
-          <h2 class="font-semibold text-gray-900 mb-3 flex items-center gap-1.5">${icon('fire','w-4 h-4 text-orange-500')} Rachas de medicamentos</h2>
-          <div class="space-y-2">
-            ${streakCards.map(s => s.streak > 0
-              ? `<div class="flex items-center gap-2 p-2.5 bg-orange-50 rounded-xl">
-                   <span class="text-orange-500">${icon('fire','w-5 h-5')}</span>
-                   <div><div class="text-sm font-semibold text-gray-800">${esc(s.name)}</div>
-                   <div class="text-xs text-orange-600">${s.streak} día${s.streak!==1?'s':''} seguido${s.streak!==1?'s':''} sin saltarse una dosis</div></div>
-                 </div>`
-              : `<div class="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl">
-                   <span class="text-gray-400">${icon('fire','w-5 h-5')}</span>
-                   <div class="text-sm text-gray-600">¡Empieza hoy tu racha con ${esc(s.name)}!</div>
-                 </div>`
-            ).join('')}
-          </div>
-        </div>` : ''}
-
-        ${birthdayPets.length ? `
-        <div class="bg-white rounded-2xl shadow-sm p-4 md:p-5">
-          <h2 class="font-semibold text-gray-900 mb-3">🎂 Próximos cumpleaños</h2>
-          <div class="space-y-2">
-            ${birthdayPets.map(b => `
-              <div class="flex items-center gap-2 p-2.5 bg-pink-50 rounded-xl">
-                <span class="text-xl">🎂</span>
-                <div>
-                  <div class="text-sm font-semibold text-gray-800">${esc(b.name)} cumple ${b.age} año${b.age!==1?'s':''}</div>
-                  <div class="text-xs text-pink-600">${b.days === 0 ? '¡Hoy es su cumpleaños! 🎉' : `En ${b.days} día${b.days!==1?'s':''}`}</div>
-                </div>
-              </div>`).join('')}
-          </div>
-        </div>` : ''}
-
-        ${shownRecs.length ? `
-        <div class="bg-white rounded-2xl shadow-sm p-4 md:p-5">
-          <h2 class="font-semibold text-gray-900 mb-3 flex items-center gap-1.5">${icon('idea','w-4 h-4 text-amber-500')} Recomendaciones</h2>
-          <div class="space-y-2">
-            ${shownRecs.map(r => `
-              <div class="flex items-start gap-2 p-2.5 bg-yellow-50 rounded-xl">
-                <span class="text-gray-400 flex-shrink-0">${icon(r.icon,'w-5 h-5')}</span>
-                <p class="text-xs text-gray-700 leading-snug">${r.text}</p>
-              </div>`).join('')}
-          </div>
-        </div>` : ''}
-      </div>`;
-    })()}
+    ${extraCards.length ? `<div class="grid ${extraCards.length > 1 ? 'md:grid-cols-2' : ''} gap-4 mt-4">${extraCards.join('')}</div>` : ''}
   `);
 }
 

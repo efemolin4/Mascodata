@@ -59,7 +59,7 @@ Aplicación web progresiva (PWA) de página única para tutores de mascotas. Per
 - Registro de comidas y actividad física
 
 ### 🏠 Dashboard
-- Estadísticas: total de mascotas, alertas activas, eventos próximos y medicamentos del día
+- "Necesita atención": lista única por urgencia (vencidas, por vencer, recomendaciones), con un botón de acción por fila; franja de hoy (medicamentos, eventos, gasto del mes) y estado por mascota
 - Streaks de bienestar
 - Recomendaciones inteligentes
 - Cumpleaños próximos
