@@ -163,7 +163,7 @@ export function viewAdmin() {
     if (tab === 'planes') return `
       <div class="grid md:grid-cols-2 gap-4 max-w-2xl">
         ${[
-          { id:'free',    name:'Free',    price:'$0',        features:['1 mascota','Fichas, vacunas, desparasitaciones y tratamientos','Historial clínico','Agenda y alertas','Finanzas básicas (lista y total)','Seguimiento y Nutrición','1 archivo adjunto por evento del historial'] },
+          { id:'free',    name:'Free',    price:'$0',        features:['1 mascota','Fichas, vacunas, desparasitaciones y tratamientos','Historial clínico','Agenda y alertas','Finanzas básicas (lista, total y desglose por categoría)','Seguimiento y Nutrición','1 archivo adjunto por evento del historial'] },
           { id:'premium', name:'Premium', price:fmtCLP(PREMIUM_PRICE_CLP)+'/mes',features:['5 mascotas','Todo lo de Free','Compartir con un segundo tutor','Finanzas avanzada (gráficos y predicción)','Exportar expediente en PDF','Botiquín del hogar','Adjuntos ilimitados en el historial'] },
         ].map(p => {
           const cnt = profiles.filter(u=>(u.plan||'free')===p.id).length;

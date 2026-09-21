@@ -98,14 +98,27 @@ describe('viewFinance — gating Premium de la vista Gráfico', () => {
     const html = viewFinance();
     expect(html).toContain('Premium');
     expect(html).toContain('Gráficos y predicción de gastos');
-    expect(html).not.toContain('finance-dashboard');
+    expect(html).not.toContain('finance-period-chart');
     expect(html).not.toContain('Predicción de gastos');
+  });
+
+  it('un usuario Free igual ve el desglose por categoría (con sus montos), sin el gráfico por período', () => {
+    window.getFinanceExpenses = () => [
+      { id: 1, amount: 60000, date: new Date().toISOString().slice(0, 10), category: 'Veterinaria', pet: 'Greta' },
+    ];
+    state.user = { id: 'user-1', plan: 'free' };
+    const html = viewFinance();
+    expect(html).toContain('Por categoría');
+    expect(html).toContain('Veterinaria');
+    expect(html).toContain('$60.000');
+    expect(html).not.toContain('finance-period-chart');
   });
 
   it('un usuario Premium ve el dashboard de gastos', () => {
     state.user = { id: 'user-1', plan: 'premium' };
     const html = viewFinance();
-    expect(html).toContain('finance-dashboard');
+    expect(html).toContain('finance-period-chart');
+    expect(html).toContain('Por categoría');
     expect(html).not.toContain('Gráficos y predicción de gastos');
   });
 

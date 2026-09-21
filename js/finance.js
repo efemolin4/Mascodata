@@ -155,12 +155,11 @@ export function viewFinance() {
       ${statCard(icon('paw','w-5 h-5 md:w-6 md:h-6'),'Mascotas', pets.length, 'brand')}
     </div>
 
-    ${viewMode === 'grafico' ? (!isPremium() ? `
-    <div class="mb-6">${premiumUpsellCard('chartBar', 'Gráficos y predicción de gastos', 'Visualiza tus gastos por período, categoría y mascota, y una proyección del próximo mes. Disponible en el plan Premium.')}</div>
-    ` : `
-    <!-- DASHBOARD -->
+    ${viewMode === 'grafico' ? `
+    <!-- DASHBOARD: el desglose por categoría es libre; el gráfico por período y la predicción son Premium -->
     <div id="finance-dashboard" class="grid lg:grid-cols-5 gap-4 md:gap-6 mb-6">
-      <div class="lg:col-span-3 bg-white rounded-2xl shadow-sm p-5 md:p-6">
+      ${!isPremium() ? `<div class="lg:col-span-3">${premiumUpsellCard('chartBar', 'Gráficos y predicción de gastos', 'Compara tus gastos período a período, ve cuánto subieron o bajaron y proyecta el próximo mes. Disponible en el plan Premium.')}</div>` : `
+      <div id="finance-period-chart" class="lg:col-span-3 bg-white rounded-2xl shadow-sm p-5 md:p-6">
         <div class="text-[11px] font-semibold tracking-wider uppercase text-gray-400">Total · ${windowLabel}</div>
         <div class="text-xs text-gray-400 mt-0.5">${petFilter ? esc(petFilter) : 'Todas las mascotas'}</div>
         <div class="flex flex-wrap items-end justify-between gap-3 mt-3">
@@ -188,7 +187,7 @@ export function viewFinance() {
                  ${periods.map((p, i) => `<span class="flex-1 min-w-0 text-center text-xs truncate ${i === periods.length - 1 ? 'font-semibold text-gray-900' : 'text-gray-500'}">${esc(p.label)}</span>`).join('')}
                </div>
              </div>`}
-      </div>
+      </div>`}
       <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm p-5 md:p-6">
         <h3 class="font-semibold text-gray-900 mb-1">Por categoría</h3>
         <p class="text-xs text-gray-400 mb-5">${windowLabel.charAt(0).toUpperCase() + windowLabel.slice(1)}</p>
@@ -220,7 +219,7 @@ export function viewFinance() {
           }).join('')}
         </div>` : ''}
       </div>
-    </div>`) : `
+    </div>` : `
     <!-- LISTADO -->
     ${(() => {
       const sorted = [...expenses].sort((a,b)=>b.date>a.date?1:-1);

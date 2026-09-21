@@ -262,7 +262,7 @@ para el rol de solo lectura de un tutor compartido.
 
 | Plan | Precio | Incluye |
 |---|---|---|
-| **Free** | $0 | 1 mascota · fichas, vacunas, desparasitaciones, tratamientos e historial clínico completos · agenda y alertas · Finanzas básicas (lista y total) · Seguimiento y Nutrición · 1 archivo adjunto por evento del historial |
+| **Free** | $0 | 1 mascota · fichas, vacunas, desparasitaciones, tratamientos e historial clínico completos · agenda y alertas · Finanzas básicas (lista, total y desglose por categoría) · Seguimiento y Nutrición · 1 archivo adjunto por evento del historial |
 | **Premium** | $2.000/mes | 5 mascotas · todo lo de Free · compartir con un segundo tutor · Finanzas avanzada (gráficos por período y predicción de gastos) · exportar expediente en PDF · Botiquín del hogar · adjuntos ilimitados en el historial |
 
 El modo demo (`demo@mascotapp.cl`) siempre se ve como Premium — es una
