@@ -96,6 +96,15 @@ export function fmtCLP(n) {
   return Number(n || 0).toLocaleString('es-CL', { style:'currency', currency:'CLP', maximumFractionDigits:0 });
 }
 
+// Monto abreviado para etiquetas donde no cabe el número completo (ej. sobre
+// cada barra del gráfico de Finanzas): 52400 → "$52k", 1712890 → "$1,7M".
+export function fmtCompactCLP(n) {
+  const v = Math.round(Number(n || 0));
+  if (v < 1000) return '$' + v;
+  if (Math.round(v / 1000) < 1000) return '$' + Math.round(v / 1000) + 'k';
+  return '$' + String(Math.round(v / 100000) / 10).replace('.', ',') + 'M';
+}
+
 // Convierte el valor tipeado en un campo de costo (CLP) a un entero limpio
 // para guardar. Los campos de costo son type="text" (no type="number"): en
 // es-CL el "." es separador de miles, no decimal, y un usuario que escribe
@@ -209,7 +218,7 @@ export function activityStreak(activities) {
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
-    getAge, careAlertStatus, speciesEmoji, fmtCLP, parseCLP, esc, eventIcon, botiquinStatus,
+    getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, eventIcon, botiquinStatus,
     medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
     foodStockStatus, activityStreak,
   });

@@ -98,14 +98,14 @@ describe('viewFinance — gating Premium de la vista Gráfico', () => {
     const html = viewFinance();
     expect(html).toContain('Premium');
     expect(html).toContain('Gráficos y predicción de gastos');
-    expect(html).not.toContain('expenses-chart');
+    expect(html).not.toContain('finance-dashboard');
     expect(html).not.toContain('Predicción de gastos');
   });
 
-  it('un usuario Premium ve el canvas del gráfico', () => {
+  it('un usuario Premium ve el dashboard de gastos', () => {
     state.user = { id: 'user-1', plan: 'premium' };
     const html = viewFinance();
-    expect(html).toContain('expenses-chart');
+    expect(html).toContain('finance-dashboard');
     expect(html).not.toContain('Gráficos y predicción de gastos');
   });
 
@@ -115,5 +115,80 @@ describe('viewFinance — gating Premium de la vista Gráfico', () => {
     const html = viewFinance();
     expect(html).toContain('Historial de gastos');
     expect(html).not.toContain('Botiquín del hogar');
+  });
+});
+
+// Dashboard de la vista Gráfico: barras por período con el monto sobre cada
+// una, variación vs. el período anterior y desglose por categoría.
+describe('viewFinance — dashboard de gastos por período y categoría', () => {
+  const monthsAgo = (n, day = 10) => {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n); d.setDate(day);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  beforeEach(() => {
+    window.state = state;
+    state.user = { id: 'user-1', plan: 'premium' };
+    state.pets = [{ id: 'pet-1', name: 'Greta', species: 'Perro' }];
+    state.finView = 'grafico';
+    state.finPet = '';
+    state.finPeriod = 'mensual';
+  });
+
+  it('muestra el total de la ventana, el monto compacto sobre cada barra y las categorías de mayor a menor', () => {
+    window.getFinanceExpenses = () => [
+      { id: 1, amount: 100000, date: monthsAgo(1), category: 'Veterinaria', pet: 'Greta' },
+      { id: 2, amount: 50000, date: monthsAgo(0), category: 'Alimentación', pet: 'Greta' },
+      { id: 3, amount: 20000, date: monthsAgo(0), category: 'Peluquería', pet: 'Greta' },
+    ];
+    const html = viewFinance();
+    expect(html).toContain('$170.000');           // total de las 6 barras
+    expect(html).toContain('3 registros');
+    expect(html).toContain('$100k');
+    expect(html).toContain('$70k');               // este mes: 50k + 20k
+    expect(html.indexOf('Veterinaria')).toBeLessThan(html.indexOf('Alimentación'));
+    expect(html.indexOf('Alimentación')).toBeLessThan(html.indexOf('Peluquería'));
+  });
+
+  it('el gasto que sube vs. el período anterior se marca con ↑ y el que baja con ↓', () => {
+    window.getFinanceExpenses = () => [
+      { id: 1, amount: 100000, date: monthsAgo(1), category: 'Otro', pet: 'Greta' },
+      { id: 2, amount: 150000, date: monthsAgo(0), category: 'Otro', pet: 'Greta' },
+    ];
+    expect(viewFinance()).toContain('↑ 50%');
+    window.getFinanceExpenses = () => [
+      { id: 1, amount: 200000, date: monthsAgo(1), category: 'Otro', pet: 'Greta' },
+      { id: 2, amount: 100000, date: monthsAgo(0), category: 'Otro', pet: 'Greta' },
+    ];
+    expect(viewFinance()).toContain('↓ 50%');
+  });
+
+  it('si el período anterior fue $0 no divide por cero: avisa que no hubo gasto', () => {
+    window.getFinanceExpenses = () => [{ id: 1, amount: 80000, date: monthsAgo(0), category: 'Otro', pet: 'Greta' }];
+    const html = viewFinance();
+    expect(html).toContain('Sin gasto en');
+    expect(html).not.toContain('Infinity');
+    expect(html).not.toContain('NaN');
+  });
+
+  it('un gasto fuera de la ventana de 6 meses no entra al total ni a las categorías', () => {
+    window.getFinanceExpenses = () => [
+      { id: 1, amount: 999000, date: monthsAgo(10), category: 'Hotel', pet: 'Greta' },
+      { id: 2, amount: 30000, date: monthsAgo(0), category: 'Otro', pet: 'Greta' },
+    ];
+    const html = viewFinance();
+    expect(html).toContain('1 registro ·');
+    expect(html).not.toContain('Hotel');
+  });
+
+  it('sin gastos en el período muestra el estado vacío, sin barras', () => {
+    window.getFinanceExpenses = () => [];
+    const html = viewFinance();
+    expect(html).toContain('Sin gastos en este período');
+    expect(html).not.toContain('NaN');
+  });
+
+  it('una categoría que no está en la paleta igual aparece (antes se descartaba en silencio)', () => {
+    window.getFinanceExpenses = () => [{ id: 1, amount: 40000, date: monthsAgo(0), category: 'Cuidadora', pet: 'Greta' }];
+    expect(viewFinance()).toContain('Cuidadora');
   });
 });

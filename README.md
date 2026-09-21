@@ -43,7 +43,7 @@ Aplicación web progresiva (PWA) de página única para tutores de mascotas. Per
 
 ### 💰 Finanzas
 - Registro de gastos por categoría con filtros por mascota y período
-- Gráfico de distribución de gastos (Chart.js)
+- Dashboard de gastos: barras por período con el monto sobre cada una, variación vs. el período anterior y desglose por categoría y por mascota
 - Exportación a CSV
 - Predicción de gasto mensual
 

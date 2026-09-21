@@ -29,10 +29,14 @@ export function viewFinance() {
   // Construir períodos para el gráfico
   function buildPeriods() {
     if (period === 'mensual') {
+      const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
       return Array.from({length:6}, (_,i) => {
         const d = new Date(today.getFullYear(), today.getMonth()-5+i, 1);
         const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-        return { label: d.toLocaleDateString('es-CL',{month:'short', year:'2-digit'}), key, match: e => e.date?.startsWith(key) };
+        // Solo el mes ("abr", "may"…) — el año se agrega únicamente cuando la
+        // ventana cruza a otro año, para no repetirlo en las 6 barras.
+        const yy = d.getFullYear() !== today.getFullYear() ? ` ’${String(d.getFullYear()).slice(2)}` : '';
+        return { label: MESES[d.getMonth()] + yy, full: d.toLocaleDateString('es-CL',{month:'long'}), key, match: e => e.date?.startsWith(key) };
       });
     }
     if (period === 'trimestral') {
@@ -51,7 +55,7 @@ export function viewFinance() {
         // "semestral" con baseMonth.
         const baseMonth = (q-1)*3;
         const months = [0,1,2].map(m => `${d.getFullYear()}-${String(baseMonth+m+1).padStart(2,'0')}`);
-        return { label: `Q${q} ${d.getFullYear()}`, match: e => months.some(m => e.date?.startsWith(m)) };
+        return { label: `Q${q} ${d.getFullYear()}`, full: `Q${q} ${d.getFullYear()}`, match: e => months.some(m => e.date?.startsWith(m)) };
       });
     }
     if (period === 'semestral') {
@@ -61,13 +65,13 @@ export function viewFinance() {
         const sem = d.getMonth() < 6 ? 1 : 2;
         const baseMonth = sem === 1 ? 0 : 6;
         const months = Array.from({length:6}, (_,m) => `${d.getFullYear()}-${String(baseMonth+m+1).padStart(2,'0')}`);
-        return { label: `S${sem} ${d.getFullYear()}`, match: e => months.some(m => e.date?.startsWith(m)) };
+        return { label: `S${sem} ${d.getFullYear()}`, full: `S${sem} ${d.getFullYear()}`, match: e => months.some(m => e.date?.startsWith(m)) };
       });
     }
     if (period === 'anual') {
       return Array.from({length:4}, (_,i) => {
         const y = today.getFullYear() - (3-i);
-        return { label: `${y}`, match: e => e.date?.startsWith(`${y}`) };
+        return { label: `${y}`, full: `${y}`, match: e => e.date?.startsWith(`${y}`) };
       });
     }
     return [];
@@ -75,43 +79,32 @@ export function viewFinance() {
 
   const periods = buildPeriods();
 
-  setTimeout(() => {
-    if (!isPremium()) return; // el canvas ni se renderiza en Free — ver premiumUpsellCard() abajo
-    const ctx = document.getElementById('expenses-chart');
-    if (!ctx) return;
-    if (window.chartInstance) window.chartInstance.destroy();
-
-    if (petFilter) {
-      // Gráfico de una mascota: una sola serie
-      window.chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: periods.map(p => p.label),
-          datasets: [{ label: petFilter, data: periods.map(p => expenses.filter(p.match).reduce((s,e)=>s+Number(e.amount||0),0)),
-            backgroundColor: '#8b5cf6', borderRadius: 8 }]
-        },
-        options: { responsive:true, plugins:{ legend:{display:false} }, scales:{ y:{ ticks:{ callback: v=>'$'+v.toLocaleString('es-CL') } } } }
-      });
-    } else {
-      // Gráfico con todas las mascotas: una serie por mascota + colores
-      const petColors = ['#8b5cf6','#06b6d4','#f59e0b','#ec4899','#10b981','#ef4444','#6366f1','#84cc16'];
-      const petsWithExp = pets.filter(p => allExpenses.some(e => e.pet === p.name));
-      const datasets = petsWithExp.length > 0
-        ? petsWithExp.map((p, i) => ({
-            label: p.name,
-            data: periods.map(pr => allExpenses.filter(e => e.pet===p.name && pr.match(e)).reduce((s,e)=>s+Number(e.amount||0),0)),
-            backgroundColor: petColors[i % petColors.length], borderRadius: 6,
-          }))
-        : [{ label: 'Todos', data: periods.map(p => expenses.filter(p.match).reduce((s,e)=>s+Number(e.amount||0),0)),
-            backgroundColor: '#8b5cf6', borderRadius: 8 }];
-      window.chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: { labels: periods.map(p => p.label), datasets },
-        options: { responsive:true, plugins:{ legend:{ display: petsWithExp.length > 1 } },
-          scales:{ x:{ stacked: false }, y:{ ticks:{ callback: v=>'$'+v.toLocaleString('es-CL') } } } }
-      });
-    }
-  }, 100);
+  // Vista Gráfico (Premium): barras HTML en vez de Chart.js — el valor va
+  // escrito sobre cada barra y el período actual se resalta, así no hay que
+  // leer un eje de $ ni pasar el mouse para saber cuánto fue cada período.
+  const totals = periods.map(p => expenses.filter(p.match).reduce((s,e) => s + Number(e.amount||0), 0));
+  const windowExpenses = expenses.filter(e => periods.some(p => p.match(e)));
+  const windowTotal = totals.reduce((a,b) => a + b, 0);
+  const maxTotal = Math.max(0, ...totals);
+  const curTotal = totals[totals.length-1] ?? 0;
+  const prevPeriod = periods[periods.length-2];
+  const prevTotal = totals[totals.length-2] ?? 0;
+  const windowLabel = {mensual:'últimos 6 meses',trimestral:'últimos 4 trimestres',semestral:'últimos 4 semestres',anual:'últimos 4 años'}[period];
+  const currentWord = {mensual:'este mes',trimestral:'este trimestre',semestral:'este semestre',anual:'este año'}[period];
+  // Subir el gasto es "malo" (rojo) y bajarlo "bueno" (verde) — al revés de
+  // un ingreso.
+  const deltaPill = (() => {
+    if (!prevPeriod || (!curTotal && !prevTotal)) return '';
+    if (!prevTotal) return `<span class="text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-100 text-gray-600">Sin gasto en ${prevPeriod.full}</span>`;
+    const pct = Math.round((curTotal - prevTotal) / prevTotal * 100);
+    if (pct === 0) return `<span class="text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-100 text-gray-600">→ Igual que ${prevPeriod.full}</span>`;
+    return pct > 0
+      ? `<span class="text-xs font-semibold px-3 py-1.5 rounded-full bg-red-50 text-red-600">↑ ${pct}% vs. ${prevPeriod.full}</span>`
+      : `<span class="text-xs font-semibold px-3 py-1.5 rounded-full bg-green-50 text-green-700">↓ ${Math.abs(pct)}% vs. ${prevPeriod.full}</span>`;
+  })();
+  const catTotals = {};
+  windowExpenses.forEach(e => { const c = e.category || 'Otro'; catTotals[c] = (catTotals[c] || 0) + Number(e.amount||0); });
+  const catRows = Object.entries(catTotals).filter(([,v]) => v > 0).sort((a,b) => b[1] - a[1]);
 
   return appShell(`
     ${pageHeader('Finanzas', 'Control de gastos por mascota',
@@ -165,45 +158,64 @@ export function viewFinance() {
     ${viewMode === 'grafico' ? (!isPremium() ? `
     <div class="mb-6">${premiumUpsellCard('chartBar', 'Gráficos y predicción de gastos', 'Visualiza tus gastos por período, categoría y mascota, y una proyección del próximo mes. Disponible en el plan Premium.')}</div>
     ` : `
-    <!-- GRÁFICO -->
-    <div class="grid md:grid-cols-3 gap-6 mb-6">
-      <div class="md:col-span-2 bg-white rounded-2xl shadow-sm p-5">
-        <h3 class="font-semibold text-gray-700 mb-1">Gastos ${period} ${petFilter ? '· '+petFilter : '· Todas las mascotas'}</h3>
-        <p class="text-xs text-gray-400 mb-4">${{mensual:'Últimos 6 meses',trimestral:'Últimos 4 trimestres',semestral:'Últimos 4 semestres',anual:'Últimos 4 años'}[period]}</p>
-        <canvas id="expenses-chart" height="220"></canvas>
+    <!-- DASHBOARD -->
+    <div id="finance-dashboard" class="grid lg:grid-cols-5 gap-4 md:gap-6 mb-6">
+      <div class="lg:col-span-3 bg-white rounded-2xl shadow-sm p-5 md:p-6">
+        <div class="text-[11px] font-semibold tracking-wider uppercase text-gray-400">Total · ${windowLabel}</div>
+        <div class="text-xs text-gray-400 mt-0.5">${petFilter ? esc(petFilter) : 'Todas las mascotas'}</div>
+        <div class="flex flex-wrap items-end justify-between gap-3 mt-3">
+          <div>
+            <div class="text-3xl md:text-4xl font-bold text-gray-900 tabular-nums leading-none">${fmtCLP(windowTotal)}</div>
+            <div class="text-sm text-gray-500 mt-2">${windowExpenses.length} registro${windowExpenses.length!==1?'s':''} · ${fmtCLP(curTotal)} ${currentWord}</div>
+          </div>
+          ${deltaPill}
+        </div>
+        ${windowExpenses.length === 0
+          ? `<div class="h-44 md:h-56 mt-6 flex items-center justify-center text-sm text-gray-400">Sin gastos en este período</div>`
+          : `<div class="mt-6">
+               <div class="flex items-end gap-2 md:gap-3 h-44 md:h-56 border-b border-gray-100">
+                 ${periods.map((p, i) => {
+                   const v = totals[i];
+                   const isCur = i === periods.length - 1;
+                   const h = maxTotal > 0 ? (v / maxTotal) * 80 : 0;
+                   return `<div class="flex-1 min-w-0 h-full flex flex-col items-center justify-end" title="${esc(p.full)}: ${fmtCLP(v)}">
+                     <span class="text-[11px] md:text-xs font-semibold tabular-nums mb-1.5 ${isCur ? 'text-gray-900' : 'text-gray-500'}">${fmtCompactCLP(v)}</span>
+                     <div class="w-full max-w-[72px] rounded-t-xl rounded-b-sm ${isCur ? 'bg-brand-600' : 'bg-brand-200'}" style="height:${h}%;min-height:4px"></div>
+                   </div>`;
+                 }).join('')}
+               </div>
+               <div class="flex gap-2 md:gap-3 mt-2">
+                 ${periods.map((p, i) => `<span class="flex-1 min-w-0 text-center text-xs truncate ${i === periods.length - 1 ? 'font-semibold text-gray-900' : 'text-gray-500'}">${esc(p.label)}</span>`).join('')}
+               </div>
+             </div>`}
       </div>
-      <div class="bg-white rounded-2xl shadow-sm p-5">
-        <h3 class="font-semibold text-gray-700 mb-4">Por categoría</h3>
-        ${Object.keys(catColors).map(cat => {
-          const catTotal = expenses.filter(e=>e.category===cat).reduce((s,e)=>s+Number(e.amount||0),0);
-          const pct = total > 0 ? Math.round(catTotal/total*100) : 0;
-          if (!catTotal) return '';
-          return `<div class="mb-3">
-            <div class="flex justify-between text-xs mb-1">
-              <span class="text-gray-600">${cat}</span>
-              <span class="font-semibold text-gray-800">${fmtCLP(catTotal)}</span>
+      <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm p-5 md:p-6">
+        <h3 class="font-semibold text-gray-900 mb-1">Por categoría</h3>
+        <p class="text-xs text-gray-400 mb-5">${windowLabel.charAt(0).toUpperCase() + windowLabel.slice(1)}</p>
+        ${catRows.length === 0 ? '<p class="text-sm text-gray-400 text-center py-6">Sin datos</p>' : catRows.map(([cat, v]) => {
+          const pct = Math.round(v / windowTotal * 100);
+          const color = catColors[cat] || catColors.Otro;
+          return `<div class="mb-4 last:mb-0">
+            <div class="flex items-baseline justify-between gap-2 mb-1.5">
+              <span class="flex items-center gap-2 text-sm text-gray-700 min-w-0"><span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${color}"></span><span>${esc(cat)}</span></span>
+              <span class="text-sm font-semibold text-gray-900 tabular-nums whitespace-nowrap">${fmtCLP(v)} <span class="text-xs font-normal text-gray-500">${pct}%</span></span>
             </div>
-            <div class="w-full bg-gray-100 rounded-full h-2">
-              <div class="h-2 rounded-full" style="width:${pct}%;background:${catColors[cat]}"></div>
-            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2"><div class="h-2 rounded-full" style="width:${Math.max(pct, 2)}%;background:${color}"></div></div>
           </div>`;
         }).join('')}
-        ${total===0?'<p class="text-xs text-gray-400 text-center py-4">Sin datos</p>':''}
-        ${pets.length > 1 && !petFilter ? `
-        <div class="mt-4 pt-4 border-t border-gray-100">
-          <div class="text-xs font-semibold text-gray-400 mb-2">Por mascota</div>
+        ${pets.length > 1 && !petFilter && windowTotal > 0 ? `
+        <div class="mt-5 pt-4 border-t border-gray-100">
+          <div class="text-xs font-semibold text-gray-500 mb-3">Por mascota</div>
           ${pets.map(p => {
-            const pt = allExpenses.filter(e=>e.pet===p.name).reduce((s,e)=>s+Number(e.amount||0),0);
+            const pt = windowExpenses.filter(e => e.pet === p.name).reduce((s,e) => s + Number(e.amount||0), 0);
             if (!pt) return '';
-            const pct = total>0?Math.round(pt/total*100):0;
-            return `<div class="mb-2">
-              <div class="flex justify-between text-xs mb-1">
-                <span class="text-gray-600">${speciesEmoji(p.species)} ${esc(p.name)}</span>
-                <span class="font-semibold">${fmtCLP(pt)}</span>
+            const pct = Math.round(pt / windowTotal * 100);
+            return `<div class="mb-3 last:mb-0">
+              <div class="flex justify-between text-sm mb-1.5">
+                <span class="text-gray-700">${speciesEmoji(p.species)} ${esc(p.name)}</span>
+                <span class="font-semibold text-gray-900 tabular-nums">${fmtCLP(pt)} <span class="text-xs font-normal text-gray-500">${pct}%</span></span>
               </div>
-              <div class="w-full bg-gray-100 rounded-full h-1.5">
-                <div class="h-1.5 rounded-full bg-brand-400" style="width:${pct}%"></div>
-              </div>
+              <div class="w-full bg-gray-100 rounded-full h-1.5"><div class="h-1.5 rounded-full bg-brand-400" style="width:${Math.max(pct, 2)}%"></div></div>
             </div>`;
           }).join('')}
         </div>` : ''}

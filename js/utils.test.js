@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   todayStr, daysFromNowStr, addDays, daysBetween, addMonths, getAge,
-  careAlertStatus, medStockStatus, foodStockStatus, esc, parseCLP,
+  careAlertStatus, medStockStatus, foodStockStatus, esc, parseCLP, fmtCompactCLP,
 } from './utils.js';
 
 // Fija "hoy" a una fecha conocida para que las pruebas de fecha sean
@@ -192,5 +192,22 @@ describe('parseCLP', () => {
 
   it('ignora cualquier caracter no numérico (signos, espacios)', () => {
     expect(parseCLP('$ 25.000 CLP')).toBe(25000);
+  });
+});
+
+describe('fmtCompactCLP', () => {
+  it('abrevia miles con "k" y millones con "M" (coma decimal)', () => {
+    expect(fmtCompactCLP(0)).toBe('$0');
+    expect(fmtCompactCLP(850)).toBe('$850');
+    expect(fmtCompactCLP(52400)).toBe('$52k');
+    expect(fmtCompactCLP(1712890)).toBe('$1,7M');
+    expect(fmtCompactCLP(2000000)).toBe('$2M');
+  });
+  it('en el borde de los millones no muestra "1000k"', () => {
+    expect(fmtCompactCLP(999600)).toBe('$1M');
+  });
+  it('tolera null/undefined/NaN', () => {
+    expect(fmtCompactCLP(null)).toBe('$0');
+    expect(fmtCompactCLP(undefined)).toBe('$0');
   });
 });
