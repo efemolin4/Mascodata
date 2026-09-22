@@ -261,16 +261,35 @@ export const ROUTE_PATHS = {
 };
 export const AUTH_VIEWS = ['login', 'register', 'forgot', 'resetPassword'];
 
+// Solo los ids reales de Supabase (pets.id) son uuid — los del modo demo son
+// strings fijos tipo "pet-greta" (ver loadDemoAndLogin en auth.js), y los
+// que genId() genera para otros registros ni siquiera tienen esta forma.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function viewToPath(view, params = {}) {
   if (view === 'petProfile') {
     const id = params.currentPetId || state.currentPetId;
-    return id ? `/pets/${encodeURIComponent(id)}` : '/pets';
+    if (!id) return '/pets';
+    // Nombre de la mascota como prefijo legible (ej. /pets/greta-98b1cfe4-...)
+    // — el id real sigue siendo lo único que se lee al volver (ver
+    // pathToView), así que el prefijo puede quedar desactualizado sin
+    // romper nada si la mascota se renombra después. Solo se agrega sobre
+    // un id con forma de uuid: para los ids de demo no hay separador que
+    // distinga sin ambigüedad dónde termina el nombre y empieza el id.
+    const pet = UUID_RE.test(id) && state.pets.find(p => p.id === id);
+    const slug = pet?.name ? slugify(pet.name) : '';
+    return `/pets/${slug ? slug + '-' : ''}${encodeURIComponent(id)}`;
   }
   return ROUTE_PATHS[view] || '/';
 }
 
 export function pathToView(pathname) {
-  const petMatch = pathname.match(/^\/pets\/([^/]+)\/?$/);
+  // El prefijo legible es puramente cosmético: solo el uuid al final importa,
+  // así que un link viejo sin nombre (/pets/<uuid>) sigue funcionando igual.
+  // Si no hay uuid al final (ids de demo tipo "pet-greta"), cae al patrón
+  // genérico de siempre — un solo segmento, tal cual.
+  const uuidMatch = pathname.match(/^\/pets\/(?:[a-z0-9-]*-)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i);
+  const petMatch = uuidMatch || pathname.match(/^\/pets\/([^/]+)\/?$/);
   if (petMatch && petMatch[1] !== 'nueva') {
     return { view: 'petProfile', params: { currentPetId: decodeURIComponent(petMatch[1]), currentTab: 'general' } };
   }

@@ -139,6 +139,17 @@ export function esc(str) {
     .replace(/'/g, '&#39;');
 }
 
+// Para URLs legibles (ver viewToPath/pathToView en app.js): "Greta" → "greta",
+// "Mel & Rocco" → "mel-rocco". Nunca es el único identificador de la ruta —
+// siempre va pegado al id real — así que no necesita ser único.
+export function slugify(str) {
+  return (str || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export function eventIcon(t) {
   return { Consulta:'hospital', Examen:'flask', Peluquería:'scissors', Hotel:'building', Vacuna:'flask',
     Desparasitación:'bug', Tratamiento:'pill', Historial:'clipboard', Otro:'pin' }[t] || 'pin';
@@ -218,7 +229,7 @@ export function activityStreak(activities) {
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
-    getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, eventIcon, botiquinStatus,
+    getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, slugify, eventIcon, botiquinStatus,
     medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
     foodStockStatus, activityStreak,
   });
