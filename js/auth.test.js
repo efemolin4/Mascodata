@@ -6,7 +6,7 @@ import '../js/utils.js';
 // que mutar ese mismo objeto, no reemplazar window.state (ver el mismo
 // patrón ya documentado en finance.test.js/app.test.js).
 import { state } from '../js/app.js';
-import { openDeleteAccountModal, sendAccountDeleteCode, verifyAccountDeleteCode } from './auth.js';
+import { openDeleteAccountModal, sendAccountDeleteCode, verifyAccountDeleteCode, signInWithGoogle } from './auth.js';
 
 describe('openDeleteAccountModal', () => {
   beforeEach(() => {
@@ -183,5 +183,28 @@ describe('verifyAccountDeleteCode', () => {
     expect(window.showToast).toHaveBeenCalledWith('No se pudo eliminar la cuenta. Intenta nuevamente o contáctanos.', 'error');
     expect(window.closeModal).not.toHaveBeenCalled();
     expect(state.isLoggedIn).toBe(true);
+  });
+});
+
+describe('signInWithGoogle', () => {
+  beforeEach(() => {
+    window.showToast = vi.fn();
+  });
+
+  it('pide a Supabase el OAuth de Google apuntando de vuelta al origen actual', async () => {
+    window.sb = makeMockSb();
+    await signInWithGoogle();
+    expect(window.sb.auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    expect(window.showToast).not.toHaveBeenCalled();
+  });
+
+  it('si Supabase no puede iniciar el flujo (ej. red caída), avisa con un toast', async () => {
+    window.sb = makeMockSb();
+    window.sb.auth.signInWithOAuth = vi.fn(async () => ({ error: { message: 'boom' } }));
+    await signInWithGoogle();
+    expect(window.showToast).toHaveBeenCalledWith('No se pudo iniciar sesión con Google', 'error');
   });
 });

@@ -33,6 +33,7 @@ export function makeMockSb(routes = {}) {
       onAuthStateChange: vi.fn(),
       signInWithPassword: vi.fn(async () => ({ data: {}, error: null })),
       signInWithOtp: vi.fn(async () => ({ data: {}, error: null })),
+      signInWithOAuth: vi.fn(async () => ({ data: {}, error: null })),
       verifyOtp: vi.fn(async () => ({ data: {}, error: null })),
       signUp: vi.fn(async () => ({ data: {}, error: null })),
       updateUser: vi.fn(async () => ({ error: null })),
