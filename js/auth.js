@@ -206,6 +206,7 @@ export async function login() {
   const { error: profileError } = await sb.from('profiles').upsert({ id: data.user.id, email, name: userName }, { onConflict: 'id' });
   if (profileError) console.error('Error al crear/actualizar profile:', profileError);
   await loadDataFromSupabase();
+  track('login');
   showToast('¡Bienvenido! 👋', 'success');
   navigate('dashboard', {}, { replace: true });
 }
@@ -247,6 +248,7 @@ export async function register() {
     if (profileError) console.error('Error al crear profile:', profileError);
   }
   await loadDataFromSupabase();
+  track('signup_completed');
   showToast('¡Cuenta creada! Bienvenido 🎉', 'success');
   navigate('dashboard', {}, { replace: true });
 }
@@ -269,6 +271,7 @@ export async function sendForgotEmail() {
 
 export async function logout() {
   await sb.auth.signOut();
+  try { window.posthog?.reset(); } catch (e) {}
   const fresh = { isLoggedIn: false, user: null, pets: [], events: [], expenses: [],
     currentView: 'login', currentPetId: null, currentTab: 'general',
     addPetStep: 1, newPetData: {}, pages: {} };
@@ -305,7 +308,7 @@ export function viewProfile() {
           <h2 class="font-bold text-base md:text-lg mt-2">Mejora a Premium</h2>
           <p class="text-sm text-white/80 mt-1">Hasta 5 mascotas, segundo tutor, gráficos de gastos, exportar expediente y adjuntos ilimitados — ${fmtCLP(PREMIUM_PRICE_CLP)}/mes.</p>
         </div>
-        <button onclick="showToast('Escríbenos para mejorar tu plan a Premium', '')"
+        <button onclick="requestPremium('profile')"
           class="btn-secondary !bg-white !text-brand-700 hover:!bg-brand-50 !border-0 px-5 py-2.5 text-sm font-bold flex-shrink-0 w-full sm:w-auto">
           Mejorar a Premium
         </button>
@@ -375,6 +378,7 @@ export async function saveProfile(e) {
   state.user.city = city;
   state.user.marketingOptIn = marketingOptIn;
   saveState();
+  track('profile_saved', { has_phone: !!phone, has_city: !!city, marketing_opt_in: marketingOptIn });
   showToast('Perfil actualizado', 'success');
   render();
 }
@@ -677,6 +681,7 @@ export function loadDemoAndLogin(silent) {
   Object.assign(state, demoState);
   saveState();
   if (silent) return;
+  track('demo_started');
   showToast('Datos de prueba cargados (3 años)', 'success');
   navigate('dashboard', {}, { replace: true });
 }

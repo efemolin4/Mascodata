@@ -358,6 +358,7 @@ export async function saveMedication(e, petId) {
     pet.medications.push({ id: data.id, ...med });
   }
   closeModal(); render();
+  track('record_saved', { kind: 'medication' });
   showToast('Medicamento guardado', 'success');
 }
 
@@ -447,6 +448,7 @@ export async function saveHistory(e, petId) {
     pet.clinicalHistory.push({ id: data.id, ...record });
   }
   closeModal(); render();
+  track('record_saved', { kind: 'history' });
   showToast('Registro guardado', 'success');
 }
 

@@ -263,6 +263,7 @@ export async function saveVaccine(e, petId) {
       alertType: data.alert_type, alertDays: data.alert_days, cost: data.cost });
   }
   closeModal(); render();
+  track('record_saved', { kind: 'vaccine' });
   showToast('Vacuna guardada', 'success');
 }
 
@@ -303,6 +304,7 @@ export async function saveDeworming(e, petId) {
       alertType: data.alert_type, alertDays: data.alert_days, cost: data.cost });
   }
   closeModal(); render();
+  track('record_saved', { kind: 'deworming' });
   showToast('Desparasitación guardada', 'success');
 }
 

@@ -373,6 +373,7 @@ export async function saveExpense(e) {
   state.expenses.push({ id: data.id, petId: data.pet_id, pet: state.pets.find(p => p.id === data.pet_id)?.name || null,
     date: data.date, category: data.category, amount: data.amount, description: data.description });
   closeModal(); render();
+  track('record_saved', { kind: 'expense' });
   showToast('Gasto guardado', 'success');
 }
 

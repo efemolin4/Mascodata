@@ -328,6 +328,7 @@ export async function saveWeight(e, petId) {
   }
   pet.weightHistory.sort((a, b) => a.date > b.date ? 1 : -1);
   closeModal(); render();
+  track('record_saved', { kind: 'weight' });
   showToast('Peso registrado ✓', 'success');
 }
 

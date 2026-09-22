@@ -18,6 +18,8 @@ async function loadDataFromSupabase() {
       state.user.city = profile.city || '';
       state.user.marketingOptIn = profile.marketing_opt_in || false;
       saveState();
+      // Solo id y plan: nada de nombre, email ni teléfono en la analítica.
+      try { window.posthog?.identify(state.user.id, { plan: state.user.plan }); } catch (e) {}
     }
 
     const { data: accessRows } = await sb.from('pet_access')

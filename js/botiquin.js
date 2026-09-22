@@ -252,6 +252,7 @@ export async function saveBotiquinItem(e, itemId) {
       cost: data.cost, purchaseDate: data.purchase_date, expiryDate: data.expiry_date, notes: data.notes, status });
   }
   closeModal(); render();
+  track('record_saved', { kind: 'botiquin' });
   showToast('Producto guardado', 'success');
 }
 

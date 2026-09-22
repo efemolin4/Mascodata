@@ -186,8 +186,22 @@ export function isPremium() {
   return isDemoUser() || state.user?.plan === 'premium';
 }
 
+// Analítica de producto (PostHog, ver index.html). No-op si el script no cargó
+// (localhost, tests, bloqueador). `demo` separa a quienes solo prueban la demo.
+// Nunca mandar nombre, email, teléfono ni datos de salud en `props`.
+export function track(event, props = {}) {
+  try { window.posthog?.capture(event, { ...props, demo: isDemoUser() }); } catch (e) {}
+}
+
+// Click en "Mejorar a Premium" (todavía sin cobro en línea: solo avisa).
+export function requestPremium(source) {
+  track('upgrade_clicked', { source });
+  showToast('Escríbenos para mejorar tu plan a Premium', '');
+}
+
 export function blockIfNotPremium(feature) {
   if (isPremium()) return false;
+  track('premium_blocked', { feature });
   showToast(`${feature} es una función Premium — mejora tu plan para usarla.`, 'error');
   return true;
 }
@@ -203,7 +217,7 @@ export function premiumUpsellCard(iconName, title, desc) {
       <span class="badge bg-brand-100 text-brand-700 text-xs font-bold uppercase tracking-wide">Premium</span>
       <h2 class="text-base md:text-lg font-bold text-gray-900 mt-3 mb-2">${title}</h2>
       <p class="text-sm text-gray-500 mb-6">${desc}</p>
-      <button onclick="showToast('Escríbenos para mejorar tu plan a Premium', '')" class="btn-primary px-5 py-2.5 text-sm">Mejorar a Premium</button>
+      <button onclick="requestPremium('${iconName}')" class="btn-primary px-5 py-2.5 text-sm">Mejorar a Premium</button>
     </div>`;
 }
 
@@ -815,7 +829,7 @@ document.addEventListener('DOMContentLoaded', initApp);
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     getPage, setPage, paginate, pagerHTML, loadState, saveState, isDemoUser,
-    canEditPet, blockIfReadOnly, isPremium, blockIfNotPremium, premiumUpsell, premiumUpsellCard,
+    canEditPet, blockIfReadOnly, isPremium, blockIfNotPremium, premiumUpsell, premiumUpsellCard, track, requestPremium,
     showToast, viewToPath, pathToView,
     resolveInitialViewFromUrl, navigate, iconSVG, icon, sidebar, bottomNav, mobileTopBar,
     appShell, pageHeader, statCard, petAvatar, emptyState, noPetsOnboarding,

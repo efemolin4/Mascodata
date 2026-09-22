@@ -713,6 +713,7 @@ export async function savePet() {
   state.newPetData = {}; state.addPetStep = 1;
   // Si se completaron los datos del segundo tutor en el wizard, enviamos la invitación
   if (d.tutor2?.email) await createPetInvite(pet, d.tutor2);
+  track('pet_created', { species: pet.species, pets_total: state.pets.length });
   showToast(`${pet.name} registrado con éxito!`, 'success');
   navigate('petProfile', { currentPetId: pet.id, currentTab: 'general' });
 }
@@ -1047,6 +1048,7 @@ export function exportPetRecord(petId) {
 export function printPetRecord(petName) {
   const prevTitle = document.title;
   document.title = `Expediente médico - ${petName}`;
+  track('expediente_exported');
   window.print();
   document.title = prevTitle;
 }
@@ -1133,7 +1135,7 @@ export async function sendTutor2Invite(e, petId) {
   const email = document.getElementById('t2-inv-email')?.value?.trim().toLowerCase();
   const role  = document.getElementById('t2-inv-role')?.value;
   const ok = await createPetInvite(pet, { name, email, role });
-  if (ok) { closeModal(); render(); }
+  if (ok) { track('invite_sent', { role }); closeModal(); render(); }
 }
 
 export async function removeTutor2(petId) {
