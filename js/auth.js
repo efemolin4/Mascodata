@@ -354,6 +354,10 @@ export function viewProfile() {
           <button type="button" onclick="logout()" class="btn-secondary flex-1 !py-3 !text-red-500 hover:!bg-red-50">Cerrar sesión</button>
         </div>
       </form>
+
+      <div class="text-center mt-5">
+        <button type="button" onclick="openDeleteAccountModal()" class="text-xs text-gray-400 hover:text-red-500 hover:underline">Eliminar mi cuenta</button>
+      </div>
     </div>
   `);
 }
@@ -381,6 +385,122 @@ export async function saveProfile(e) {
   track('profile_saved', { has_phone: !!phone, has_city: !!city, marketing_opt_in: marketingOptIn });
   showToast('Perfil actualizado', 'success');
   render();
+}
+
+// ---- ELIMINAR CUENTA ----
+// Mismo patrón de confirmación que openDeletePetWithCode() en pets.js (código
+// de un solo uso enviado por email vía Supabase Auth OTP) pero a nivel de
+// cuenta completa. El borrado real — incluida la fila en auth.users — requiere
+// la clave de servicio, que nunca puede vivir en el navegador: lo hace una
+// Supabase Edge Function (ver supabase/functions/delete-account/index.ts,
+// deployment manual, igual que el resto del proyecto no usa la CLI de
+// Supabase). Acá solo se pide y verifica el código antes de invocarla.
+export function openDeleteAccountModal() {
+  const email = state.user?.email || '';
+  const ownedPets = state.pets.filter(p => !p.myRole || p.myRole === 'owner');
+  const sharedOwnedPets = ownedPets.filter(p => p.tutor2?.name && !p.tutor2.pending);
+  const expensesCount = (state.expenses || []).length;
+
+  const consequences = [
+    `${ownedPets.length} mascota${ownedPets.length !== 1 ? 's' : ''} y todo su historial médico`,
+    ...(expensesCount ? [`${expensesCount} gasto${expensesCount !== 1 ? 's' : ''} registrado${expensesCount !== 1 ? 's' : ''}`] : []),
+    ...(isPremium() && !isDemoUser() ? ['tu plan Premium'] : []),
+  ];
+
+  openModal(`
+    <div class="modal-box p-4 sm:p-6">
+      <div class="text-center mb-4">
+        <div class="mb-2 flex justify-center text-red-400">${icon('trash','w-12 h-12')}</div>
+        <h3 class="text-lg font-bold text-gray-900">Eliminar mi cuenta</h3>
+        <p class="text-sm text-gray-500 mt-1">Esta acción es permanente y no se puede deshacer. Se eliminará:</p>
+      </div>
+      <ul class="text-sm text-gray-700 bg-gray-50 rounded-xl p-3 mb-3 space-y-1">
+        ${consequences.map(c => `<li class="flex items-center gap-1.5">${icon('check','w-3.5 h-3.5 text-gray-400 flex-shrink-0')}${c}</li>`).join('')}
+      </ul>
+      ${sharedOwnedPets.length ? `
+      <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 text-sm text-amber-700 mb-3">
+        ${icon('warning','w-4 h-4 inline align-text-bottom')}
+        ${sharedOwnedPets.map(p => `${esc(p.tutor2.name)} pasará a ser dueño/a de ${esc(p.name)} y conservará su historial.`).join(' ')}
+      </div>` : ''}
+      <div id="del-acc-step-1">
+        <div class="bg-red-50 border border-red-100 rounded-xl p-3 text-sm text-red-700 mb-4">
+          ${icon('warning','w-4 h-4 inline align-text-bottom')} Para confirmar, enviaremos un código de verificación a:<br/>
+          <strong>${esc(email)}</strong>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="closeModal()" class="btn-secondary flex-1">Cancelar</button>
+          <button onclick="sendAccountDeleteCode()" class="flex-1 py-2 bg-red-500 text-white rounded-xl font-semibold text-sm hover:bg-red-600 transition-colors">
+            Enviar código
+          </button>
+        </div>
+      </div>
+      <div id="del-acc-step-2" class="hidden">
+        <p class="text-sm text-gray-500 mb-3">Ingresa el código de verificación enviado a <strong>${esc(email)}</strong></p>
+        <input id="del-acc-code-input" type="text" maxlength="12" placeholder="Código"
+          class="input-field text-center text-2xl tracking-[0.2em] font-bold mb-1" />
+        <p id="del-acc-code-error" class="text-xs text-red-500 text-center mb-3 hidden">Código incorrecto. Intenta nuevamente.</p>
+        <div class="flex gap-3">
+          <button onclick="closeModal()" class="btn-secondary flex-1">Cancelar</button>
+          <button onclick="verifyAccountDeleteCode()" class="flex-1 py-2 bg-red-500 text-white rounded-xl font-semibold text-sm hover:bg-red-600 transition-colors">
+            Eliminar cuenta
+          </button>
+        </div>
+        <button onclick="sendAccountDeleteCode()" class="w-full text-xs text-gray-400 hover:text-gray-600 mt-2">Reenviar código</button>
+      </div>
+    </div>`);
+}
+
+export async function sendAccountDeleteCode() {
+  if (isDemoUser()) {
+    // Sin sesión real de Supabase en modo demo — simulamos el código acá mismo.
+    state.deleteAccountCode = String(Math.floor(100000 + Math.random() * 900000));
+    document.getElementById('del-acc-step-1')?.classList.add('hidden');
+    document.getElementById('del-acc-step-2')?.classList.remove('hidden');
+    showToast(`Código enviado a ${state.user?.email} (demo: ${state.deleteAccountCode})`, 'success');
+    return;
+  }
+  const { error } = await sb.auth.signInWithOtp({ email: state.user.email, options: { shouldCreateUser: false } });
+  if (error) { showToast('No se pudo enviar el código', 'error'); console.error(error); return; }
+  document.getElementById('del-acc-step-1')?.classList.add('hidden');
+  document.getElementById('del-acc-step-2')?.classList.remove('hidden');
+  showToast(`Código enviado a ${state.user?.email}`, 'success');
+}
+
+export async function verifyAccountDeleteCode() {
+  const input = document.getElementById('del-acc-code-input')?.value?.trim();
+  const markInvalid = () => {
+    document.getElementById('del-acc-code-error')?.classList.remove('hidden');
+    document.getElementById('del-acc-code-input')?.classList.add('border-red-400');
+  };
+
+  if (isDemoUser()) {
+    if (input !== state.deleteAccountCode) { markInvalid(); return; }
+    closeModal();
+    track('account_deleted');
+    showToast('Cuenta eliminada', 'success');
+    logout();
+    return;
+  }
+
+  // Misma plantilla de correo que el borrado de mascota (ver el comentario en
+  // verifyDeleteCode, js/pets.js) — se emite como tipo 'magiclink', no 'email'.
+  let { error: otpError } = await sb.auth.verifyOtp({ email: state.user.email, token: input, type: 'email' });
+  if (otpError) {
+    ({ error: otpError } = await sb.auth.verifyOtp({ email: state.user.email, token: input, type: 'magiclink' }));
+  }
+  if (otpError) { markInvalid(); return; }
+
+  const { error: fnError } = await sb.functions.invoke('delete-account');
+  if (fnError) {
+    showToast('No se pudo eliminar la cuenta. Intenta nuevamente o contáctanos.', 'error');
+    console.error('Error al eliminar cuenta:', fnError);
+    return;
+  }
+
+  closeModal();
+  track('account_deleted');
+  showToast('Cuenta eliminada', 'success');
+  await logout();
 }
 
 // ---- DATOS DE PRUEBA ----
@@ -691,5 +811,6 @@ if (typeof window !== 'undefined') {
     viewLogin, viewRegister, viewResetPassword, handleResetPassword, viewForgot,
     handleLogin, login, handleRegister, register, handleForgot, sendForgotEmail,
     logout, loadDemoAndLogin, viewProfile, saveProfile,
+    openDeleteAccountModal, sendAccountDeleteCode, verifyAccountDeleteCode,
   });
 }

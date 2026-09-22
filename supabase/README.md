@@ -48,3 +48,30 @@ order by relname;
 
 Pegá los tres resultados (como CSV o tabla) y con eso se arma
 `schema/rls_policies.sql` con el estado real.
+
+## Edge Functions
+
+`functions/delete-account/index.ts` borra la cuenta del usuario que la llama:
+transfiere sus mascotas al segundo tutor si tienen uno (o las borra si no),
+limpia gastos/eventos/botiquín/perfil, y finalmente la fila en
+`auth.users` — ver el comentario al principio del archivo para el detalle
+completo. Existe como función porque eliminar de `auth.users` requiere la
+clave de servicio, que nunca puede vivir en el navegador. La invoca
+`verifyAccountDeleteCode()` en `js/auth.js`, después de confirmar un código
+de un solo uso enviado al email del usuario (mismo mecanismo que el borrado
+de una mascota, `sendDeleteCode()`/`verifyDeleteCode()` en `js/pets.js`).
+
+Igual que el resto del proyecto, el deploy es manual (no se usa la CLI de
+Supabase):
+
+1. Dashboard → **Edge Functions → New Function**.
+2. Nombre: `delete-account`.
+3. Pegá el contenido de `functions/delete-account/index.ts`.
+4. **Deploy**. `SUPABASE_URL`, `SUPABASE_ANON_KEY` y
+   `SUPABASE_SERVICE_ROLE_KEY` ya están disponibles automáticamente como
+   variables de entorno en toda función — no hace falta configurar ningún
+   secreto a mano.
+
+Cada vez que cambies `functions/delete-account/index.ts`, pegá el archivo
+actualizado en el Dashboard y hacé Deploy de nuevo — el repo es la fuente de
+verdad del código, pero el deploy real vive en Supabase.

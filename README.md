@@ -367,6 +367,22 @@ ALTER TABLE public.profiles
 No hace falta tocar las políticas RLS — la política existente "Users
 manage own profile" ya cubre la fila completa, columnas nuevas incluidas.
 
+### Eliminar cuenta (2026-09-22)
+
+Desde "Mi perfil" un tutor puede eliminar su cuenta por completo — link
+"Eliminar mi cuenta" al final de la página, confirmado con un código de un
+solo uso enviado a su email (mismo mecanismo que ya usa el borrado de una
+mascota). Si el usuario es dueño de una mascota con un segundo tutor, la
+propiedad pasa a ese tutor en vez de borrarse; si no tiene segundo tutor,
+la mascota se borra completa.
+
+El borrado real requiere la clave de servicio de Supabase (para eliminar de
+`auth.users`), así que corre en una Edge Function —
+`supabase/functions/delete-account/index.ts` — que hay que desplegar a
+mano una vez desde el Dashboard. Ver
+[`supabase/README.md`](supabase/README.md#edge-functions) para el paso a
+paso.
+
 ### Corregir columnas faltantes en `vaccines` y `dewormings`
 
 Las tablas `vaccines` y `dewormings` fueron creadas sin las columnas de
