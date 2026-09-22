@@ -472,6 +472,11 @@ export async function verifyAccountDeleteCode() {
     document.getElementById('del-acc-code-error')?.classList.remove('hidden');
     document.getElementById('del-acc-code-input')?.classList.add('border-red-400');
   };
+  // Si un intento anterior falló por otra razón (ej. la Edge Function, más
+  // abajo), sin esto el aviso de "código incorrecto" de esa vez quedaba
+  // pegado en pantalla aunque el código de este intento sí fuera válido.
+  document.getElementById('del-acc-code-error')?.classList.add('hidden');
+  document.getElementById('del-acc-code-input')?.classList.remove('border-red-400');
 
   if (isDemoUser()) {
     if (input !== state.deleteAccountCode) { markInvalid(); return; }

@@ -787,6 +787,12 @@ export async function sendDeleteCode(petId) {
 export async function verifyDeleteCode(petId) {
   const input = document.getElementById('delete-code-input')?.value?.trim();
   const error = document.getElementById('delete-code-error');
+  // Si un intento anterior falló por otra razón (ej. el borrado en Supabase,
+  // más abajo en deletePet()), sin esto el aviso de "código incorrecto" de
+  // esa vez quedaba pegado en pantalla aunque el código de este intento sí
+  // fuera válido.
+  error?.classList.add('hidden');
+  document.getElementById('delete-code-input')?.classList.remove('border-red-400');
   if (isDemoUser()) {
     if (input !== state.deleteCode) {
       error?.classList.remove('hidden');

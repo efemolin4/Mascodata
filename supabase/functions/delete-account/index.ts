@@ -18,7 +18,7 @@
 // token de sesión del usuario ya autenticado — nunca confiar en un userId
 // que mande el propio request, siempre se toma del token verificado acá.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization');
