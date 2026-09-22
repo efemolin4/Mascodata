@@ -414,7 +414,7 @@ export function sidebar() {
   <aside class="hidden md:flex flex-col w-60 bg-white border-r border-gray-100 fixed inset-y-0 left-0 z-20">
     <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
       <svg viewBox="0 0 64 64" class="w-8 h-8 rounded-xl flex-shrink-0" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mascodata"><rect width="64" height="64" rx="14" fill="#C2471F"/><rect x="14" y="19" width="9" height="12" rx="4.5" fill="#FFF8F0"/><rect x="27.5" y="14" width="9" height="17" rx="4.5" fill="#FFF8F0"/><rect x="41" y="9" width="9" height="22" rx="4.5" fill="#FFF8F0"/><path fill="#FFF8F0" d="M32 35c6.5 0 10.5 4.2 13.2 8.6 2.6 4.2 1 9.4-4 9.4-3.4 0-5.6-1.6-9.2-1.6s-5.8 1.6-9.2 1.6c-5 0-6.6-5.2-4-9.4C21.5 39.2 25.5 35 32 35z"/></svg>
-      <div class="font-bold text-gray-900 text-sm leading-none">Mascodata</div>
+      <div class="font-bold text-sm leading-none"><span class="text-brand-500">Masco</span><span class="text-gray-900">da</span><span class="text-brand-500">ta</span></div>
     </div>
     <nav class="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
       ${items.map(i => {
@@ -458,7 +458,7 @@ export function mobileTopBar() {
     style="padding-top:calc(0.625rem + env(safe-area-inset-top))">
     <div class="flex items-center gap-2">
       <svg viewBox="0 0 64 64" class="w-7 h-7 rounded-lg flex-shrink-0" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mascodata"><rect width="64" height="64" rx="14" fill="#C2471F"/><rect x="14" y="19" width="9" height="12" rx="4.5" fill="#FFF8F0"/><rect x="27.5" y="14" width="9" height="17" rx="4.5" fill="#FFF8F0"/><rect x="41" y="9" width="9" height="22" rx="4.5" fill="#FFF8F0"/><path fill="#FFF8F0" d="M32 35c6.5 0 10.5 4.2 13.2 8.6 2.6 4.2 1 9.4-4 9.4-3.4 0-5.6-1.6-9.2-1.6s-5.8 1.6-9.2 1.6c-5 0-6.6-5.2-4-9.4C21.5 39.2 25.5 35 32 35z"/></svg>
-      <span class="font-bold text-gray-900 text-sm">Mascodata</span>
+      <span class="font-bold text-sm"><span class="text-brand-500">Masco</span><span class="text-gray-900">da</span><span class="text-brand-500">ta</span></span>
     </div>
     <button onclick="navigate('profile')" title="Mi perfil"
       class="w-8 h-8 rounded-full bg-brand-gradient flex items-center justify-center text-white text-xs font-bold flex-shrink-0">

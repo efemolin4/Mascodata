@@ -15,7 +15,7 @@ export function viewLogin() {
         <div class="mb-6 flex justify-center">
           <svg viewBox="0 0 64 64" class="w-20 h-20" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mascodata"><rect x="14" y="19" width="9" height="12" rx="4.5" fill="#FFF8F0"/><rect x="27.5" y="14" width="9" height="17" rx="4.5" fill="#FFF8F0"/><rect x="41" y="9" width="9" height="22" rx="4.5" fill="#FFF8F0"/><path fill="#FFF8F0" d="M32 35c6.5 0 10.5 4.2 13.2 8.6 2.6 4.2 1 9.4-4 9.4-3.4 0-5.6-1.6-9.2-1.6s-5.8 1.6-9.2 1.6c-5 0-6.6-5.2-4-9.4C21.5 39.2 25.5 35 32 35z"/></svg>
         </div>
-        <h1 class="text-4xl font-bold mb-3">Mascodata</h1>
+        <h1 class="text-4xl font-bold mb-3"><span style="color:#F2865E">Masco</span><span style="color:#FFF8F0">da</span><span style="color:#F2865E">ta</span></h1>
         <p class="text-lg text-white/85 max-w-xs mx-auto">Tu compañero digital para el cuidado integral de tus mascotas</p>
         <div class="mt-8 grid grid-cols-2 gap-4 text-sm">
           <div class="bg-white/10 rounded-xl p-3"><div class="mb-1 flex justify-center">${icon('clipboard','w-6 h-6')}</div>Ficha médica completa</div>
@@ -32,7 +32,7 @@ export function viewLogin() {
           <div class="lg:hidden flex items-center gap-3 mb-6">
             <svg viewBox="0 0 64 64" class="w-10 h-10 rounded-2xl flex-shrink-0" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mascodata"><rect width="64" height="64" rx="14" fill="#C2471F"/><rect x="14" y="19" width="9" height="12" rx="4.5" fill="#FFF8F0"/><rect x="27.5" y="14" width="9" height="17" rx="4.5" fill="#FFF8F0"/><rect x="41" y="9" width="9" height="22" rx="4.5" fill="#FFF8F0"/><path fill="#FFF8F0" d="M32 35c6.5 0 10.5 4.2 13.2 8.6 2.6 4.2 1 9.4-4 9.4-3.4 0-5.6-1.6-9.2-1.6s-5.8 1.6-9.2 1.6c-5 0-6.6-5.2-4-9.4C21.5 39.2 25.5 35 32 35z"/></svg>
             <div>
-              <div class="font-bold text-gray-900 leading-none">Mascodata</div>
+              <div class="font-bold leading-none"><span class="text-brand-500">Masco</span><span class="text-gray-900">da</span><span class="text-brand-500">ta</span></div>
               <div class="text-xs text-brand-400 mt-0.5">Tu compañero digital</div>
             </div>
           </div>
