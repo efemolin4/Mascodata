@@ -10,8 +10,8 @@
 // variables de entorno automáticamente, sin configuración manual.
 //
 // Deploy manual (igual que el resto del proyecto no usa la CLI de Supabase,
-// ver supabase/README.md): Dashboard → Edge Functions → New Function →
-// nombre "delete-account" → pegar este archivo → Deploy.
+// ver supabase/README.md): Dashboard → Edge Functions → delete-account →
+// Code → pegar este archivo → Deploy.
 //
 // La app la invoca vía sb.functions.invoke('delete-account') (ver
 // verifyAccountDeleteCode() en js/auth.js), que adjunta automáticamente el
@@ -20,10 +20,33 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+// mascodata.cl (y localhost al probar) llaman a esta función en otro
+// dominio (*.supabase.co) — el navegador manda primero un OPTIONS de
+// "preflight" antes del POST real. Sin estos headers en TODAS las
+// respuestas (incluida la del preflight), el navegador bloquea la llamada
+// entera como si fuera un error de CORS — nunca llega a ejecutarse el POST,
+// aunque la función esté sana (por eso probar con curl directo sí andaba:
+// curl no hace este chequeo, solo los navegadores).
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+function json(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
+    return json({ error: 'No autorizado' }, 401);
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -36,7 +59,7 @@ Deno.serve(async (req) => {
   });
   const { data: { user }, error: userError } = await userClient.auth.getUser();
   if (userError || !user) {
-    return new Response(JSON.stringify({ error: 'Sesión inválida' }), { status: 401 });
+    return json({ error: 'Sesión inválida' }, 401);
   }
 
   // Cliente con la clave de servicio: el único que puede saltarse RLS y
@@ -98,15 +121,9 @@ Deno.serve(async (req) => {
     const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
     if (deleteError) throw deleteError;
 
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json({ ok: true }, 200);
   } catch (e) {
     console.error('Error al eliminar cuenta:', e);
-    return new Response(JSON.stringify({ error: 'No se pudo eliminar la cuenta' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return json({ error: 'No se pudo eliminar la cuenta' }, 500);
   }
 });
