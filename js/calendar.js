@@ -1,5 +1,5 @@
 /* ============================================================
-   MASCOTAPP — Agenda / Calendario
+   MASCODATA — Agenda / Calendario
    ============================================================
    Fase 2 de la modularización (ver js/utils.js para el porqué de la
    convención export + window.assign). Vista de calendario, creación

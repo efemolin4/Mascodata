@@ -9,7 +9,7 @@ import { isPremium, blockIfNotPremium, state } from './app.js';
 // las afecta acá: hay que mutar el `state` real importado.
 describe('isPremium', () => {
   it('el modo demo siempre se ve como Premium (vitrina del producto completo)', () => {
-    state.user = { name: 'Demo', email: 'demo@mascotapp.cl' }; // sin id -> isDemoUser() = true
+    state.user = { name: 'Demo', email: 'demo@mascodata.cl' }; // sin id -> isDemoUser() = true
     expect(isPremium()).toBe(true);
   });
 
@@ -51,7 +51,7 @@ describe('blockIfNotPremium', () => {
   });
 
   it('no bloquea en modo demo', () => {
-    state.user = { name: 'Demo', email: 'demo@mascotapp.cl' };
+    state.user = { name: 'Demo', email: 'demo@mascodata.cl' };
     expect(blockIfNotPremium('Cualquier función')).toBe(false);
   });
 });

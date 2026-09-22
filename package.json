@@ -1,5 +1,5 @@
 {
-  "name": "mascotapp",
+  "name": "mascodata",
   "private": true,
   "type": "module",
   "description": "Sin build step para la app en sí — este package.json es solo para tests (Vitest). El sitio se sigue sirviendo tal cual: index.html, css/style.css y los módulos ES en js/.",

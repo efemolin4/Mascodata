@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "mascotapp-static",
+      "name": "mascodata-static",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["scripts/spa-server.py", "8934"],
       "port": 8934

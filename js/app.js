@@ -1,5 +1,5 @@
 /* ============================================================
-   MASCOTAPP — Aplicación Principal
+   MASCODATA — Aplicación Principal
    ============================================================ */
 
 // ---- SUPABASE CONFIG ----
@@ -132,7 +132,7 @@ window.chartInstance = null;
 
 export function loadState() {
   try {
-    const s = localStorage.getItem('mascotapp_v3');
+    const s = localStorage.getItem('mascodata_v3');
     if (s) {
       const p = JSON.parse(s);
       state.user = p.user || null;
@@ -155,7 +155,7 @@ export function loadState() {
 
 export function saveState() {
   try {
-    localStorage.setItem('mascotapp_v3', JSON.stringify({
+    localStorage.setItem('mascodata_v3', JSON.stringify({
       user: state.user, isLoggedIn: state.isLoggedIn,
     }));
   } catch(e) {}
@@ -395,7 +395,7 @@ export function sidebar() {
   <aside class="hidden md:flex flex-col w-60 bg-white border-r border-gray-100 fixed inset-y-0 left-0 z-20">
     <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
       <div class="w-8 h-8 bg-brand-gradient rounded-xl flex items-center justify-center text-white font-black text-xs tracking-tight">MA</div>
-      <div class="font-bold text-gray-900 text-sm leading-none">Mascotapp</div>
+      <div class="font-bold text-gray-900 text-sm leading-none">Mascodata</div>
     </div>
     <nav class="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
       ${items.map(i => {
@@ -439,7 +439,7 @@ export function mobileTopBar() {
     style="padding-top:calc(0.625rem + env(safe-area-inset-top))">
     <div class="flex items-center gap-2">
       <div class="w-7 h-7 bg-brand-gradient rounded-lg flex items-center justify-center text-white font-black text-[10px]">MA</div>
-      <span class="font-bold text-gray-900 text-sm">Mascotapp</span>
+      <span class="font-bold text-gray-900 text-sm">Mascodata</span>
     </div>
     <button onclick="navigate('profile')" title="Mi perfil"
       class="w-8 h-8 rounded-full bg-brand-gradient flex items-center justify-center text-white text-xs font-bold flex-shrink-0">

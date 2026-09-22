@@ -26,7 +26,7 @@ describe('viewBotiquin — gating Premium', () => {
   });
 
   it('el modo demo ve el inventario real (nunca el upsell)', () => {
-    state.user = { name: 'Demo', email: 'demo@mascotapp.cl' };
+    state.user = { name: 'Demo', email: 'demo@mascodata.cl' };
     state.pets = [];
     state.botiquin = [{ id: 'b1', name: 'Jeringas', category: 'Accesorio', quantity: 4, unit: 'unidades' }];
     state.botiquinTab = 'inventario';

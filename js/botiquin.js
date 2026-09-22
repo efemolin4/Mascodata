@@ -1,5 +1,5 @@
 /* ============================================================
-   MASCOTAPP — Botiquín
+   MASCODATA — Botiquín
    ============================================================
    Fase 2 de la modularización (ver js/utils.js para el porqué de la
    convención export + window.assign). Vista de botiquín y CRUD de sus

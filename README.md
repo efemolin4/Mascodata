@@ -1,8 +1,8 @@
-# Mascotapp — Gestión Integral de Mascotas
+# Mascodata — Gestión Integral de Mascotas
 
 Aplicación web progresiva (PWA) de página única para tutores de mascotas. Permite registrar y gestionar toda la información de salud, vacunas, medicamentos, agenda y finanzas de múltiples mascotas desde un solo lugar.
 
-🔗 **Demo en vivo:** [my-pets-3-0.vercel.app](https://my-pets-3-0.vercel.app)
+🔗 **Demo en vivo:** [mascodata.cl](https://mascodata.cl)
 
 ---
 
@@ -124,7 +124,7 @@ para la query de introspección y cómo mantenerlo al día).
 ## Estructura del proyecto
 
 ```
-Mascotapp/
+Mascodata/
 ├── index.html               # Punto de entrada + CDN scripts
 ├── vercel.json               # Reescribe cualquier ruta a index.html (rutas reales en prod)
 ├── package.json               # Solo para tests (Vitest) — la app en sí no tiene build step
@@ -246,7 +246,7 @@ Repartidas entre `js/*.js` según la tabla de la sección anterior (ej.
 - **Registro** con nombre, email y contraseña
 - **Login** con persistencia de sesión (JWT)
 - **Recuperación de contraseña** por email con link seguro
-- **Modo demo** con datos precargados (`demo@mascotapp.cl`)
+- **Modo demo** con datos precargados (`demo@mascodata.cl`)
 - Sesión persistente entre recargas con `getSession()`
 
 ---
@@ -265,7 +265,7 @@ para el rol de solo lectura de un tutor compartido.
 | **Free** | $0 | 1 mascota · fichas, vacunas, desparasitaciones, tratamientos e historial clínico completos · agenda y alertas · Finanzas básicas (lista, total y desglose por categoría) · Seguimiento y Nutrición · 1 archivo adjunto por evento del historial |
 | **Premium** | $2.000/mes | 5 mascotas · todo lo de Free · compartir con un segundo tutor · Finanzas avanzada (gráficos por período y predicción de gastos) · exportar expediente en PDF · Botiquín del hogar · adjuntos ilimitados en el historial |
 
-El modo demo (`demo@mascotapp.cl`) siempre se ve como Premium — es una
+El modo demo (`demo@mascodata.cl`) siempre se ve como Premium — es una
 vitrina del producto completo, no debe sentirse limitado.
 
 ### Migración a 2 planes (2026-09-08)
@@ -336,10 +336,10 @@ realmente lleguen hay que configurar en el Dashboard de Supabase:
    tu propio Gmail/Workspace, etc.). El servicio de correo por
    defecto de Supabase es solo para pruebas y está limitado a unos
    pocos correos por hora — con eso jamás va a andar en producción.
-2. **Authentication → URL Configuration → Redirect URLs**: agrega la
-   URL donde vive la app (por ejemplo `https://tu-dominio.com/*`) para
-   que los links de "recuperar contraseña" e "invitar tutor" puedan
-   redirigir de vuelta.
+2. **Authentication → URL Configuration**: agrega `https://mascodata.cl/*`
+   en "Redirect URLs" (y de paso pon `https://mascodata.cl` como "Site
+   URL") para que los links de "recuperar contraseña" e "invitar tutor"
+   redirijan de vuelta al dominio real y no al `.vercel.app`.
 
 ### Marcar usuario como administrador
 

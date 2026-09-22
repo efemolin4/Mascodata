@@ -1,5 +1,5 @@
 /* ============================================================
-   MASCOTAPP — Panel de administrador
+   MASCODATA — Panel de administrador
    ============================================================
    Fase 2 de la modularización (ver js/utils.js para el porqué de la
    convención export + window.assign). Vista de administrador, modal
@@ -175,7 +175,7 @@ export function viewAdmin() {
 
   return appShell(`
     <div class="max-w-5xl mx-auto">
-      ${pageHeader('Panel Administrador', 'Command Center · Mascotapp SaaS')}
+      ${pageHeader('Panel Administrador', 'Command Center · Mascodata SaaS')}
       <div class="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 w-fit">
         ${tabs.map(t => '<button onclick="state.adminTab=\''+t.id+'\';render()" class="px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 '+(tab===t.id?'bg-white text-gray-900 shadow-sm':'text-gray-500 hover:text-gray-700')+'">'+icon(t.iconName,'w-4 h-4')+t.label+'</button>').join('')}
       </div>
