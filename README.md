@@ -72,6 +72,24 @@ Aplicación web progresiva (PWA) de página única para tutores de mascotas. Per
 
 ---
 
+## Identidad de marca
+
+Desde el 22 de septiembre de 2026 la app sigue el Manual de marca
+Mascodata v1: paleta terracota/azul noche/verde azulado, tipografía
+Nunito, y el isotipo de huella con dedos en barras de gráfico. La
+paleta reusa los mismos nombres de color de Tailwind que ya usaba toda
+la app (`brand`, `teal`, `gray`, `red`, `amber`), remapeados a los
+valores del manual en `index.html` — así ninguna vista tuvo que cambiar
+sus clases. `fonts/` y `img/logos/` guardan los archivos originales del
+kit de marca (tipografía autohospedada y el isotipo/ícono de app).
+
+Sin emojis decorativos en la interfaz (saludo, cumpleaños, fondo del
+login) — quedan pendientes solo los que son parte del contenido mismo
+(el avatar de cada mascota por especie y las caras de estado de ánimo),
+que necesitarían un set de íconos propio para reemplazarse.
+
+---
+
 ## Tecnología
 
 | Capa | Tecnología |

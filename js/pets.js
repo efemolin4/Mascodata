@@ -1129,7 +1129,7 @@ export async function acceptPetInvite(token) {
   });
   if (accessError) { showToast('No se pudo aceptar la invitación', 'error'); console.error(accessError); return; }
   await sb.from('invitations').update({ used: true }).eq('token', token);
-  showToast(`🎉 Ahora tienes acceso a ${invite.pet_name}`, 'success');
+  showToast(`Ahora tienes acceso a ${invite.pet_name}`, 'success');
   await loadDataFromSupabase();
 }
 

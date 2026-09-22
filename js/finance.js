@@ -24,7 +24,7 @@ export function viewFinance() {
 
   const total      = expenses.reduce((s,e) => s + Number(e.amount||0), 0);
   const monthTotal = expenses.filter(e => e.date?.startsWith(thisMonth)).reduce((s,e) => s + Number(e.amount||0), 0);
-  const catColors  = { Veterinaria:'#8b5cf6', Medicamentos:'#06b6d4', Alimentación:'#f59e0b', Peluquería:'#ec4899', Hotel:'#10b981', Otro:'#6b7280' };
+  const catColors  = { Veterinaria:'#c2471f', Medicamentos:'#1f7a6e', Alimentación:'#a78035', Peluquería:'#ec4899', Hotel:'#4d978d', Otro:'#6e6259' };
 
   // Construir períodos para el gráfico
   function buildPeriods() {

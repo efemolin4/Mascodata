@@ -413,7 +413,7 @@ export function sidebar() {
   return `
   <aside class="hidden md:flex flex-col w-60 bg-white border-r border-gray-100 fixed inset-y-0 left-0 z-20">
     <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-      <div class="w-8 h-8 bg-brand-gradient rounded-xl flex items-center justify-center text-white font-black text-xs tracking-tight">MA</div>
+      <svg viewBox="0 0 64 64" class="w-8 h-8 rounded-xl flex-shrink-0" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mascodata"><rect width="64" height="64" rx="14" fill="#C2471F"/><rect x="14" y="19" width="9" height="12" rx="4.5" fill="#FFF8F0"/><rect x="27.5" y="14" width="9" height="17" rx="4.5" fill="#FFF8F0"/><rect x="41" y="9" width="9" height="22" rx="4.5" fill="#FFF8F0"/><path fill="#FFF8F0" d="M32 35c6.5 0 10.5 4.2 13.2 8.6 2.6 4.2 1 9.4-4 9.4-3.4 0-5.6-1.6-9.2-1.6s-5.8 1.6-9.2 1.6c-5 0-6.6-5.2-4-9.4C21.5 39.2 25.5 35 32 35z"/></svg>
       <div class="font-bold text-gray-900 text-sm leading-none">Mascodata</div>
     </div>
     <nav class="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
@@ -457,7 +457,7 @@ export function mobileTopBar() {
   <div class="md:hidden sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-100 flex items-center justify-between px-4 py-2.5"
     style="padding-top:calc(0.625rem + env(safe-area-inset-top))">
     <div class="flex items-center gap-2">
-      <div class="w-7 h-7 bg-brand-gradient rounded-lg flex items-center justify-center text-white font-black text-[10px]">MA</div>
+      <svg viewBox="0 0 64 64" class="w-7 h-7 rounded-lg flex-shrink-0" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mascodata"><rect width="64" height="64" rx="14" fill="#C2471F"/><rect x="14" y="19" width="9" height="12" rx="4.5" fill="#FFF8F0"/><rect x="27.5" y="14" width="9" height="17" rx="4.5" fill="#FFF8F0"/><rect x="41" y="9" width="9" height="22" rx="4.5" fill="#FFF8F0"/><path fill="#FFF8F0" d="M32 35c6.5 0 10.5 4.2 13.2 8.6 2.6 4.2 1 9.4-4 9.4-3.4 0-5.6-1.6-9.2-1.6s-5.8 1.6-9.2 1.6c-5 0-6.6-5.2-4-9.4C21.5 39.2 25.5 35 32 35z"/></svg>
       <span class="font-bold text-gray-900 text-sm">Mascodata</span>
     </div>
     <button onclick="navigate('profile')" title="Mi perfil"
@@ -598,18 +598,18 @@ export function injectStyles() {
   const style = document.createElement('style');
   style.textContent = `
     *{box-sizing:border-box}
-    .input-field{width:100%;padding:0.55rem 0.75rem;border:1.5px solid #e5e7eb;border-radius:0.875rem;font-size:0.875rem;transition:border-color .15s,box-shadow .15s;background:white;color:#111827;line-height:1.4}
-    .input-field:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.15);outline:none}
-    .input-field::placeholder{color:#9ca3af}
-    select.input-field{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236b7280'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.6rem center;background-size:1.1rem;padding-right:2rem;appearance:none;cursor:pointer}
-    .form-label{display:block;font-size:0.72rem;font-weight:600;color:#6b7280;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:.03em}
-    .btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;padding:.5rem 1.125rem;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;border-radius:0.875rem;font-weight:600;font-size:.875rem;transition:opacity .15s,transform .1s,box-shadow .15s;cursor:pointer;border:none;letter-spacing:-.01em;box-shadow:0 1px 3px rgba(124,58,237,.35)}
-    .btn-primary:hover{opacity:.92;transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.4)}
+    .input-field{width:100%;padding:0.55rem 0.75rem;border:1.5px solid #e6d8c9;border-radius:0.875rem;font-size:0.875rem;transition:border-color .15s,box-shadow .15s;background:white;color:#1d2b3a;line-height:1.4}
+    .input-field:focus{border-color:#1f7a6e;box-shadow:0 0 0 3px rgba(31,122,110,.18);outline:none}
+    .input-field::placeholder{color:#9c8b7b}
+    select.input-field{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236e6259'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.6rem center;background-size:1.1rem;padding-right:2rem;appearance:none;cursor:pointer}
+    .form-label{display:block;font-size:0.72rem;font-weight:600;color:#6e6259;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:.03em}
+    .btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;padding:.5rem 1.125rem;background:#c2471f;color:white;border-radius:0.875rem;font-weight:600;font-size:.875rem;transition:opacity .15s,transform .1s,box-shadow .15s;cursor:pointer;border:none;letter-spacing:-.01em;box-shadow:0 1px 3px 0 rgba(194,71,31,.35)}
+    .btn-primary:hover{opacity:.92;transform:translateY(-1px);box-shadow:0 4px 12px rgba(194,71,31,.4)}
     .btn-primary:active{transform:translateY(0);opacity:1}
-    .btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;padding:.5rem 1.125rem;background:#f3f4f6;color:#374151;border-radius:0.875rem;font-weight:600;font-size:.875rem;transition:background .15s,color .15s;cursor:pointer;border:1.5px solid #e5e7eb}
-    .btn-secondary:hover{background:#e9ecf0;border-color:#d1d5db}
-    .bg-brand-gradient{background:linear-gradient(135deg,#7c3aed,#4f46e5)}
-    .card-elevated{background:white;border-radius:1.25rem;box-shadow:0 1px 4px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.05)}
+    .btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;padding:.5rem 1.125rem;background:#f6ece0;color:#1d2b3a;border-radius:0.875rem;font-weight:600;font-size:.875rem;transition:background .15s,color .15s;cursor:pointer;border:1.5px solid #e6d8c9}
+    .btn-secondary:hover{background:#e6d8c9;border-color:#c1b2a2}
+    .bg-brand-gradient{background:#c2471f}
+    .card-elevated{background:white;border-radius:1.25rem;box-shadow:0 1px 2px 0 rgba(29,43,58,.06),0 4px 12px 0 rgba(29,43,58,.06);border:1px solid rgba(29,43,58,.05)}
     .page-header-action button,.page-header-action a{white-space:nowrap}
     /* ---- Mobile overrides ---- */
     input[type="date"]::-webkit-date-and-time-value{text-align:center;display:block;width:100%}
@@ -634,7 +634,7 @@ export function injectStyles() {
     .modal-box>div.space-y-4>div:last-child{
       position:sticky;bottom:0;background:white;
       padding-top:12px;margin-top:4px;
-      border-top:1px solid #f3f4f6;z-index:2
+      border-top:1px solid #f6ece0;z-index:2
     }
     @keyframes slideInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
     @keyframes slideUpModal{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}

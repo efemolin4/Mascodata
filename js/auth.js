@@ -11,13 +11,12 @@ export function viewLogin() {
   return `
   <div class="min-h-screen flex">
     <div class="hidden lg:flex lg:w-1/2 bg-brand-gradient items-center justify-center p-12 relative overflow-hidden">
-      <div class="absolute inset-0 opacity-10">
-        ${Array.from({length:12}, (_,i) => `<div class="absolute text-6xl" style="top:${Math.random()*90}%;left:${Math.random()*90}%;opacity:${0.3+Math.random()*0.7}">${['🐕','🐈','🐇','🦜','🐠'][i%5]}</div>`).join('')}
-      </div>
       <div class="relative text-center text-white">
-        <div class="mb-6 flex justify-center">${icon('paw','w-20 h-20')}</div>
+        <div class="mb-6 flex justify-center">
+          <svg viewBox="0 0 64 64" class="w-20 h-20" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mascodata"><rect x="14" y="19" width="9" height="12" rx="4.5" fill="#FFF8F0"/><rect x="27.5" y="14" width="9" height="17" rx="4.5" fill="#FFF8F0"/><rect x="41" y="9" width="9" height="22" rx="4.5" fill="#FFF8F0"/><path fill="#FFF8F0" d="M32 35c6.5 0 10.5 4.2 13.2 8.6 2.6 4.2 1 9.4-4 9.4-3.4 0-5.6-1.6-9.2-1.6s-5.8 1.6-9.2 1.6c-5 0-6.6-5.2-4-9.4C21.5 39.2 25.5 35 32 35z"/></svg>
+        </div>
         <h1 class="text-4xl font-bold mb-3">Mascodata</h1>
-        <p class="text-lg text-purple-100 max-w-xs mx-auto">Tu compañero digital para el cuidado integral de tus mascotas</p>
+        <p class="text-lg text-white/85 max-w-xs mx-auto">Tu compañero digital para el cuidado integral de tus mascotas</p>
         <div class="mt-8 grid grid-cols-2 gap-4 text-sm">
           <div class="bg-white/10 rounded-xl p-3"><div class="mb-1 flex justify-center">${icon('clipboard','w-6 h-6')}</div>Ficha médica completa</div>
           <div class="bg-white/10 rounded-xl p-3"><div class="mb-1 flex justify-center">${icon('bell','w-6 h-6')}</div>Alertas automáticas</div>
@@ -31,7 +30,7 @@ export function viewLogin() {
         <div class="w-full max-w-sm mx-auto animate-scale-in">
           <!-- Logo solo móvil: compacto -->
           <div class="lg:hidden flex items-center gap-3 mb-6">
-            <div class="w-10 h-10 rounded-2xl bg-brand-gradient flex items-center justify-center text-white font-black text-sm">MA</div>
+            <svg viewBox="0 0 64 64" class="w-10 h-10 rounded-2xl flex-shrink-0" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mascodata"><rect width="64" height="64" rx="14" fill="#C2471F"/><rect x="14" y="19" width="9" height="12" rx="4.5" fill="#FFF8F0"/><rect x="27.5" y="14" width="9" height="17" rx="4.5" fill="#FFF8F0"/><rect x="41" y="9" width="9" height="22" rx="4.5" fill="#FFF8F0"/><path fill="#FFF8F0" d="M32 35c6.5 0 10.5 4.2 13.2 8.6 2.6 4.2 1 9.4-4 9.4-3.4 0-5.6-1.6-9.2-1.6s-5.8 1.6-9.2 1.6c-5 0-6.6-5.2-4-9.4C21.5 39.2 25.5 35 32 35z"/></svg>
             <div>
               <div class="font-bold text-gray-900 leading-none">Mascodata</div>
               <div class="text-xs text-brand-400 mt-0.5">Tu compañero digital</div>
@@ -74,11 +73,11 @@ export function viewLogin() {
 // ---- VISTA: REGISTER ----
 export function viewRegister() {
   return `
-  <div class="min-h-screen overflow-y-auto bg-gradient-to-br from-brand-50 to-teal-50">
+  <div class="min-h-screen overflow-y-auto bg-gray-50">
     <div class="min-h-full flex flex-col justify-center px-5 py-8 sm:px-8 sm:items-center">
     <div class="w-full max-w-sm mx-auto animate-scale-in">
       <div class="text-center mb-5">
-        <div class="inline-flex w-12 h-12 rounded-2xl bg-brand-gradient items-center justify-center text-white font-black mb-3">MA</div>
+        <svg viewBox="0 0 64 64" class="w-12 h-12 rounded-2xl mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mascodata"><rect width="64" height="64" rx="14" fill="#C2471F"/><rect x="14" y="19" width="9" height="12" rx="4.5" fill="#FFF8F0"/><rect x="27.5" y="14" width="9" height="17" rx="4.5" fill="#FFF8F0"/><rect x="41" y="9" width="9" height="22" rx="4.5" fill="#FFF8F0"/><path fill="#FFF8F0" d="M32 35c6.5 0 10.5 4.2 13.2 8.6 2.6 4.2 1 9.4-4 9.4-3.4 0-5.6-1.6-9.2-1.6s-5.8 1.6-9.2 1.6c-5 0-6.6-5.2-4-9.4C21.5 39.2 25.5 35 32 35z"/></svg>
         <h2 class="text-2xl font-bold text-gray-900">Crear cuenta</h2>
         <p class="text-sm text-gray-500 mt-1">Únete a Mascodata gratis</p>
       </div>
@@ -114,7 +113,7 @@ export function viewRegister() {
 // ---- VISTA: RESET PASSWORD ----
 export function viewResetPassword() {
   return `
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-50 to-teal-50 p-6">
+  <div class="min-h-screen flex items-center justify-center bg-gray-50 p-6">
     <div class="w-full max-w-sm animate-scale-in">
       <div class="text-center mb-6">
         <div class="mb-2 flex justify-center text-gray-300">${icon('lock','w-10 h-10')}</div>
@@ -154,7 +153,7 @@ export async function handleResetPassword() {
 // ---- VISTA: FORGOT ----
 export function viewForgot() {
   return `
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-50 to-teal-50 p-6">
+  <div class="min-h-screen flex items-center justify-center bg-gray-50 p-6">
     <div class="w-full max-w-sm animate-scale-in">
       <div class="text-center mb-6">
         <div class="mb-2 flex justify-center text-gray-300">${icon('key','w-10 h-10')}</div>
@@ -207,7 +206,7 @@ export async function login() {
   if (profileError) console.error('Error al crear/actualizar profile:', profileError);
   await loadDataFromSupabase();
   track('login');
-  showToast('¡Bienvenido! 👋', 'success');
+  showToast('¡Bienvenido!', 'success');
   navigate('dashboard', {}, { replace: true });
 }
 
@@ -249,7 +248,7 @@ export async function register() {
   }
   await loadDataFromSupabase();
   track('signup_completed');
-  showToast('¡Cuenta creada! Bienvenido 🎉', 'success');
+  showToast('¡Cuenta creada! Bienvenido', 'success');
   navigate('dashboard', {}, { replace: true });
 }
 
@@ -420,7 +419,7 @@ export function openDeleteAccountModal() {
       ${sharedOwnedPets.length ? `
       <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 text-sm text-amber-700 mb-3">
         ${icon('warning','w-4 h-4 inline align-text-bottom')}
-        ${sharedOwnedPets.map(p => `${esc(p.tutor2.name)} pasará a ser dueño/a de ${esc(p.name)} y conservará su historial.`).join(' ')}
+        ${sharedOwnedPets.map(p => `${esc(p.tutor2.name)} pasará a ser tutor/a de ${esc(p.name)} y conservará su historial.`).join(' ')}
       </div>` : ''}
       <div id="del-acc-step-1">
         <div class="bg-red-50 border border-red-100 rounded-xl p-3 text-sm text-red-700 mb-4">

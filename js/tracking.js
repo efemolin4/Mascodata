@@ -234,17 +234,17 @@ export function renderWeightChart(pet) {
         datasets: [{
           label: 'Peso (kg)',
           data: history.map(h => parseFloat(h.kg) + (parseInt(h.gr||0)/1000)),
-          borderColor: '#7c3aed',
-          backgroundColor: 'rgba(124,58,237,0.08)',
+          borderColor: '#c2471f',
+          backgroundColor: 'rgba(194,71,31,0.08)',
           tension: 0.4, fill: true,
-          pointBackgroundColor: '#7c3aed', pointRadius: 4,
+          pointBackgroundColor: '#c2471f', pointRadius: 4,
         }]
       },
       options: {
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
-          y: { beginAtZero: false, grid: { color: '#f3f4f6' } },
+          y: { beginAtZero: false, grid: { color: '#f6ece0' } },
           x: { grid: { display: false } }
         }
       }

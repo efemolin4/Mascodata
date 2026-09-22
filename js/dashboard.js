@@ -14,7 +14,7 @@ export function viewDashboard() {
   if (pets.length === 0) {
     return appShell(`
       <div class="mb-5">
-        <h1 class="text-xl md:text-2xl font-bold text-gray-900">Hola, ${esc(state.user?.name?.split(' ')[0] || 'Tutor')} 👋</h1>
+        <h1 class="text-xl md:text-2xl font-bold text-gray-900">Hola, ${esc(state.user?.name?.split(' ')[0] || 'Tutor')}</h1>
         <p class="text-sm text-gray-400 mt-0.5 capitalize">${dateStr0}</p>
       </div>
       <div class="bg-white rounded-2xl shadow-sm p-6 md:p-10 text-center max-w-2xl mx-auto mt-4 md:mt-8">
@@ -152,14 +152,14 @@ export function viewDashboard() {
       </div>` : '',
     birthdayPets.length ? `
       <div class="bg-white rounded-2xl shadow-sm p-4 md:p-5">
-        <h2 class="font-semibold text-gray-900 mb-3">🎂 Próximos cumpleaños</h2>
+        <h2 class="font-semibold text-gray-900 mb-3 flex items-center gap-1.5">${icon('party','w-4 h-4 text-pink-500')} Próximos cumpleaños</h2>
         <div class="space-y-2">
           ${birthdayPets.map(b => `
             <div class="flex items-center gap-2 p-2.5 bg-pink-50 rounded-xl">
-              <span class="text-xl">🎂</span>
+              <span class="text-pink-500 flex-shrink-0">${icon('party','w-5 h-5')}</span>
               <div>
                 <div class="text-sm font-semibold text-gray-800">${esc(b.name)} cumple ${b.age} año${b.age!==1?'s':''}</div>
-                <div class="text-xs text-pink-600">${b.days === 0 ? '¡Hoy es su cumpleaños! 🎉' : `En ${b.days} día${b.days!==1?'s':''}`}</div>
+                <div class="text-xs text-pink-600">${b.days === 0 ? '¡Hoy es su cumpleaños!' : `En ${b.days} día${b.days!==1?'s':''}`}</div>
               </div>
             </div>`).join('')}
         </div>
@@ -169,7 +169,7 @@ export function viewDashboard() {
   return appShell(`
     <div class="flex items-start justify-between gap-3 mb-5">
       <div class="min-w-0">
-        <h1 class="text-xl md:text-2xl font-bold text-gray-900">Hola, ${esc(state.user?.name?.split(' ')[0] || 'Tutor')} 👋</h1>
+        <h1 class="text-xl md:text-2xl font-bold text-gray-900">Hola, ${esc(state.user?.name?.split(' ')[0] || 'Tutor')}</h1>
         <p class="text-sm text-gray-400 mt-0.5 capitalize">${dateStr}</p>
       </div>
       <button onclick="openEventModal()" class="btn-primary flex-shrink-0 flex items-center gap-1.5">${icon('plus','w-4 h-4')}<span class="hidden sm:inline">Agendar evento</span><span class="sm:hidden">Evento</span></button>

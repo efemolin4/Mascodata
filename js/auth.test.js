@@ -35,7 +35,7 @@ describe('openDeleteAccountModal', () => {
     openDeleteAccountModal();
     const html = window.openModal.mock.calls[0][0];
     expect(html).toContain('María González');
-    expect(html).toContain('dueño/a de Greta');
+    expect(html).toContain('tutor/a de Greta');
   });
 
   it('una invitación de segundo tutor todavía pendiente no cuenta como que ya tiene tutor2', () => {

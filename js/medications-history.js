@@ -87,7 +87,7 @@ export function tabMedications(pet) {
 export function tabHistory(pet) {
   const allHs = [...(pet.clinicalHistory||[])].sort((a,b) => b.date > a.date ? 1 : -1);
   const { items: hs, total, pages, page } = paginate(allHs, `hist_${pet.id}`);
-  const typeColors = { Cirugía:'bg-red-50 text-red-700', Esterilización:'bg-purple-50 text-purple-700', Procedimiento:'bg-blue-50 text-blue-700', Diagnóstico:'bg-teal-50 text-teal-700', Otro:'bg-gray-50 text-gray-600' };
+  const typeColors = { Cirugía:'bg-red-50 text-red-700', Esterilización:'bg-amber-50 text-amber-700', Procedimiento:'bg-blue-50 text-blue-700', Diagnóstico:'bg-teal-50 text-teal-700', Otro:'bg-gray-50 text-gray-600' };
   return `
     <div class="bg-white rounded-2xl shadow-sm p-5">
       <div class="flex items-center justify-between mb-4">

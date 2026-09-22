@@ -5,37 +5,109 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mascodata — Gestión Integral de Mascotas</title>
   <meta name="description" content="App de gestión integral para tutores de mascotas. Ficha médica, vacunas, medicamentos, agenda y más." />
+  <link rel="icon" type="image/svg+xml" href="/img/logos/mascodata-app-icon.svg" />
+  <link rel="apple-touch-icon" href="/img/logos/mascodata-app-icon.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    // Paleta y tipografía del Manual de marca Mascodata v1 (septiembre 2026)
+    // — ver colores-y-tokens.json. Se reusan los mismos NOMBRES de color que
+    // ya usaba toda la app (brand/teal/gray/red/amber) para no tener que
+    // tocar las clases de cada vista una por una; solo cambian los valores.
+    // `surface`/`ink`/etc. quedan disponibles además con el nombre literal
+    // del token, para código nuevo que prefiera escribirlo así.
     tailwind.config = {
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
+          },
           colors: {
+            // brand: terracota Mascodata (antes violeta).
             brand: {
-              50:  '#f5f3ff',
-              100: '#ede9fe',
-              200: '#ddd6fe',
-              300: '#c4b5fd',
-              400: '#a78bfa',
-              500: '#8b5cf6',
-              600: '#7c3aed',
-              700: '#6d28d9',
-              800: '#5b21b6',
-              900: '#4c1d95',
+              50:  '#fdf1ea',
+              100: '#fbe3d6',
+              200: '#edbca8',
+              300: '#de957a',
+              400: '#d06e4d',
+              500: '#c2471f',
+              600: '#b03f1a',
+              700: '#9e3715',
+              800: '#6e260f',
+              900: '#3d1509',
             },
+            // teal: mismo rol de "accent" que ya tenía (Premium, salud al día),
+            // ahora en el verde azulado de marca (antes cian).
             teal: {
-              50:  '#f0fdfa',
-              400: '#2dd4bf',
-              500: '#14b8a6',
-              600: '#0d9488',
+              50:  '#eaf6f4',
+              100: '#d6eeea',
+              200: '#a8d1cb',
+              300: '#7ab4ac',
+              400: '#4d978d',
+              500: '#1f7a6e',
+              600: '#19645a',
+              700: '#134e47',
+              800: '#0e3c37',
+              900: '#0a2b27',
             },
-            // gray-400 por defecto de Tailwind (#9ca3af ≈ 2.8:1 sobre blanco) es
-            // demasiado claro para texto secundario, placeholders, días de la
-            // semana y navegación inactiva — se sube al tono de gray-500 (~4.6:1)
-            // para cumplir contraste AA sin tocar cada lugar que ya usa text-gray-400.
+            // green: estados de "éxito"/"al día" usan el mismo verde azulado
+            // de marca que teal (el manual junta ambos bajo un solo accent).
+            green: {
+              50:  '#eaf6f4',
+              100: '#d6eeea',
+              200: '#a8d1cb',
+              300: '#7ab4ac',
+              400: '#4d978d',
+              500: '#1f7a6e',
+              600: '#19645a',
+              700: '#134e47',
+              800: '#0e3c37',
+              900: '#0a2b27',
+            },
+            // red: "danger" de marca es frambuesa, no el rojo genérico —
+            // a propósito, para no confundirse con el terracota de marca.
+            red: {
+              50:  '#fdf0f3',
+              100: '#fbe2e7',
+              200: '#e6b0bc',
+              300: '#d07e91',
+              400: '#bb4d66',
+              500: '#a61b3b',
+              600: '#8f1733',
+              700: '#78142a',
+              800: '#611022',
+              900: '#4a0c1a',
+            },
+            // amber: "warning" de marca (dorado apagado, no naranjo).
+            amber: {
+              50:  '#fef8ea',
+              100: '#fdf0d5',
+              200: '#e0caa0',
+              300: '#c4a56a',
+              400: '#a78035',
+              500: '#8a5a00',
+              600: '#774d00',
+              700: '#644000',
+              800: '#503400',
+              900: '#3d2700',
+            },
+            // gray: neutro CÁLIDO (crema/azul noche), no el gris frío por
+            // defecto de Tailwind — el manual lo pide explícitamente.
             gray: {
-              400: '#6b7280',
-            }
+              50:  '#fff8f0',
+              100: '#f6ece0',
+              200: '#e6d8c9',
+              300: '#c1b2a2',
+              400: '#9c8b7b',
+              500: '#6e6259',
+              600: '#5a5451',
+              700: '#46464a',
+              800: '#313942',
+              900: '#1d2b3a',
+            },
+            // Alias con el nombre literal del token, por si código nuevo
+            // prefiere escribir bg-surface/text-ink en vez de gray-50/gray-900.
+            surface: { DEFAULT: '#fff8f0', raised: '#ffffff', sunken: '#f6ece0' },
+            ink: { DEFAULT: '#1d2b3a', muted: '#6e6259' },
           }
         }
       }
