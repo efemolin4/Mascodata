@@ -58,12 +58,6 @@ export function viewLogin() {
           <div class="mt-4 text-center text-sm text-gray-500">
             ¿No tienes cuenta? <button onclick="navigate('register')" class="text-brand-600 font-semibold hover:underline">Regístrate gratis</button>
           </div>
-          <div class="mt-4">
-            <button type="button" onclick="loadDemoAndLogin()"
-              class="w-full py-2.5 rounded-xl bg-brand-600 text-white text-sm font-bold hover:bg-brand-700 transition-colors">
-              ${icon('flask','w-4 h-4 inline align-text-bottom')} Ingresar con datos de prueba
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -182,11 +176,6 @@ export async function login() {
   const email = document.getElementById('l-email')?.value?.trim().toLowerCase();
   const pass  = document.getElementById('l-pass')?.value;
   if (!email || !pass) { showToast('Completa todos los campos', 'error'); return; }
-
-  // Demo mode — bypass Supabase
-  if (email === 'demo@mascodata.cl') {
-    loadDemoAndLogin(); return;
-  }
 
   showToast('Iniciando sesión...', '');
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
