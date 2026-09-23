@@ -677,6 +677,8 @@ export function injectStyles() {
     .input-field{width:100%;padding:0.55rem 0.75rem;border:1.5px solid #e6d8c9;border-radius:0.875rem;font-size:0.875rem;transition:border-color .15s,box-shadow .15s;background:white;color:#1d2b3a;line-height:1.4}
     .input-field:focus{border-color:#1f7a6e;box-shadow:0 0 0 3px rgba(31,122,110,.18);outline:none}
     .input-field::placeholder{color:#9c8b7b}
+    .input-field{box-sizing:border-box;min-width:0;max-width:100%}
+    .grid>*{min-width:0}
     select.input-field{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236e6259'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.6rem center;background-size:1.1rem;padding-right:2rem;appearance:none;cursor:pointer}
     .form-label{display:block;font-size:0.72rem;font-weight:600;color:#6e6259;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:.03em}
     .btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;padding:.5rem 1.125rem;background:#c2471f;color:white;border-radius:0.875rem;font-weight:600;font-size:.875rem;transition:opacity .15s,transform .1s,box-shadow .15s;cursor:pointer;border:none;letter-spacing:-.01em;box-shadow:0 1px 3px 0 rgba(194,71,31,.35)}
@@ -688,8 +690,8 @@ export function injectStyles() {
     .card-elevated{background:white;border-radius:1.25rem;box-shadow:0 1px 2px 0 rgba(29,43,58,.06),0 4px 12px 0 rgba(29,43,58,.06);border:1px solid rgba(29,43,58,.05)}
     .page-header-action button,.page-header-action a{white-space:nowrap}
     /* ---- Mobile overrides ---- */
-    input[type="date"]::-webkit-date-and-time-value{text-align:center;display:block;width:100%}
-    input[type="date"]{text-align:center;text-align-last:center;min-width:0!important;max-width:100%!important;width:100%!important;box-sizing:border-box!important}
+    input[type="date"]::-webkit-date-and-time-value,input[type="time"]::-webkit-date-and-time-value{text-align:center;display:block;width:100%}
+    input[type="date"],input[type="time"]{-webkit-appearance:none;appearance:none;display:block;min-height:2.6rem;text-align:center;text-align-last:center;min-width:0!important;max-width:100%!important;width:100%!important;box-sizing:border-box!important}
     @media(max-width:640px){
       .input-field{font-size:16px}
       /* Modal slides up from bottom on mobile */
