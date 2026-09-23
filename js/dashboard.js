@@ -22,21 +22,24 @@ export function viewDashboard() {
         <h2 class="text-lg md:text-xl font-bold text-gray-900 mb-2">Empecemos con tu primera mascota</h2>
         <p class="text-sm text-gray-500 mb-8 max-w-md mx-auto">Regístrala para llevar su ficha de salud, agenda y gastos en un solo lugar. Solo toma un par de minutos.</p>
         <div class="grid sm:grid-cols-3 gap-3 mb-8 text-left">
-          <div class="bg-brand-50 border border-brand-100 rounded-xl p-4">
+          <button type="button" onclick="navigate('addPet')" class="relative w-full text-left border rounded-xl p-4 transition-colors cursor-pointer bg-brand-50 border-brand-100 hover:bg-brand-100">
             <div class="w-7 h-7 rounded-full bg-brand-500 text-white flex items-center justify-center font-bold text-xs mb-2">1</div>
             <div class="text-sm font-semibold text-gray-800">Registra tu mascota</div>
             <div class="text-xs text-gray-500 mt-1">Nombre, especie y datos básicos</div>
-          </div>
-          <div class="bg-gray-50 border border-gray-100 rounded-xl p-4">
+            <span class="absolute right-4 top-4 text-gray-400 text-lg leading-none" aria-hidden="true">›</span>
+          </button>
+          <button type="button" onclick="navigate('addPet')" class="relative w-full text-left border rounded-xl p-4 transition-colors cursor-pointer bg-gray-50 border-gray-100 hover:bg-gray-100">
             <div class="w-7 h-7 rounded-full bg-gray-300 text-white flex items-center justify-center font-bold text-xs mb-2">2</div>
             <div class="text-sm font-semibold text-gray-800">Añade su primer evento</div>
             <div class="text-xs text-gray-500 mt-1">Una vacuna, control o consulta</div>
-          </div>
-          <div class="bg-gray-50 border border-gray-100 rounded-xl p-4">
+            <span class="absolute right-4 top-4 text-gray-400 text-lg leading-none" aria-hidden="true">›</span>
+          </button>
+          <button type="button" onclick="navigate('addPet')" class="relative w-full text-left border rounded-xl p-4 transition-colors cursor-pointer bg-gray-50 border-gray-100 hover:bg-gray-100">
             <div class="w-7 h-7 rounded-full bg-gray-300 text-white flex items-center justify-center font-bold text-xs mb-2">3</div>
             <div class="text-sm font-semibold text-gray-800">Configura recordatorios</div>
             <div class="text-xs text-gray-500 mt-1">Nunca más te olvides de una dosis</div>
-          </div>
+            <span class="absolute right-4 top-4 text-gray-400 text-lg leading-none" aria-hidden="true">›</span>
+          </button>
         </div>
         <button onclick="navigate('addPet')" class="btn-primary px-6 py-3 text-base">+ Registrar mi primera mascota</button>
       </div>
