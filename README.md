@@ -269,6 +269,13 @@ Repartidas entre `js/*.js` según la tabla de la sección anterior (ej.
 
 ---
 
+## Landing y brandsheet
+
+- `landing.html` → `/landing`: página pública de presentación (hero, funciones, planes, preguntas). Los planes salen de los mismos valores que `PLANS` en `js/app.js`; si cambian precios o límites hay que actualizarlos a mano acá también.
+- `marca.html` → `/marca`: hoja de marca (logotipo, color, tipografía, voz, componentes) con selector de tema claro/oscuro.
+- `css/brand.css`: tokens del kit de marca (colores claro/oscuro, espaciado, radios, sombras) y `@font-face` de Nunito. Ambas páginas lo comparten.
+- `/` sigue siendo la app (login). Para que la landing sea la portada, hay que hacer que `/` sirva `landing.html` a quien no tiene sesión.
+
 ## Planes SaaS
 
 Modelo de 3 planes (reemplaza al anterior de 2 — ver "Migración a 3

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mascodata — Brandsheet</title>
+<meta name="description" content="Hoja de marca de Mascodata: logotipo, color, tipografía, tono de voz y componentes.">
+<meta name="robots" content="noindex">
+<link rel="preload" href="/fonts/nunito-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/nunito-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="icon" type="image/svg+xml" href="/img/logos/mascodata-isotipo.svg">
+<link rel="stylesheet" href="/css/brand.css">
+<style>
+.wm-dark{display:none}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .wm-light{display:none}:root:not([data-theme="light"]) .wm-dark{display:block}}
+:root[data-theme="dark"] .wm-light{display:none}:root[data-theme="dark"] .wm-dark{display:block}
+.wm{height:22px;width:auto}
+header.top{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--border)}
+header.top .wrap{display:flex;align-items:center;gap:16px;height:64px}
+.app{width:32px;height:32px;border-radius:9px}
+.ver{margin-left:auto;font-size:12px;line-height:16px;font-weight:700;color:var(--ink-muted);letter-spacing:.06em;text-transform:uppercase}
+.toc{display:flex;flex-wrap:wrap;gap:4px;padding:16px 0}
+.toc a{font:600 14px/20px var(--font);color:var(--ink);text-decoration:none;padding:6px 12px;border-radius:var(--radius-full);background:var(--surface-sunken)}
+.toc a:hover{background:var(--brand-soft);color:var(--brand-hover)}
+.cover{padding:56px 0 32px}
+.cover p.k{font:700 12px/16px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 12px}
+.cover h1{font-size:48px;line-height:52px;font-weight:800;letter-spacing:-.02em;margin:0 0 16px;text-wrap:balance}
+.cover p.l{font-size:18px;line-height:28px;color:var(--ink-muted);max-width:36em;margin:0}
+section{padding:56px 0;border-top:1px solid var(--border);scroll-margin-top:72px}
+.n{font:700 12px/16px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--brand);margin:0 0 8px}
+h2{font-size:36px;line-height:40px;font-weight:800;letter-spacing:-.01em;margin:0 0 12px}
+h3{font-size:18px;line-height:26px;font-weight:700;margin:32px 0 12px}
+h3.grp{margin-top:40px}
+p.lead{max-width:46em;color:var(--ink-muted);margin:0 0 24px;font-size:16px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.tile{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-xl);padding:24px;display:flex;flex-direction:column;gap:12px}
+.stage{min-height:120px;border-radius:var(--radius-md);display:grid;place-items:center;padding:24px;background:#FFFFFF;border:1px solid #E6D8C9}
+.stage.ink{background:#1D2B3A;border-color:#1D2B3A}
+.stage.sunken{background:#F6ECE0}
+.stage img{max-width:100%}
+.tile b{font-size:14px}
+.tile span,.tile em{font-size:14px;line-height:20px;color:var(--ink-muted);font-style:normal}
+.tile a{font-size:14px;font-weight:700}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.rule{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px;font-size:14px;line-height:20px}
+.rule b{display:block;font-size:16px;margin-bottom:4px}
+.rule.yes::before,.rule.no::before{display:inline-block;font:700 12px/16px var(--font);padding:2px 8px;border-radius:var(--radius-sm);margin-bottom:10px}
+.rule.yes::before{content:'Sí';background:var(--accent-soft);color:var(--accent-ink)}
+.rule.no::before{content:'No';background:var(--danger-soft);color:var(--danger)}
+.bad-wm{font-weight:800;font-size:36px;line-height:1;letter-spacing:-.01em}
+.sws{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.sw{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;display:flex;flex-direction:column}
+.sw-chips{display:grid;grid-template-columns:1fr 1fr;height:84px}
+.sw-chips div{padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;font-size:12px}
+.sw-chips b{font-size:13px;font-variant-numeric:tabular-nums}
+.sw h4{margin:12px 14px 2px;font-size:14px;font-weight:800;font-family:ui-monospace,Menlo,monospace}
+.sw p{margin:0 14px 14px;font-size:13px;line-height:18px;color:var(--ink-muted)}
+.prop{display:flex;height:28px;border-radius:var(--radius-full);overflow:hidden;border:1px solid var(--border);margin:8px 0 8px}
+.prop i{display:block;height:100%}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--ink-muted)}
+.ty{display:grid;grid-template-columns:200px 1fr;gap:8px 24px;align-items:baseline;padding:18px 0;border-top:1px solid var(--border)}
+.ty-meta b{display:block;font-family:ui-monospace,Menlo,monospace;font-size:14px}
+.ty-meta span{font-size:12px;color:var(--ink-muted)}
+.ty-use{grid-column:2;margin:0;font-size:13px;color:var(--ink-muted)}
+.ty-sample{overflow-wrap:anywhere}
+.sp,.rd{display:grid;grid-template-columns:120px 90px 60px 1fr;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--border);font-size:14px}
+.sp-bar{height:12px;background:var(--brand);border-radius:2px;display:block}
+.rd{grid-template-columns:120px 120px 60px 1fr}
+.rd-box{width:64px;height:40px;background:var(--brand-soft);border:2px solid var(--brand)}
+.sp em,.rd em,.shd em{font-style:normal;color:var(--ink-muted);font-size:13px}
+.shds{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.shd{display:flex;flex-direction:column;gap:8px}
+.shd-box{height:80px;background:var(--surface-raised);border-radius:var(--radius-xl)}
+.icns{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:12px}
+.icn{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--ink)}
+.icn span{font-size:12px;color:var(--ink-muted)}
+.voice{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.ex{font-size:14px;line-height:20px}
+.ex q{quotes:none;font-weight:700;display:block;margin-top:4px;font-size:16px;line-height:24px}
+.demo{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.field{display:grid;gap:6px;max-width:320px}
+.field label{font:700 14px/20px var(--font)}
+.field input{font:400 14px/20px var(--font);padding:12px 14px;border-radius:var(--radius-lg);border:1.5px solid var(--border-control);background:var(--surface-raised);color:var(--ink)}
+.field input::placeholder{color:var(--ink-muted)}
+.field small{color:var(--ink-muted);font-size:12px;line-height:16px}
+.fcards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.fc{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-md);padding:18px}
+.fc .ic{color:var(--brand)}
+.fc b{display:block;margin:10px 0 2px;font-size:16px}
+.fc span{font-size:14px;line-height:20px;color:var(--ink-muted)}
+button.theme{font:700 13px/16px var(--font);padding:8px 12px;border-radius:var(--radius-full);border:1.5px solid var(--border);background:var(--surface-sunken);color:var(--ink);cursor:pointer}
+footer{padding:32px 0 56px;border-top:1px solid var(--border);color:var(--ink-muted);font-size:14px}
+@media(max-width:800px){.two,.grid3,.voice,.shds{grid-template-columns:1fr}.fcards{grid-template-columns:1fr 1fr}.ty{grid-template-columns:1fr}.ty-use{grid-column:1}.cover h1{font-size:38px;line-height:42px}h2{font-size:28px;line-height:34px}.sp,.rd{grid-template-columns:90px 70px 1fr}.sp em,.rd em{grid-column:1/-1}.sp-bar{display:none}.ver{display:none}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <img class="app" src="/img/logos/mascodata-app-icon.svg" alt=""><img class="wm wm-light" src="/img/logos/mascodata-wordmark.svg" alt="Mascodata"><img class="wm wm-dark" src="/img/logos/mascodata-wordmark-inverse.svg" alt="Mascodata">
+  <span class="ver">Manual de marca · v1 · Septiembre 2026</span>
+  <button class="theme" id="theme" type="button" aria-pressed="false">Tema oscuro</button>
+</div></header>
+
+<main>
+<div class="wrap">
+<div class="cover">
+  <p class="k">Brandsheet</p>
+  <h1>Cálida como un hogar, ordenada como una ficha médica</h1>
+  <p class="l">Tu compañero digital para el cuidado integral de tus mascotas. Esta hoja reúne lo esencial para usar la marca bien: logotipo, color, tipografía, voz y componentes.</p>
+  <nav class="toc" aria-label="Secciones"><a href="#concepto">Concepto</a><a href="#logo">Logotipo</a><a href="#color">Color</a><a href="#tipo">Tipografía</a><a href="#voz">Voz</a><a href="#forma">Forma e íconos</a><a href="#componentes">Componentes</a></nav>
+</div>
+
+<section id="concepto"><p class="n">01 · Concepto</p><h2>Masco·da·ta</h2>
+<p class="lead">Mascodata es la app de gestión integral para tutores de mascotas: ficha médica, vacunas, medicamentos, agenda y gastos. La marca debe sentirse cálida y doméstica y, a la vez, ordenada y confiable, porque son datos de salud. El terracota pone el cariño; el azul noche y el verde azulado ponen el orden.</p>
+<div class="grid3">
+  <div class="rule yes"><b>El juego es solo de color</b>Nunca separes las sílabas con espacios, puntos ni guiones en el logotipo.</div>
+  <div class="rule no"><b>No inviertas los colores</b>"da" no va en terracota: se pierde la lectura de <em>Mascota</em>.</div>
+  <div class="rule yes"><b>En texto corrido</b>Escribe siempre Mascodata, una palabra, con M mayúscula y sin colores.</div>
+</div>
+<p class="lead" style="margin-top:24px">El isotipo es una huella cuyos dedos son barras de un gráfico ascendente: mascota más datos. Úsalo solo cuando el nombre ya está presente en la pantalla o como ícono de app.</p>
+</section>
+
+<section id="logo"><p class="n">02 · Logotipo</p><h2>Versiones y uso</h2>
+<div class="two">
+  <div class="tile"><div class="stage"><img src="/img/logos/mascodata-lockup.svg" alt="Logotipo horizontal" style="height:44px;width:auto"></div><b>Horizontal · versión principal</b><span>Isotipo y logotipo bicolor. Sobre surface, surface-raised o blanco.</span><a href="/img/logos/mascodata-lockup.svg" download>Descargar SVG</a></div>
+  <div class="tile"><div class="stage ink"><img src="/img/logos/mascodata-wordmark-inverse.svg" alt="Logotipo inverso" style="height:34px;width:auto"></div><b>Inversa sobre azul noche</b><span>Solo sobre ink (#1D2B3A). Es el logotipo del tema oscuro.</span><a href="/img/logos/mascodata-wordmark-inverse.svg" download>Descargar SVG</a></div>
+  <div class="tile"><div class="stage"><img src="/img/logos/mascodata-wordmark-teal.svg" alt="Alternativa salud y datos" style="height:34px;width:auto"></div><b>Alternativa salud / datos</b><span>"da" en verde azulado, para contextos de salud y datos.</span><a href="/img/logos/mascodata-wordmark-teal.svg" download>Descargar SVG</a></div>
+  <div class="tile"><div class="stage"><img src="/img/logos/mascodata-wordmark-mono.svg" alt="Logotipo monocromo" style="height:34px;width:auto"></div><b>Monocromo · una tinta</b><span>Para impresión a una tinta, sellos y bordados.</span><a href="/img/logos/mascodata-wordmark-mono.svg" download>Descargar SVG</a></div>
+  <div class="tile"><div class="stage"><img src="/img/logos/mascodata-wordmark.svg" alt="Logotipo solo" style="height:34px;width:auto"></div><b>Logotipo solo</b><span>Cuando el isotipo ya aparece cerca.</span><a href="/img/logos/mascodata-wordmark.svg" download>Descargar SVG</a></div>
+  <div class="tile"><div class="stage sunken" style="gap:24px;grid-auto-flow:column"><img src="/img/logos/mascodata-isotipo.svg" alt="Isotipo" style="height:56px;width:auto"><img src="/img/logos/mascodata-app-icon.svg" alt="Ícono de app" style="height:64px;width:auto;border-radius:14px"></div><b>Isotipo e ícono de app</b><span>Huella con dedos en barras ascendentes. Mínimo 24 px.</span><a href="/img/logos/mascodata-isotipo.svg" download>Descargar isotipo SVG</a> <a href="/img/logos/mascodata-app-icon.png" download>Descargar ícono PNG</a></div>
+</div>
+<h3>Reglas</h3>
+<div class="grid3">
+  <div class="rule"><b>Área de resguardo</b>La altura de la "M" alrededor de todo el logo.</div>
+  <div class="rule"><b>Tamaño mínimo</b>Logotipo 96 px de ancho en pantalla (25 mm impreso). Isotipo 24 px.</div>
+  <div class="rule"><b>Fondos permitidos</b>surface, surface-raised o blanco para la versión a color; ink para la inversa. Nunca sobre brand, degradados ni fotos con mucho detalle.</div>
+</div>
+<h3>Lo que no se hace</h3>
+<div class="grid3">
+  <div class="rule no"><div class="bad-wm" aria-label="Ejemplo incorrecto: colores invertidos"><span style="color:var(--logo-da)">Masco</span><span style="color:var(--logo-masco)">da</span><span style="color:var(--logo-da)">ta</span></div><b style="margin-top:12px">Colores invertidos</b>Se pierde "Mascota".</div>
+  <div class="rule no"><div class="bad-wm" style="color:var(--brand)" aria-label="Ejemplo incorrecto: sílabas separadas">Masco · da · ta</div><b style="margin-top:12px">Sílabas separadas</b>Ni espacios, ni puntos, ni guiones.</div>
+  <div class="rule no"><div class="bad-wm" style="transform:rotate(-6deg) scaleX(1.25);display:inline-block;text-shadow:2px 3px 0 rgba(0,0,0,.35)"><span style="color:var(--logo-masco)">Masco</span><span style="color:var(--logo-da)">da</span><span style="color:var(--logo-masco)">ta</span></div><b style="margin-top:12px">Estirar, rotar o dar sombra</b>El logo no se deforma ni se contornea.</div>
+</div>
+</section>
+
+<section id="color"><p class="n">03 · Color</p><h2>Paleta terracota cercano</h2>
+<p class="lead">Cada token tiene versión clara y oscura. Los colores son planos: la marca no usa degradados.</p>
+<h3 class="grp">Marca</h3><div class="sws"><div class="sw"><div class="sw-chips"><div style="background:#C2471F;color:#FFFFFF"><span>Claro</span><b>#C2471F</b></div><div style="background:#F2865E;color:#1D2B3A"><span>Oscuro</span><b>#F2865E</b></div></div><h4>brand</h4><p>Terracota Mascodata. Botón primario, enlaces, &#x27;Masco·ta&#x27; del logotipo. Texto brand sobre surface 4.7:1 / 6.8:1.</p></div><div class="sw"><div class="sw-chips"><div style="background:#9E3715;color:#FFFFFF"><span>Claro</span><b>#9E3715</b></div><div style="background:#F6A383;color:#1D2B3A"><span>Oscuro</span><b>#F6A383</b></div></div><h4>brand-hover</h4><p>Estado hover/pressed de brand. También texto de marca sobre brand-soft.</p></div><div class="sw"><div class="sw-chips"><div style="background:#FBE3D6;color:#1D2B3A"><span>Claro</span><b>#FBE3D6</b></div><div style="background:#4A2A1F;color:#FFFFFF"><span>Oscuro</span><b>#4A2A1F</b></div></div><h4>brand-soft</h4><p>Tinte terracota: fondos de chips, selección, destacados suaves.</p></div><div class="sw"><div class="sw-chips"><div style="background:#FFFFFF;color:#1D2B3A"><span>Claro</span><b>#FFFFFF</b></div><div style="background:#1D2B3A;color:#FFFFFF"><span>Oscuro</span><b>#1D2B3A</b></div></div><h4>on-brand</h4><p>Texto e íconos sobre brand y brand-hover (5.0:1 claro, 5.7:1 oscuro).</p></div></div><h3 class="grp">Superficies y texto</h3><div class="sws"><div class="sw"><div class="sw-chips"><div style="background:#FFF8F0;color:#1D2B3A"><span>Claro</span><b>#FFF8F0</b></div><div style="background:#141D27;color:#FFFFFF"><span>Oscuro</span><b>#141D27</b></div></div><h4>surface</h4><p>Fondo de página (crema). Base de toda pantalla.</p></div><div class="sw"><div class="sw-chips"><div style="background:#FFFFFF;color:#1D2B3A"><span>Claro</span><b>#FFFFFF</b></div><div style="background:#1D2B3A;color:#FFFFFF"><span>Oscuro</span><b>#1D2B3A</b></div></div><h4>surface-raised</h4><p>Tarjetas, formularios, modales y campos de texto sobre surface.</p></div><div class="sw"><div class="sw-chips"><div style="background:#F6ECE0;color:#1D2B3A"><span>Claro</span><b>#F6ECE0</b></div><div style="background:#0F161E;color:#FFFFFF"><span>Oscuro</span><b>#0F161E</b></div></div><h4>surface-sunken</h4><p>Zonas hundidas: filas alternas, fondos de tablas, áreas de carga.</p></div><div class="sw"><div class="sw-chips"><div style="background:#1D2B3A;color:#FFFFFF"><span>Claro</span><b>#1D2B3A</b></div><div style="background:#F7EFE6;color:#1D2B3A"><span>Oscuro</span><b>#F7EFE6</b></div></div><h4>ink</h4><p>Texto principal (azul noche) sobre surface, surface-raised y surface-sunken. 13.7:1 / 14.9:1.</p></div><div class="sw"><div class="sw-chips"><div style="background:#6E6259;color:#FFFFFF"><span>Claro</span><b>#6E6259</b></div><div style="background:#B5AAA0;color:#1D2B3A"><span>Oscuro</span><b>#B5AAA0</b></div></div><h4>ink-muted</h4><p>Texto secundario, ayudas y placeholders sobre surface y surface-raised (≥5.6:1 claro, ≥6.3:1 oscuro).</p></div><div class="sw"><div class="sw-chips"><div style="background:#E6D8C9;color:#1D2B3A"><span>Claro</span><b>#E6D8C9</b></div><div style="background:#33445A;color:#FFFFFF"><span>Oscuro</span><b>#33445A</b></div></div><h4>border</h4><p>Divisores y bordes decorativos de tarjetas. No usar como borde de control.</p></div><div class="sw"><div class="sw-chips"><div style="background:#9C8B7B;color:#FFFFFF"><span>Claro</span><b>#9C8B7B</b></div><div style="background:#6B7F96;color:#FFFFFF"><span>Oscuro</span><b>#6B7F96</b></div></div><h4>border-control</h4><p>Borde de campos, checkboxes y selects (≥3:1 sobre surface-raised).</p></div></div><h3 class="grp">Datos y estados</h3><div class="sws"><div class="sw"><div class="sw-chips"><div style="background:#1F7A6E;color:#FFFFFF"><span>Claro</span><b>#1F7A6E</b></div><div style="background:#5BC2B2;color:#1D2B3A"><span>Oscuro</span><b>#5BC2B2</b></div></div><h4>accent</h4><p>Verde azulado: salud &#x27;al día&#x27;, éxito, gráficos de datos, sílaba &#x27;da&#x27; alternativa. Texto sobre surface 4.9:1 / 7.9:1.</p></div><div class="sw"><div class="sw-chips"><div style="background:#D6EEEA;color:#1D2B3A"><span>Claro</span><b>#D6EEEA</b></div><div style="background:#17403B;color:#FFFFFF"><span>Oscuro</span><b>#17403B</b></div></div><h4>accent-soft</h4><p>Fondo de insignias de éxito / &#x27;al día&#x27;.</p></div><div class="sw"><div class="sw-chips"><div style="background:#134E47;color:#FFFFFF"><span>Claro</span><b>#134E47</b></div><div style="background:#A8E6DC;color:#1D2B3A"><span>Oscuro</span><b>#A8E6DC</b></div></div><h4>accent-ink</h4><p>Texto sobre accent-soft (7.8:1 / 8.2:1).</p></div><div class="sw"><div class="sw-chips"><div style="background:#8A5A00;color:#FFFFFF"><span>Claro</span><b>#8A5A00</b></div><div style="background:#F2C265;color:#1D2B3A"><span>Oscuro</span><b>#F2C265</b></div></div><h4>warning</h4><p>Texto de recordatorio próximo (vacuna o dosis por vencer) sobre warning-soft.</p></div><div class="sw"><div class="sw-chips"><div style="background:#FDF0D5;color:#1D2B3A"><span>Claro</span><b>#FDF0D5</b></div><div style="background:#3F3115;color:#FFFFFF"><span>Oscuro</span><b>#3F3115</b></div></div><h4>warning-soft</h4><p>Fondo de insignias y avisos de recordatorio.</p></div><div class="sw"><div class="sw-chips"><div style="background:#A61B3B;color:#FFFFFF"><span>Claro</span><b>#A61B3B</b></div><div style="background:#F2839A;color:#1D2B3A"><span>Oscuro</span><b>#F2839A</b></div></div><h4>danger</h4><p>Errores, vencidos, acciones destructivas. Frambuesa, distinta del terracota: acompáñalo siempre de ícono o palabra.</p></div><div class="sw"><div class="sw-chips"><div style="background:#FBE2E7;color:#1D2B3A"><span>Claro</span><b>#FBE2E7</b></div><div style="background:#4A1D28;color:#FFFFFF"><span>Oscuro</span><b>#4A1D28</b></div></div><h4>danger-soft</h4><p>Fondo de avisos de error y &#x27;vencido&#x27;.</p></div></div><h3 class="grp">Foco y logotipo</h3><div class="sws"><div class="sw"><div class="sw-chips"><div style="background:#1F7A6E;color:#FFFFFF"><span>Claro</span><b>#1F7A6E</b></div><div style="background:#5BC2B2;color:#1D2B3A"><span>Oscuro</span><b>#5BC2B2</b></div></div><h4>focus</h4><p>Anillo de foco sólido de 2px con 2px de separación, en todo control interactivo (≥4.9:1 en cada superficie).</p></div><div class="sw"><div class="sw-chips"><div style="background:#C2471F;color:#FFFFFF"><span>Claro</span><b>#C2471F</b></div><div style="background:#F2865E;color:#1D2B3A"><span>Oscuro</span><b>#F2865E</b></div></div><h4>logo-masco</h4><p>Color de &#x27;Masco&#x27; y &#x27;ta&#x27; en el logotipo: juntos se leen &#x27;Mascota&#x27;.</p></div><div class="sw"><div class="sw-chips"><div style="background:#1D2B3A;color:#FFFFFF"><span>Claro</span><b>#1D2B3A</b></div><div style="background:#FFF8F0;color:#1D2B3A"><span>Oscuro</span><b>#FFF8F0</b></div></div><h4>logo-da</h4><p>Color de la sílaba &#x27;da&#x27; en el logotipo (dato).</p></div></div>
+<h3>Proporción por pantalla</h3>
+<div class="prop" role="img" aria-label="70% crema o blanco, 20% azul noche, 10% terracota y verde"><i style="width:70%;background:var(--surface-sunken)"></i><i style="width:20%;background:var(--ink)"></i><i style="width:6%;background:var(--brand)"></i><i style="width:4%;background:var(--accent)"></i></div>
+<div class="legend"><span>70 % crema / blanco</span><span>20 % azul noche (texto)</span><span>10 % terracota y verde</span></div>
+<h3>Cómo usarlo</h3>
+<div class="grid3">
+  <div class="rule"><b>Una acción principal</b>brand es para una acción principal por vista, enlaces y el logotipo. Texto sobre brand siempre en on-brand.</div>
+  <div class="rule"><b>Estados con ícono y palabra</b>Al día: accent-soft + accent-ink. Por vencer: warning-soft + warning. Vencido o error: danger-soft + danger. Nunca solo color.</div>
+  <div class="rule"><b>Frambuesa, no terracota</b>danger es frambuesa a propósito, para no confundirse con el terracota de marca. Sin gris frío.</div>
+</div>
+</section>
+
+<section id="tipo"><p class="n">04 · Tipografía</p><h2>Nunito</h2>
+<p class="lead">Una sola familia: redondeada, amable y muy legible en pantallas pequeñas. Pesos 400, 600, 700 y 800, autohospedados.</p>
+<div class="ty"><div class="ty-meta"><b>display</b><span>48px / 52px · 800</span></div><div class="ty-sample" style="font-size:48px;line-height:52px;font-weight:800;letter-spacing:-0.02em;">Tu mascota, al día</div><p class="ty-use">Portadas, hero de landing. Una vez por pantalla.</p></div><div class="ty"><div class="ty-meta"><b>heading-1</b><span>36px / 40px · 800</span></div><div class="ty-sample" style="font-size:36px;line-height:40px;font-weight:800;letter-spacing:-0.01em;">Ficha de Luna</div><p class="ty-use">Título de página.</p></div><div class="ty"><div class="ty-meta"><b>heading-2</b><span>24px / 32px · 800</span></div><div class="ty-sample" style="font-size:24px;line-height:32px;font-weight:800;">Bienvenido de vuelta</div><p class="ty-use">Títulos de sección y de formularios.</p></div><div class="ty"><div class="ty-meta"><b>heading-3</b><span>18px / 26px · 700</span></div><div class="ty-sample" style="font-size:18px;line-height:26px;font-weight:700;">Próximas vacunas</div><p class="ty-use">Títulos de tarjeta.</p></div><div class="ty"><div class="ty-meta"><b>body-lg</b><span>18px / 28px · 400</span></div><div class="ty-sample" style="font-size:18px;line-height:28px;font-weight:400;">Tu compañero digital para el cuidado integral de tus mascotas</div><p class="ty-use">Bajadas y textos introductorios.</p></div><div class="ty"><div class="ty-meta"><b>body</b><span>16px / 24px · 400</span></div><div class="ty-sample" style="font-size:16px;line-height:24px;font-weight:400;">Registra vacunas, medicamentos y gastos en un solo lugar.</div><p class="ty-use">Texto corrido por defecto.</p></div><div class="ty"><div class="ty-meta"><b>body-sm</b><span>14px / 20px · 400</span></div><div class="ty-sample" style="font-size:14px;line-height:20px;font-weight:400;">Ingresa a tu cuenta para continuar</div><p class="ty-use">Texto de apoyo, campos, tablas.</p></div><div class="ty"><div class="ty-meta"><b>label</b><span>14px / 20px · 700</span></div><div class="ty-sample" style="font-size:14px;line-height:20px;font-weight:700;">Iniciar sesión</div><p class="ty-use">Botones y etiquetas de campo.</p></div><div class="ty"><div class="ty-meta"><b>caption</b><span>12px / 16px · 700</span></div><div class="ty-sample" style="font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.02em;">Vence en 3 días</div><p class="ty-use">Insignias, metadatos, fechas.</p></div>
+</section>
+
+<section id="voz"><p class="n">05 · Tono de voz</p><h2>Como un buen veterinario de barrio</h2>
+<p class="lead">Cercana, tranquila y clara. Frases cortas, verbos al inicio en las acciones. Llamamos a la persona tutor/a, no "dueño", y a la mascota por su nombre cuando lo sabemos.</p>
+<div class="voice">
+  <div class="rule yes ex">Acciones con verbo<q>Registrar vacuna · Agregar mascota · Iniciar sesión</q></div>
+  <div class="rule yes ex">Recordatorios con calma<q>La vacuna antirrábica de Luna vence en 3 días</q></div>
+  <div class="rule no ex">Nunca con alarma<q>¡URGENTE! Vacuna vencida</q></div>
+  <div class="rule yes ex">Por su nombre<q>Luna tiene una vacuna pendiente</q></div>
+  <div class="rule yes ex">Formatos chilenos<q>22 sep 2026 · $12.990</q></div>
+  <div class="rule no ex">Sin emojis ni mayúsculas sostenidas<q>NO OLVIDES LA VACUNA</q></div>
+</div>
+</section>
+
+<section id="forma"><p class="n">06 · Forma e íconos</p><h2>Forma, espacio y elevación</h2>
+<p class="lead">Esquinas redondeadas y generosas. Espaciado en escala de base 4 px. Elevación mínima: sombra de marca solo en el botón primario, sombra de tarjeta en lo flotante; lo demás se separa con borde. Foco visible siempre: anillo sólido de 2 px con 2 px de separación.</p>
+<h3>Espaciado</h3><div class="sp"><span class="sp-bar" style="width:4px"></span><b>space-1</b><span>4px</span><em>Separación ícono–texto.</em></div><div class="sp"><span class="sp-bar" style="width:8px"></span><b>space-2</b><span>8px</span><em>Entre elementos de un grupo (label y campo).</em></div><div class="sp"><span class="sp-bar" style="width:12px"></span><b>space-3</b><span>12px</span><em>Padding vertical de botones y campos; gap de grillas de tarjetas.</em></div><div class="sp"><span class="sp-bar" style="width:16px"></span><b>space-4</b><span>16px</span><em>Padding de tarjetas compactas; gap entre campos.</em></div><div class="sp"><span class="sp-bar" style="width:24px"></span><b>space-6</b><span>24px</span><em>Padding de tarjetas y formularios.</em></div><div class="sp"><span class="sp-bar" style="width:32px"></span><b>space-8</b><span>32px</span><em>Separación entre secciones.</em></div><div class="sp"><span class="sp-bar" style="width:48px"></span><b>space-12</b><span>48px</span><em>Márgenes de página y hero.</em></div>
+<h3>Radios</h3><div class="rd"><div class="rd-box" style="border-radius:8px"></div><b>radius-sm</b><span>8px</span><em>Insignias, checkboxes, chips pequeños.</em></div><div class="rd"><div class="rd-box" style="border-radius:12px"></div><b>radius-md</b><span>12px</span><em>Tarjetas de funcionalidad y avisos.</em></div><div class="rd"><div class="rd-box" style="border-radius:14px"></div><b>radius-lg</b><span>14px</span><em>Botones y campos de texto (valor de la app actual).</em></div><div class="rd"><div class="rd-box" style="border-radius:16px"></div><b>radius-xl</b><span>16px</span><em>Tarjetas principales y modales.</em></div><div class="rd"><div class="rd-box" style="border-radius:999px"></div><b>radius-full</b><span>999px</span><em>Pills y avatares de mascota.</em></div>
+<h3>Elevación</h3><div class="shds"><div class="shd"><div class="shd-box" style="box-shadow:var(--shadow-brand)"></div><b>shadow-brand</b><em>Botón primario en reposo.</em></div><div class="shd"><div class="shd-box" style="box-shadow:var(--shadow-card)"></div><b>shadow-card</b><em>Tarjetas elevadas sobre `surface`.</em></div></div>
+<h3>Iconografía</h3>
+<p class="lead">Íconos de trazo (outline) de 1,5 a 2 px, esquinas redondeadas y color heredado. 16 px en texto, 20 px en botones, 24 px en tarjetas de funcionalidad. Sin emojis ni ilustraciones realistas de animales en la interfaz.</p>
+<div class="icns"><div class="icn"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg><span>home</span></div><div class="icn"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><g stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><ellipse cx="5.5" cy="11" rx="1.6" ry="2.1"/><ellipse cx="9.5" cy="6.2" rx="1.6" ry="2.1"/><ellipse cx="14.5" cy="6.2" rx="1.6" ry="2.1"/><ellipse cx="18.5" cy="11" rx="1.6" ry="2.1"/><path d="M12 11.5c-2.9 0-5.5 2.7-5.5 5.1 0 1.7 1.2 2.7 2.9 2.7 1 0 1.7-.5 2.6-.5s1.6.5 2.6.5c1.7 0 2.9-1 2.9-2.7 0-2.4-2.6-5.1-5.5-5.1z"/></g></svg><span>paw</span></div><div class="icn"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg><span>calendar</span></div><div class="icn"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span>finance</span></div><div class="icn"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 15.5L15.5 7a4.243 4.243 0 116 6L13 21.5a4.243 4.243 0 01-6-6z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 11.5l3 3"/></svg><span>pill</span></div><div class="icn"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span>bell</span></div><div class="icn"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><span>document</span></div><div class="icn"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm5 0a4 4 0 10-1.5-7.7"/></svg><span>users</span></div><div class="icn"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg><span>kit</span></div><div class="icn"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg><span>heart</span></div></div>
+</section>
+
+<section id="componentes"><p class="n">07 · Componentes</p><h2>Piezas de interfaz</h2>
+<h3>Botones</h3>
+<div class="demo"><button class="btn btn-primary" type="button">Iniciar sesión</button><button class="btn btn-secondary" type="button">Ver planes</button><button class="btn btn-link" type="button">¿Olvidaste tu contraseña?</button></div>
+<h3>Campos de texto</h3>
+<div class="field"><label for="e">Email</label><input id="e" type="email" placeholder="tu@email.com"><small>Usaremos este correo para tus recordatorios.</small></div>
+<h3>Insignias de estado</h3>
+<div class="demo"><span class="badge badge-ok"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Vacuna al día</span><span class="badge badge-soon"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Vence en 3 días</span><span class="badge badge-late"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg> Vencida hace 2 días</span><span class="badge badge-neutral">Perro · 4 años</span></div>
+<h3>Tarjetas de funcionalidad</h3>
+<div class="fcards">
+  <div class="fc"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><b>Ficha médica</b><span>Historial completo de cada mascota.</span></div>
+  <div class="fc"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><b>Alertas</b><span>Recordatorios de vacunas y dosis.</span></div>
+  <div class="fc"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 15.5L15.5 7a4.243 4.243 0 116 6L13 21.5a4.243 4.243 0 01-6-6z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 11.5l3 3"/></svg><b>Medicamentos</b><span>Dosis, horarios y tratamientos.</span></div>
+  <div class="fc"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><b>Gastos</b><span>Cuánto inviertes en su cuidado.</span></div>
+</div>
+</section>
+</div>
+</main>
+<footer><div class="wrap">Mascodata · Manual de marca v1 · Septiembre 2026 · <a href="/landing">Ver la landing</a></div></footer>
+<script>
+(function(){
+  var b=document.getElementById('theme'),r=document.documentElement;
+  function sys(){return window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}
+  function cur(){return r.getAttribute('data-theme')||sys()}
+  function paint(){var d=cur()==='dark';b.textContent=d?'Tema claro':'Tema oscuro';b.setAttribute('aria-pressed',d)}
+  try{var s=localStorage.getItem('mascodata_brand_theme');if(s)r.setAttribute('data-theme',s)}catch(e){}
+  b.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';r.setAttribute('data-theme',n);try{localStorage.setItem('mascodata_brand_theme',n)}catch(e){};paint()});
+  paint();
+})();
+</script>
+</body>
+</html>
