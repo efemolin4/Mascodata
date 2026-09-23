@@ -20,18 +20,21 @@ export const VACCINES_BY_SPECIES = {
 };
 
 // ---- PLANES ----
-// Modelo de 2 planes: Free (1 mascota, registro médico completo) y Premium
-// (5 mascotas + segundo tutor, Finanzas avanzada, exportar expediente,
-// Botiquín y adjuntos ilimitados en el historial — ver isPremium()/
-// blockIfNotPremium() más abajo).
-export const PLAN_PET_LIMITS = { free: 1, premium: 5 };
-export const PLAN_LABELS = { free: 'Free', premium: 'Premium' };
-// Única fuente de verdad del precio — antes "$2.000/mes" estaba tipeado a
-// mano en 2 lugares de js/admin.js (la tarjeta de Planes y el modal de
-// cambio de plan), la misma clase de duplicación que ya causó bugs de
-// desincronización en otras partes de la app. También se usa para calcular
-// el MRR en el dashboard del admin.
-export const PREMIUM_PRICE_CLP = 2000;
+// Modelo de 3 niveles según cuántas mascotas necesites. Los dos planes
+// pagos (plus/pro) desbloquean exactamente las mismas funciones —
+// segundo tutor, Finanzas avanzada, exportar expediente, Botiquín y
+// adjuntos ilimitados en el historial (ver isPremium()/
+// blockIfNotPremium() más abajo) — y solo se diferencian por el tope de
+// mascotas y el precio. Única fuente de verdad de ambos: antes
+// "$2.000/mes" estaba tipeado a mano en 2 lugares de js/admin.js, la
+// misma clase de duplicación que ya causó bugs de desincronización en
+// otras partes de la app. También se usa para calcular el MRR.
+export const PLANS = {
+  free: { id: 'free', label: 'Free', petLimit: 1,  priceCLP: 0 },
+  plus: { id: 'plus', label: 'Plus', petLimit: 4,  priceCLP: 2200 },
+  pro:  { id: 'pro',  label: 'Pro',  petLimit: 10, priceCLP: 4200 },
+};
+export const PAID_PLAN_IDS = ['plus', 'pro'];
 
 // ---- PERIODICIDADES ----
 export const PERIODICITY_OPTIONS = [
@@ -183,7 +186,7 @@ export function blockIfReadOnly(pet) {
 // siempre se ve desbloqueado (es una vitrina del producto completo), igual
 // que ya hace savePet() con el límite de mascotas.
 export function isPremium() {
-  return isDemoUser() || state.user?.plan === 'premium';
+  return isDemoUser() || PAID_PLAN_IDS.includes(state.user?.plan);
 }
 
 // Analítica de producto (PostHog, ver index.html). No-op si el script no cargó
@@ -193,10 +196,21 @@ export function track(event, props = {}) {
   try { window.posthog?.capture(event, { ...props, demo: isDemoUser() }); } catch (e) {}
 }
 
-// Click en "Mejorar a Premium" (todavía sin cobro en línea: solo avisa).
+// Click en cualquier "Mejorar a Premium"/"Mejorar plan" de la app: lleva a
+// la página de planes en vez de mostrar un aviso genérico — ahí sí se
+// pueden comparar los 3 niveles y elegir uno (ver viewPlans() más abajo).
 export function requestPremium(source) {
   track('upgrade_clicked', { source });
-  showToast('Escríbenos para mejorar tu plan a Premium', '');
+  navigate('plans');
+}
+
+// El botón de cada plan pago en viewPlans(): todavía sin cobro en línea, así
+// que solo deja pedido el interés — el cambio de plan real lo aplica un
+// admin a mano (ver applyPlanChange() en js/admin.js) hasta que haya
+// checkout de verdad.
+export function requestPlanUpgrade(planId) {
+  track('upgrade_clicked', { source: 'plans_page', plan: planId });
+  showToast(`Escríbenos para activar el plan ${PLANS[planId]?.label || planId}`, '');
 }
 
 export function blockIfNotPremium(feature) {
@@ -232,6 +246,68 @@ export function premiumUpsell(iconName, title, desc) {
   `);
 }
 
+// Página de planes: a donde llevan todos los "Mejorar a Premium" de la app
+// (ver requestPremium() más arriba) — antes esos botones solo mostraban un
+// aviso genérico sin poder comparar los planes entre sí.
+export function viewPlans() {
+  const currentPlan = state.user?.plan || 'free';
+  const cards = [
+    { id: 'free', tagline: 'Para empezar', features: [
+      '1 mascota',
+      'Ficha médica completa (vacunas, desparasitaciones, tratamientos, historial)',
+      'Agenda y alertas',
+      'Finanzas básicas (lista, total y desglose por categoría)',
+      'Seguimiento y nutrición',
+      '1 archivo adjunto por evento del historial',
+    ] },
+    { id: 'plus', tagline: 'El más elegido', recommended: true, features: [
+      'Hasta 4 mascotas',
+      'Todo lo de Free',
+      'Compartir con un segundo tutor',
+      'Gráficos y predicción de gastos',
+      'Exportar expediente en PDF',
+      'Botiquín del hogar',
+      'Adjuntos ilimitados en el historial',
+    ] },
+    { id: 'pro', tagline: 'Para hogares con más mascotas', features: [
+      'Hasta 10 mascotas',
+      'Todo lo de Plus',
+    ] },
+  ];
+
+  return appShell(`
+    <div class="max-w-4xl mx-auto">
+      <button onclick="navigate('dashboard')" class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4">← Volver</button>
+      <div class="text-center mb-8">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Elige el plan de tu hogar</h1>
+        <p class="text-sm md:text-base text-gray-500 mt-2 max-w-lg mx-auto">El plan se ajusta a cuántas mascotas tengas. Cambia cuando quieras.</p>
+      </div>
+      <div class="grid md:grid-cols-3 gap-5 items-start">
+        ${cards.map(c => {
+          const plan = PLANS[c.id];
+          const isCurrent = currentPlan === c.id;
+          const btnLabel = isCurrent ? 'Tu plan actual' : (plan.priceCLP === 0 ? 'Empezar gratis' : 'Elegir plan');
+          const btnOnclick = isCurrent ? '' : `onclick="requestPlanUpgrade('${c.id}')"`;
+          return `
+          <div class="relative bg-white rounded-2xl p-6 ${c.recommended ? 'border-2 border-brand-400 shadow-md md:scale-105' : 'border border-gray-100 shadow-sm'}">
+            ${c.recommended ? `<span class="absolute -top-3 left-1/2 -translate-x-1/2 badge bg-brand-500 text-white text-xs font-bold uppercase tracking-wide">Recomendado</span>` : ''}
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">${c.tagline}</div>
+            <h2 class="text-lg font-bold text-gray-900 mt-1">${plan.label}</h2>
+            <p class="mt-2"><span class="text-3xl font-black text-gray-900">${plan.priceCLP === 0 ? 'Gratis' : fmtCLP(plan.priceCLP)}</span>${plan.priceCLP > 0 ? '<span class="text-sm text-gray-400"> /mes</span>' : ''}</p>
+            <ul class="mt-5 space-y-2 text-sm text-gray-600">
+              ${c.features.map(f => `<li class="flex items-start gap-2">${icon('check', 'w-4 h-4 text-teal-500 flex-shrink-0 mt-0.5')}<span>${f}</span></li>`).join('')}
+            </ul>
+            <button ${btnOnclick} ${isCurrent ? 'disabled' : ''}
+              class="w-full mt-6 !py-2.5 ${isCurrent ? 'btn-secondary opacity-60 cursor-default' : c.recommended ? 'btn-primary' : 'btn-secondary'}">
+              ${btnLabel}
+            </button>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `);
+}
+
 // ---- CARGA DE DATOS ----
 // loadDataFromSupabase, loadAdminData: extraídas a js/data.js.
 
@@ -257,7 +333,7 @@ export const ROUTE_PATHS = {
   login: '/login', register: '/register', forgot: '/forgot', resetPassword: '/reset-password',
   dashboard: '/', pets: '/pets', addPet: '/pets/nueva',
   calendar: '/calendar', finance: '/finanzas', botiquin: '/botiquin', admin: '/admin',
-  profile: '/perfil',
+  profile: '/perfil', plans: '/planes',
 };
 export const AUTH_VIEWS = ['login', 'register', 'forgot', 'resetPassword'];
 
@@ -708,6 +784,7 @@ export function render() {
   else if (v === 'finance')       app.innerHTML = viewFinance();
   else if (v === 'botiquin')      app.innerHTML = viewBotiquin();
   else if (v === 'profile')       app.innerHTML = viewProfile();
+  else if (v === 'plans')         app.innerHTML = viewPlans();
   else if (v === 'admin')        { if (state.user?.isAdmin) { loadAdminData().then(() => { app.innerHTML = viewAdmin(); }); } else navigate('dashboard', {}, { replace: true }); }
   else navigate('dashboard', {}, { replace: true });
 }
@@ -849,11 +926,12 @@ if (typeof window !== 'undefined') {
   Object.assign(window, {
     getPage, setPage, paginate, pagerHTML, loadState, saveState, isDemoUser,
     canEditPet, blockIfReadOnly, isPremium, blockIfNotPremium, premiumUpsell, premiumUpsellCard, track, requestPremium,
+    requestPlanUpgrade, viewPlans,
     showToast, viewToPath, pathToView,
     resolveInitialViewFromUrl, navigate, iconSVG, icon, sidebar, bottomNav, mobileTopBar,
     appShell, pageHeader, statCard, petAvatar, emptyState, noPetsOnboarding,
     openModal, closeModal, injectStyles, render, initApp,
-    sb, VACCINES_BY_SPECIES, PLAN_PET_LIMITS, PLAN_LABELS, PREMIUM_PRICE_CLP, PERIODICITY_OPTIONS,
+    sb, VACCINES_BY_SPECIES, PLANS, PAID_PLAN_IDS, PERIODICITY_OPTIONS,
     BREEDS, CHILE_REGIONS, PAGE_SIZE, defaultState, ROUTE_PATHS, AUTH_VIEWS, SYMPTOM_TAGS,
     ACTIVITY_LEVELS, state,
   });

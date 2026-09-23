@@ -18,8 +18,10 @@ describe('isPremium', () => {
     expect(isPremium()).toBe(false);
   });
 
-  it('un usuario real con plan premium SÍ es premium', () => {
-    state.user = { id: 'user-1', plan: 'premium' };
+  it('un usuario real con un plan pago (plus o pro) SÍ es premium', () => {
+    state.user = { id: 'user-1', plan: 'plus' };
+    expect(isPremium()).toBe(true);
+    state.user = { id: 'user-1', plan: 'pro' };
     expect(isPremium()).toBe(true);
   });
 });
@@ -44,7 +46,7 @@ describe('blockIfNotPremium', () => {
   });
 
   it('no bloquea (ni muestra toast) cuando es premium', () => {
-    state.user = { id: 'user-1', plan: 'premium' };
+    state.user = { id: 'user-1', plan: 'plus' };
     const blocked = blockIfNotPremium('Exportar el expediente');
     expect(blocked).toBe(false);
     expect(document.querySelector('.toast')).toBeNull();

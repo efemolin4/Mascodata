@@ -61,8 +61,8 @@ describe('openDeleteAccountModal', () => {
     expect(html).not.toContain('tu plan Premium');
   });
 
-  it('un usuario Premium real sí ve la mención a su plan', () => {
-    state.user = { id: 'user-1', plan: 'premium', email: 'felipe@mqlab.io' };
+  it('un usuario con un plan pago real sí ve la mención a su plan', () => {
+    state.user = { id: 'user-1', plan: 'plus', email: 'felipe@mqlab.io' };
     openDeleteAccountModal();
     const html = window.openModal.mock.calls[0][0];
     expect(html).toContain('tu plan Premium');

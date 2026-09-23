@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js';
-import '../js/app.js'; // deja PREMIUM_PRICE_CLP/fmtCLP/statCard/appShell/icon reales en window
+import '../js/app.js'; // deja PLANS/fmtCLP/statCard/appShell/icon reales en window
 import { applyPlanChange, viewAdmin } from './admin.js';
 
 describe('applyPlanChange', () => {
@@ -10,7 +10,7 @@ describe('applyPlanChange', () => {
     window.render = vi.fn();
     window.closeModal = vi.fn();
     document.body.innerHTML = `
-      <input type="radio" name="new-plan" value="premium" checked />
+      <input type="radio" name="new-plan" value="plus" checked />
     `;
     window.state = { user: { id: 'admin-1' }, adminData: { profiles: [{ id: 'user-1', plan: 'free' }], planChanges: [] } };
   });
@@ -18,12 +18,12 @@ describe('applyPlanChange', () => {
   it('actualiza el plan localmente y registra la auditoría cuando Supabase confirma el cambio', async () => {
     window.sb = makeMockSb({
       profiles: { data: null, error: null },
-      plan_changes: { data: { id: 'pc-1', user_id: 'user-1', from_plan: 'free', to_plan: 'premium', changed_by: 'admin-1' }, error: null },
+      plan_changes: { data: { id: 'pc-1', user_id: 'user-1', from_plan: 'free', to_plan: 'plus', changed_by: 'admin-1' }, error: null },
     });
     await applyPlanChange('user-1');
-    expect(window.state.adminData.profiles[0].plan).toBe('premium');
+    expect(window.state.adminData.profiles[0].plan).toBe('plus');
     expect(window.state.adminData.planChanges).toHaveLength(1);
-    expect(window.state.adminData.planChanges[0]).toMatchObject({ from_plan: 'free', to_plan: 'premium', changed_by: 'admin-1' });
+    expect(window.state.adminData.planChanges[0]).toMatchObject({ from_plan: 'free', to_plan: 'plus', changed_by: 'admin-1' });
     expect(window.closeModal).toHaveBeenCalled();
     expect(window.showToast).toHaveBeenCalledWith('Plan actualizado', 'success');
   });
@@ -34,13 +34,13 @@ describe('applyPlanChange', () => {
       plan_changes: { data: null, error: { message: 'boom' } },
     });
     await applyPlanChange('user-1');
-    expect(window.state.adminData.profiles[0].plan).toBe('premium');
+    expect(window.state.adminData.profiles[0].plan).toBe('plus');
     expect(window.state.adminData.planChanges).toHaveLength(0);
     expect(window.showToast).toHaveBeenCalledWith('Plan actualizado', 'success');
   });
 
   it('si el plan elegido es el mismo que ya tenía, no llama a Supabase ni registra nada', async () => {
-    window.state.adminData.profiles[0].plan = 'premium';
+    window.state.adminData.profiles[0].plan = 'plus';
     window.sb = makeMockSb();
     await applyPlanChange('user-1');
     expect(window.sb.from).not.toHaveBeenCalled();
@@ -63,32 +63,32 @@ describe('applyPlanChange', () => {
   });
 });
 
-// Cobertura del dashboard de métricas de negocio (MRR + conversión a
-// Premium) agregado a viewAdmin(). MRR usa PREMIUM_PRICE_CLP como única
-// fuente de verdad del precio — antes "$2.000/mes" estaba tipeado a mano
-// en 2 lugares de este archivo (tarjeta de Planes y modal de cambio de
-// plan), la misma clase de duplicación que ya causó bugs en otras partes
-// de la app.
+// Cobertura del dashboard de métricas de negocio (MRR + conversión a un
+// plan pago) agregado a viewAdmin(). MRR pondera cada plan pago por su
+// propio precio en PLANS (js/app.js) como única fuente de verdad — antes
+// los precios estaban tipeados a mano en varios lugares de este archivo
+// (tarjeta de Planes y modal de cambio de plan), la misma clase de
+// duplicación que ya causó bugs en otras partes de la app.
 describe('viewAdmin — dashboard de métricas de negocio', () => {
-  it('calcula el MRR como usuarios premium × PREMIUM_PRICE_CLP', () => {
+  it('calcula el MRR sumando cada usuario pago × el precio de SU plan (Plus y Pro)', () => {
     window.state = {
       user: { isAdmin: true },
       adminTab: 'dashboard',
       adminData: {
         profiles: [
           { id: 'u1', plan: 'free', created_at: '2026-01-01' },
-          { id: 'u2', plan: 'premium', created_at: '2026-01-01' },
-          { id: 'u3', plan: 'premium', created_at: '2026-01-01' },
+          { id: 'u2', plan: 'plus', created_at: '2026-01-01' },
+          { id: 'u3', plan: 'pro',  created_at: '2026-01-01' },
         ],
         pets: [],
       },
     };
     const html = viewAdmin();
-    // 2 usuarios premium × 2000 = 4.000
-    expect(html).toContain('$4.000');
+    // 1 usuario Plus (2.200) + 1 usuario Pro (4.200) = 6.400
+    expect(html).toContain('$6.400');
   });
 
-  it('calcula la conversión como % de usuarios que hoy son premium', () => {
+  it('calcula la conversión como % de usuarios que hoy tienen un plan pago (Plus o Pro)', () => {
     window.state = {
       user: { isAdmin: true },
       adminTab: 'dashboard',
@@ -97,7 +97,7 @@ describe('viewAdmin — dashboard de métricas de negocio', () => {
           { id: 'u1', plan: 'free', created_at: '2026-01-01' },
           { id: 'u2', plan: 'free', created_at: '2026-01-01' },
           { id: 'u3', plan: 'free', created_at: '2026-01-01' },
-          { id: 'u4', plan: 'premium', created_at: '2026-01-01' },
+          { id: 'u4', plan: 'plus', created_at: '2026-01-01' },
         ],
         pets: [],
       },
@@ -118,10 +118,11 @@ describe('viewAdmin — dashboard de métricas de negocio', () => {
     expect(html).not.toContain('NaN');
   });
 
-  it('el precio de Premium en la pestaña Planes y en el modal usa la misma constante que el MRR', () => {
+  it('los precios de Plus y Pro en la pestaña Planes y en el modal usan la misma constante que el MRR', () => {
     window.state = { user: { isAdmin: true }, adminTab: 'planes', adminData: { profiles: [], pets: [] } };
     const planesHtml = viewAdmin();
-    expect(planesHtml).toContain('$2.000');
+    expect(planesHtml).toContain('$2.200');
+    expect(planesHtml).toContain('$4.200');
 
     document.body.innerHTML = '';
     window.openModal = (html) => { document.body.innerHTML = html; };
@@ -131,7 +132,8 @@ describe('viewAdmin — dashboard de métricas de negocio', () => {
     // applyPlanChange de arriba con más imports — se prueba indirectamente
     // vía window, ya asignado por el propio módulo al importarse.
     window.openChangePlanModal('u1', 'Ana', 'free');
-    expect(document.body.innerHTML).toContain('$2.000');
+    expect(document.body.innerHTML).toContain('$2.200');
+    expect(document.body.innerHTML).toContain('$4.200');
   });
 });
 

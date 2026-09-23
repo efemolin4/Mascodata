@@ -115,7 +115,7 @@ describe('viewFinance — gating Premium de la vista Gráfico', () => {
   });
 
   it('un usuario Premium ve el dashboard de gastos', () => {
-    state.user = { id: 'user-1', plan: 'premium' };
+    state.user = { id: 'user-1', plan: 'plus' };
     const html = viewFinance();
     expect(html).toContain('finance-period-chart');
     expect(html).toContain('Por categoría');
@@ -140,7 +140,7 @@ describe('viewFinance — dashboard de gastos por período y categoría', () => 
   };
   beforeEach(() => {
     window.state = state;
-    state.user = { id: 'user-1', plan: 'premium' };
+    state.user = { id: 'user-1', plan: 'plus' };
     state.pets = [{ id: 'pet-1', name: 'Greta', species: 'Perro' }];
     state.finView = 'grafico';
     state.finPet = '';

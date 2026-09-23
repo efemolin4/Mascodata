@@ -334,16 +334,16 @@ export function viewProfile() {
       <div class="bg-brand-gradient rounded-2xl p-5 md:p-6 mb-5 text-white flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between">
         <div class="min-w-0">
           <span class="badge bg-white/20 text-white text-xs font-bold uppercase tracking-wide">Plan Free</span>
-          <h2 class="font-bold text-base md:text-lg mt-2">Mejora a Premium</h2>
-          <p class="text-sm text-white/80 mt-1">Hasta 5 mascotas, segundo tutor, gráficos de gastos, exportar expediente y adjuntos ilimitados — ${fmtCLP(PREMIUM_PRICE_CLP)}/mes.</p>
+          <h2 class="font-bold text-base md:text-lg mt-2">Mejora tu plan</h2>
+          <p class="text-sm text-white/80 mt-1">Más mascotas, segundo tutor, gráficos de gastos, exportar expediente y adjuntos ilimitados — desde ${fmtCLP(PLANS.plus.priceCLP)}/mes.</p>
         </div>
         <button onclick="requestPremium('profile')"
           class="btn-secondary !bg-white !text-brand-700 hover:!bg-brand-50 !border-0 px-5 py-2.5 text-sm font-bold flex-shrink-0 w-full sm:w-auto">
-          Mejorar a Premium
+          Ver planes
         </button>
       </div>` : `
       <div class="bg-white rounded-2xl shadow-sm p-4 md:p-5 mb-5 flex items-center gap-3">
-        <span class="badge bg-brand-100 text-brand-700 text-xs font-bold uppercase tracking-wide flex-shrink-0">Premium</span>
+        <span class="badge bg-brand-100 text-brand-700 text-xs font-bold uppercase tracking-wide flex-shrink-0">${esc(PLANS[u.plan]?.label || 'Premium')}</span>
         <p class="text-sm text-gray-500">Tu cuenta tiene acceso a todas las funciones.</p>
       </div>`}
 

@@ -16,11 +16,11 @@ describe('savePet', () => {
     window.navigate = vi.fn();
     window.isDemoUser = vi.fn(() => false);
     window.createPetInvite = vi.fn(async () => {});
-    // PLAN_PET_LIMITS/PLAN_LABELS: los reales, expuestos por el import de
-    // js/app.js de arriba — no se mano-copian acá para no desincronizarse
-    // de nuevo si el modelo de planes vuelve a cambiar.
+    // PLANS: el real, expuesto por el import de js/app.js de arriba — no se
+    // mano-copia acá para no desincronizarse de nuevo si el modelo de planes
+    // vuelve a cambiar.
     window.state = {
-      user: { id: 'user-1', plan: 'premium' },
+      user: { id: 'user-1', plan: 'plus' },
       pets: [],
       newPetData: { name: 'Rex', species: 'Perro' },
       addPetStep: 4,
@@ -46,14 +46,24 @@ describe('savePet', () => {
     expect(window.state.pets).toHaveLength(1);
   });
 
-  it('respeta el límite de mascotas del plan Premium (5) y no llama a Supabase', async () => {
-    window.state.user.plan = 'premium';
-    window.state.pets = Array.from({ length: 5 }, (_, i) => ({ id: `pet-${i}` }));
+  it('respeta el límite de mascotas del plan Plus (4) y no llama a Supabase', async () => {
+    window.state.user.plan = 'plus';
+    window.state.pets = Array.from({ length: 4 }, (_, i) => ({ id: `pet-${i}` }));
     window.sb = makeMockSb();
     await savePet();
-    expect(window.showToast).toHaveBeenCalledWith(expect.stringContaining('Premium'), 'error');
+    expect(window.showToast).toHaveBeenCalledWith(expect.stringContaining('Plus'), 'error');
     expect(window.sb.from).not.toHaveBeenCalled();
-    expect(window.state.pets).toHaveLength(5);
+    expect(window.state.pets).toHaveLength(4);
+  });
+
+  it('respeta el límite de mascotas del plan Pro (10) y no llama a Supabase', async () => {
+    window.state.user.plan = 'pro';
+    window.state.pets = Array.from({ length: 10 }, (_, i) => ({ id: `pet-${i}` }));
+    window.sb = makeMockSb();
+    await savePet();
+    expect(window.showToast).toHaveBeenCalledWith(expect.stringContaining('Pro'), 'error');
+    expect(window.sb.from).not.toHaveBeenCalled();
+    expect(window.state.pets).toHaveLength(10);
   });
 
   it('inserta la mascota y su fila de pet_access, y navega a la ficha', async () => {

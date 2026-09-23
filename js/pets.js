@@ -672,9 +672,9 @@ export async function savePet() {
   const d = state.newPetData;
   if (!d.name) { showToast('El nombre es requerido', 'error'); state.addPetStep = 1; render(); return; }
   if (!isDemoUser()) {
-    const limit = PLAN_PET_LIMITS[state.user.plan] ?? PLAN_PET_LIMITS.free;
-    if (state.pets.length >= limit) {
-      showToast(`Tu plan ${PLAN_LABELS[state.user.plan] || 'Free'} permite hasta ${limit} mascota${limit!==1?'s':''}. Mejora tu plan para agregar más.`, 'error');
+    const plan = PLANS[state.user.plan] || PLANS.free;
+    if (state.pets.length >= plan.petLimit) {
+      showToast(`Tu plan ${plan.label} permite hasta ${plan.petLimit} mascota${plan.petLimit!==1?'s':''}. Mejora tu plan para agregar más.`, 'error');
       return;
     }
   }
