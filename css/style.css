@@ -164,10 +164,11 @@ input:focus, select:focus, textarea:focus {
 
 /* Toast */
 .toast {
-  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-  background: #1d2b3a; color: white; padding: 10px 20px; border-radius: 999px;
-  font-size: 0.875rem; z-index: 2000; animation: slideUp 0.3s ease;
-  white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  position: fixed; bottom: 80px; left: 16px; right: 16px; margin: 0 auto;
+  width: fit-content; max-width: min(440px, calc(100vw - 32px));
+  background: #1d2b3a; color: white; padding: 10px 20px; border-radius: 20px;
+  font-size: 0.875rem; line-height: 1.4; text-align: center; z-index: 2000;
+  animation: slideUp 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 .toast.success { background: #19645a; }
 .toast.error   { background: #8f1733; }
