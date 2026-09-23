@@ -816,6 +816,15 @@ export async function initApp() {
   injectStyles();
   loadState();
 
+  // Splash mientras se resuelve la sesión (canje del token de Google, perfil y
+  // datos): sin esto el #app queda vacío varios segundos. render() lo reemplaza.
+  const appEl = document.getElementById('app');
+  if (appEl) appEl.innerHTML = `
+    <div class="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50">
+      <img src="/img/logos/mascodata-isotipo.svg" alt="" class="w-16 h-16 animate-pulse">
+      <p class="text-sm text-gray-400">Cargando tu cuenta…</p>
+    </div>`;
+
   // Detect password recovery link FIRST (hash contains type=recovery)
   const hash = location.hash;
   const isRecovery = hash.includes('type=recovery');
