@@ -6,6 +6,13 @@
    alertas, próximos eventos, medicamentos activos, recomendaciones. */
 
 // ---- VISTA: DASHBOARD ----
+export function showAttention(e) {
+  e?.stopPropagation();
+  state.dashAttnAll = true;
+  render();
+  document.getElementById('dashboard-attention')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 export function viewDashboard() {
   const pets = state.pets;
   const today = todayStr();
@@ -99,10 +106,12 @@ export function viewDashboard() {
     const mine = attention.filter(a => a.petId === petId);
     const overdue = mine.filter(a => a.level === 0).length;
     const soon = mine.filter(a => a.level === 1).length;
-    if (overdue) return `<span class="badge bg-red-100 text-red-600 text-xs flex-shrink-0">${overdue} vencida${overdue !== 1 ? 's' : ''}</span>`;
-    if (soon) return `<span class="badge bg-amber-100 text-amber-600 text-xs flex-shrink-0">${soon} por vencer</span>`;
+    // El badge lleva a la lista "Necesita atención" de arriba (no a la ficha, que es lo que hace el resto de la fila).
+    const badge = (cls, txt) => `<button type="button" onclick="showAttention(event)" class="badge ${cls} text-xs flex-shrink-0 cursor-pointer hover:opacity-80" title="Ver en Necesita atención">${txt}</button>`;
+    if (overdue) return badge('bg-red-100 text-red-600', `${overdue} vencida${overdue !== 1 ? 's' : ''}`);
+    if (soon) return badge('bg-amber-100 text-amber-600', `${soon} por vencer`);
     const tips = mine.length;
-    if (tips) return `<span class="badge bg-brand-100 text-brand-700 text-xs flex-shrink-0">${tips} sugerencia${tips !== 1 ? 's' : ''}</span>`;
+    if (tips) return badge('bg-brand-100 text-brand-700', `${tips} sugerencia${tips !== 1 ? 's' : ''}`);
     return `<span class="badge bg-green-100 text-green-700 text-xs flex-shrink-0">Al día</span>`;
   };
 
@@ -273,5 +282,5 @@ export function viewDashboard() {
 }
 
 if (typeof window !== 'undefined') {
-  Object.assign(window, { viewDashboard });
+  Object.assign(window, { viewDashboard, showAttention });
 }
