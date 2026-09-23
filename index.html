@@ -120,9 +120,31 @@
     // en Mascodata se verían nombres, teléfonos y datos de salud. Solo se envían
     // los eventos explícitos de track() (js/app.js). No corre en localhost para
     // no mezclar pruebas con datos reales.
+    // Tras OAuth/magic link/recuperación, la URL trae tokens en el fragmento (#access_token=…)
+    // o en la query (?code=, ?token=, ?invite=). Se borran antes de enviar cualquier evento.
+    function mascodataScrubUrl(u) {
+      if (typeof u !== 'string') return u;
+      try {
+        var url = new URL(u, location.origin);
+        url.hash = '';
+        ['access_token','refresh_token','provider_token','provider_refresh_token','code','token','token_hash','invite','error_description']
+          .forEach(function (k) { url.searchParams.delete(k); });
+        return url.toString();
+      } catch (e) { return u.split('#')[0].split('?')[0]; }
+    }
+    function mascodataScrubEvent(ev) {
+      if (!ev) return ev;
+      var keys = ['$current_url', '$referrer', '$initial_current_url', '$initial_referrer', '$session_entry_url', '$session_entry_referrer', '$prev_pageview_url'];
+      [ev.properties, ev.$set, ev.$set_once].forEach(function (bag) {
+        if (!bag) return;
+        keys.forEach(function (k) { if (bag[k]) bag[k] = mascodataScrubUrl(bag[k]); });
+      });
+      return ev;
+    }
     if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
       !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init Rr Mr fi Or Ar ti Fr $r capture calculateEventProperties Lr register register_once register_for_session unregister unregister_for_session Wr getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty qr Br createPersonProfile Ir opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing Dr debug Ur getPageViewId captureTraceFeedback captureTraceMetric".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
       posthog.init('phc_zJSa3syhZs6hudWdwTUxAkVNVFzsxYKjbWvKve84N982', {
+        before_send: mascodataScrubEvent,
         api_host: 'https://us.i.posthog.com',
         person_profiles: 'identified_only',
         capture_pageview: 'history_change',
