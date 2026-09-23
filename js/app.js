@@ -411,7 +411,7 @@ window.addEventListener('popstate', () => {
 export function iconSVG(name) {
   const icons = {
     home:    `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>`,
-    paw:     `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243zm7.364-9.243a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"/>`,
+    paw:     `<g stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><ellipse cx="5.5" cy="11" rx="1.6" ry="2.1"/><ellipse cx="9.5" cy="6.2" rx="1.6" ry="2.1"/><ellipse cx="14.5" cy="6.2" rx="1.6" ry="2.1"/><ellipse cx="18.5" cy="11" rx="1.6" ry="2.1"/><path d="M12 11.5c-2.9 0-5.5 2.7-5.5 5.1 0 1.7 1.2 2.7 2.9 2.7 1 0 1.7-.5 2.6-.5s1.6.5 2.6.5c1.7 0 2.9-1 2.9-2.7 0-2.4-2.6-5.1-5.5-5.1z"/></g>`,
     calendar:`<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>`,
     finance: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>`,
     kit:     `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>`,
