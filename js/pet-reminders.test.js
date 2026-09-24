@@ -66,6 +66,21 @@ describe('pickReminders — cadencia', () => {
     expect(run({ pets: [pet({ created_at: daysAgo(7) })], reminders: [first] })[0].step).toBe(2);
   });
 
+  it('mascota antigua sin avisos: parte por el primero, no salta al tercero', () => {
+    const r = run({ pets: [pet({ created_at: daysAgo(40) })] });
+    expect(r[0].step).toBe(1);
+  });
+
+  it('mascota antigua: el 2.º espera 5 días tras el 1.º y el 3.º espera 14 tras el 2.º', () => {
+    const p = [pet({ created_at: daysAgo(40) })];
+    const s1 = (d) => [{ pet_id: 'pet-1', user_id: 'u1', step: 1, sent_at: daysAgo(d) }];
+    expect(run({ pets: p, reminders: s1(4) })).toEqual([]);
+    expect(run({ pets: p, reminders: s1(5) })[0].step).toBe(2);
+    const s2 = (d) => [...s1(30), { pet_id: 'pet-1', user_id: 'u1', step: 2, sent_at: daysAgo(d) }];
+    expect(run({ pets: p, reminders: s2(13) })).toEqual([]);
+    expect(run({ pets: p, reminders: s2(14) })[0].step).toBe(3);
+  });
+
   it('el tercer aviso es el último: después de 3 no se manda más', () => {
     const sent = [1, 2, 3].map(step => ({ pet_id: 'pet-1', user_id: 'u1', step, sent_at: daysAgo(30 - step) }));
     expect(run({ pets: [pet({ created_at: daysAgo(40) })], reminders: sent })).toEqual([]);

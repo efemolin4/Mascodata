@@ -74,7 +74,6 @@ export function scorePet(p: PetRow, c: PetCtx): { percent: number; missing: Miss
 // ---------- Cadencia ----------
 export const STEP_DAYS = [2, 7, 21];      // día desde que se creó la mascota en que toca cada aviso
 export const MIN_USER_GAP_DAYS = 7;       // máximo 1 correo por persona a la semana
-export const MIN_PET_GAP_DAYS = 5;        // separación mínima entre dos avisos de la misma mascota
 export const MAX_PER_RUN = 200;
 const DAY = 86_400_000;
 
@@ -105,10 +104,14 @@ export function pickReminders(input: {
     if (step > STEP_DAYS.length) continue;
     const ageDays = Math.floor((now.getTime() - Date.parse(pet.created_at)) / DAY);
     if (ageDays < STEP_DAYS[step - 1]) continue;
+    // Entre dos avisos de la misma mascota se respeta la separación del calendario (5 días
+    // entre el 1.º y el 2.º, 14 entre el 2.º y el 3.º), aunque la mascota ya sea antigua
+    // (así una mascota creada hace un mes no recibe sus 3 avisos seguidos).
     const lastPet = Math.max(0, ...sent.map(r => Date.parse(r.sent_at)));
-    if (lastPet && now.getTime() - lastPet < MIN_PET_GAP_DAYS * DAY) continue;
+    const minGapDays = step === 1 ? 0 : STEP_DAYS[step - 1] - STEP_DAYS[step - 2];
+    if (lastPet && now.getTime() - lastPet < minGapDays * DAY) continue;
     // El tope semanal es entre mascotas distintas: los pasos de UNA misma mascota ya
-    // van separados por STEP_DAYS / MIN_PET_GAP_DAYS.
+    // van separados por el calendario (STEP_DAYS).
     const lastOther = Math.max(0, ...(byUser.get(pet.owner_id) ?? []).filter(r => r.pet_id !== pet.id).map(r => Date.parse(r.sent_at)));
     if (lastOther && now.getTime() - lastOther < MIN_USER_GAP_DAYS * DAY) continue;
     const cur = best.get(pet.owner_id);
@@ -138,7 +141,7 @@ export async function verifyUnsub(userId: string, sig: string, secret: string): 
 // ---------- Correo ----------
 const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const INTRO = [
-  'Registraste a {name} hace unos días. Con unos datos más, Mascodata puede recordarte lo importante a tiempo.',
+  'Registraste a {name} en Mascodata. Con unos datos más, podemos recordarte lo importante a tiempo.',
   'Un recordatorio corto: al perfil de {name} todavía le faltan estos pasos.',
   'Este es el último recordatorio sobre el perfil de {name}. No te enviaremos más avisos sobre esta mascota.',
 ];

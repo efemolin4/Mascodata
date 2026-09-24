@@ -81,7 +81,7 @@ verdad del código, pero el deploy real vive en Supabase.
 Función: `functions/pet-completion-reminders/index.ts`. Migración:
 `schema/pet_reminders.sql`. Envía hasta 3 correos por mascota (día 2, 7 y 21
 desde que se creó) mientras su perfil no esté al 100 %, con máximo 1 correo por
-persona a la semana entre mascotas distintas. El porcentaje es el mismo que
+persona a la semana entre mascotas distintas (entre avisos de una misma mascota: 5 y 14 días). El porcentaje es el mismo que
 muestra la app (`petCompleteness()` en `js/utils.js`; un test de paridad avisa
 si se desincronizan). Son avisos de servicio: no dependen del interruptor de
 promociones y cada correo trae un enlace para darse de baja.
