@@ -374,6 +374,18 @@ export function viewProfile() {
           </label>
         </div>
 
+        ${u.remindersOptOut === undefined ? '' : `
+        <div class="flex items-start justify-between gap-4 p-3.5 rounded-xl bg-gray-50">
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-gray-800">Recordatorios para completar el perfil</div>
+            <div class="text-xs text-gray-500 mt-0.5">Hasta 3 correos por mascota, con los datos que le faltan a su perfil. Son avisos de servicio, distintos de las promociones.</div>
+          </div>
+          <label class="toggle-switch flex-shrink-0">
+            <input type="checkbox" id="pf-reminders" ${u.remindersOptOut ? '' : 'checked'} aria-label="Recibir recordatorios para completar el perfil" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>`}
+
         <div class="flex flex-col sm:flex-row gap-3 pt-2">
           <button type="submit" class="btn-primary flex-1 !py-3">Guardar cambios</button>
           <button type="button" onclick="logout()" class="btn-secondary flex-1 !py-3 !text-red-500 hover:!bg-red-50">Cerrar sesión</button>
@@ -393,11 +405,14 @@ export async function saveProfile(e) {
   const phone = document.getElementById('pf-phone')?.value?.trim() || '';
   const city = document.getElementById('pf-city')?.value || '';
   const marketingOptIn = !!document.getElementById('pf-marketing')?.checked;
+  // Solo existe si la migración de recordatorios ya está en la base (ver data.js).
+  const remindersEl = document.getElementById('pf-reminders');
+  const remindersOptOut = remindersEl ? !remindersEl.checked : undefined;
   if (!name) { showToast('El nombre no puede estar vacío', 'error'); return; }
 
   if (!isDemoUser()) {
     const { error } = await sb.from('profiles')
-      .update({ name, phone, city, marketing_opt_in: marketingOptIn })
+      .update({ name, phone, city, marketing_opt_in: marketingOptIn, ...(remindersOptOut === undefined ? {} : { reminders_opt_out: remindersOptOut }) })
       .eq('id', state.user.id);
     if (error) { showToast('Error al guardar el perfil', 'error'); return; }
   }
@@ -406,6 +421,7 @@ export async function saveProfile(e) {
   state.user.phone = phone;
   state.user.city = city;
   state.user.marketingOptIn = marketingOptIn;
+  if (remindersOptOut !== undefined) state.user.remindersOptOut = remindersOptOut;
   saveState();
   track('profile_saved', { has_phone: !!phone, has_city: !!city, marketing_opt_in: marketingOptIn });
   showToast('Perfil actualizado', 'success');

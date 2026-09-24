@@ -75,3 +75,31 @@ Supabase):
 Cada vez que cambies `functions/delete-account/index.ts`, pegá el archivo
 actualizado en el Dashboard y hacé Deploy de nuevo — el repo es la fuente de
 verdad del código, pero el deploy real vive en Supabase.
+
+## Recordatorios para completar el perfil de una mascota
+
+Función: `functions/pet-completion-reminders/index.ts`. Migración:
+`schema/pet_reminders.sql`. Envía hasta 3 correos por mascota (día 2, 7 y 21
+desde que se creó) mientras su perfil no esté al 100 %, con máximo 1 correo por
+persona a la semana entre mascotas distintas. El porcentaje es el mismo que
+muestra la app (`petCompleteness()` en `js/utils.js`; un test de paridad avisa
+si se desincronizan). Son avisos de servicio: no dependen del interruptor de
+promociones y cada correo trae un enlace para darse de baja.
+
+Puesta en marcha (una sola vez, en este orden):
+
+1. **SQL Editor**: correr `schema/pet_reminders.sql` (agrega `profiles.reminders_opt_out`
+   y la tabla `pet_reminders`). La app funciona igual antes de correrlo; el
+   interruptor de Mi perfil aparece cuando la columna existe.
+2. **Resend**: crear una API key con permiso de envío (Resend → API Keys).
+3. **Edge Functions → Secrets**: `RESEND_API_KEY`, `CRON_SECRET` y `UNSUB_SECRET`
+   (los dos últimos, textos largos y aleatorios distintos entre sí). Opcional: `APP_URL`.
+4. **Edge Functions → New function** `pet-completion-reminders`: pegar el archivo,
+   **desactivar "Verify JWT"** (se protege con su `CRON_SECRET`; el enlace de baja
+   del correo lo abre un navegador sin sesión) y Deploy.
+5. **Probar sin enviar nada**:
+   `curl -H "Authorization: Bearer <CRON_SECRET>" "https://<PROJECT_REF>.supabase.co/functions/v1/pet-completion-reminders?dry=1"`
+   devuelve a quiénes les escribiría (mascota, paso, porcentaje).
+6. **Programar** (bloque comentado al final de `schema/pet_reminders.sql`; requiere
+   activar las extensiones `pg_cron` y `pg_net`). Para pausarlo:
+   `select cron.unschedule('pet-completion-reminders');`

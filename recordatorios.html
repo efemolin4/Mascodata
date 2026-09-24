@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recordatorios — Mascodata</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/css/brand.css">
+<style>
+  body{margin:0;background:var(--md-surface);color:var(--md-text);font-family:var(--md-font);line-height:1.65;min-height:100vh;display:grid;place-items:center;padding:24px}
+  .box{max-width:460px;width:100%;background:var(--md-surface-raised);border:1px solid var(--md-border);border-radius:var(--md-radius-xl);padding:36px;text-align:center;box-shadow:var(--md-shadow-card)}
+  .box img{height:28px;width:auto;margin-bottom:22px}
+  h1{font-size:26px;line-height:32px;font-weight:800;letter-spacing:-.03em;margin:0 0 10px;color:var(--md-brand-deep)}
+  p{margin:0 0 22px;color:var(--md-text-muted)}
+</style>
+</head>
+<body>
+<main class="box">
+  <img src="/img/logos/mascodata-lockup.svg" alt="Mascodata">
+  <h1 id="t">Listo</h1>
+  <p id="m">No te enviaremos más recordatorios para completar el perfil de tus mascotas. Si cambias de idea, puedes volver a activarlos en Mi perfil.</p>
+  <a class="btn btn-primary" href="/">Ir a Mascodata</a>
+</main>
+<script>
+  if (new URLSearchParams(location.search).get('estado') === 'error') {
+    document.getElementById('t').textContent = 'No pudimos desactivar los avisos';
+    document.getElementById('m').textContent = 'El enlace no es válido o ya venció. Puedes desactivarlos tú mismo desde Mi perfil, o escribirnos a contacto@mascodata.cl.';
+  }
+</script>
+</body>
+</html>

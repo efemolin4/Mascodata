@@ -10,13 +10,18 @@ async function loadDataFromSupabase() {
   if (!state.user?.id) return;
   try {
     // Fetch profile first (is_admin, plan, datos de contacto) — always, regardless of pets
-    const { data: profile } = await sb.from('profiles').select('is_admin, plan, phone, city, marketing_opt_in').eq('id', state.user.id).single();
+    // reminders_opt_out la agrega supabase/schema/pet_reminders.sql; si esa migración
+    // aún no se corrió, la columna no existe y la consulta falla — se reintenta sin ella
+    // para no romper el inicio de sesión de nadie.
+    let { data: profile, error: profileError } = await sb.from('profiles').select('is_admin, plan, phone, city, marketing_opt_in, reminders_opt_out').eq('id', state.user.id).single();
+    if (profileError) ({ data: profile } = await sb.from('profiles').select('is_admin, plan, phone, city, marketing_opt_in').eq('id', state.user.id).single());
     if (profile) {
       state.user.isAdmin = profile.is_admin || false;
       state.user.plan = profile.plan || 'free';
       state.user.phone = profile.phone || '';
       state.user.city = profile.city || '';
       state.user.marketingOptIn = profile.marketing_opt_in || false;
+      if ('reminders_opt_out' in profile) state.user.remindersOptOut = !!profile.reminders_opt_out;
       saveState();
       // Solo id y plan: nada de nombre, email ni teléfono en la analítica.
       try { window.posthog?.identify(state.user.id, { plan: state.user.plan }); } catch (e) {}

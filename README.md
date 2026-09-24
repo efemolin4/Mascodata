@@ -273,6 +273,18 @@ Repartidas entre `js/*.js` según la tabla de la sección anterior (ej.
 
 ---
 
+## Completar el perfil de la mascota
+
+Cada mascota tiene un porcentaje de completitud (13 campos con peso que suman
+100; toda mascota parte en 10 %) calculado por `petCompleteness()` en
+`js/utils.js`. Se muestra como barra en la ficha y en la lista de mascotas, y
+como tarjeta en el panel con los próximos pasos de mayor peso (cada uno abre el
+formulario que lo resuelve). En peces, aves, hámsteres y reptiles no cuentan
+vacunas, desparasitación, estado reproductivo ni microchip. Además, una Edge
+Function diaria envía hasta 3 correos por mascota mientras esté incompleta (ver
+`supabase/README.md`); el usuario puede desactivarlos en Mi perfil o con el
+enlace del correo.
+
 ## Landing y brandsheet
 
 - `landing.html` → `/landing`: landing v2 según la especificación (hero con tarjeta de producto, funciones, cómo funciona, planes, preguntas, CTA final). Es siempre de tema claro. Los precios están escritos a mano, igual que `PLANS` en `js/app.js`; si cambian hay que actualizar ambos. Registra eventos `landing_*` en PostHog (sin datos personales). El panel de "Cuidar también puede sentirse simple" es un marcador: hay que reemplazarlo por la fotografía principal (brief en `/marca`, sección Fotografía).
