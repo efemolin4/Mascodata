@@ -130,6 +130,44 @@ export function parseCLP(str) {
 // literal de JS y el navegador decodifica las entidades antes de compilarlo,
 // así que NO protege. En onclick pasa solo ids (usa safeId) y busca el texto
 // en el estado dentro de la función.
+// ---- COMPLETITUD DEL PERFIL DE UNA MASCOTA ----
+// 13 campos con peso que suman 100. Nombre y especie ya vienen al crear, así
+// que toda mascota parte en 10 %. En especies donde vacunas, desparasitación,
+// estado reproductivo y microchip no suelen aplicar (peces, aves, hámsteres,
+// reptiles) esos campos se excluyen y el porcentaje se recalcula sobre el resto.
+// Sexo y estado reproductivo llegan preseleccionados desde el asistente, así que
+// casi siempre cuentan como completos: no distinguen "no sé" de "respondió".
+// Si cambian pesos o campos, actualizar también
+// supabase/functions/pet-completion-reminders/index.ts (hay un test de paridad).
+export const COMPLETENESS_FIELDS = [
+  { key: 'basic',    points: 10, label: 'Nombre y especie',        hint: '',                                   action: 'edit',    has: p => !!(p.name && p.species) },
+  { key: 'dob',      points: 12, label: 'Fecha de nacimiento',     hint: 'Activa las sugerencias por edad',    action: 'edit',    has: p => !!p.dateOfBirth },
+  { key: 'photo',    points: 7,  label: 'Foto',                    hint: 'Hace la ficha más tuya',             action: 'edit',    has: p => !!p.photo },
+  { key: 'breed',    points: 5,  label: 'Raza',                    hint: 'Activa las sugerencias por raza',    action: 'edit',    has: p => !!p.breed },
+  { key: 'sex',      points: 3,  label: 'Sexo',                    hint: 'Dato básico de la ficha',            action: 'edit',    has: p => !!p.sex },
+  { key: 'chip',     points: 3,  label: 'Microchip',               hint: 'Útil si se pierde',                  action: 'edit',    has: p => !!p.chipNumber, healthOnly: true },
+  { key: 'vaccine',  points: 16, label: 'Al menos una vacuna',     hint: 'Activa las alertas de vacunas',      action: 'vaccine', has: p => (p.vaccines || []).length > 0, healthOnly: true },
+  { key: 'deworm',   points: 8,  label: 'Al menos una desparasitación', hint: 'Activa sus alertas',            action: 'deworm',  has: p => (p.deworming || []).length > 0, healthOnly: true },
+  { key: 'allergies', points: 8, label: 'Alergias y condiciones',  hint: 'Marca "Ninguna" si no tiene',        action: 'edit',    has: p => (p.allergies || []).length > 0 || (Array.isArray(p.chronicConditions) ? p.chronicConditions.length > 0 : !!p.chronicConditions) },
+  { key: 'weight',   points: 8,  label: 'Peso',                    hint: 'Alimenta el seguimiento',            action: 'edit',    has: p => Number(p.weightKg) > 0 },
+  { key: 'repro',    points: 5,  label: 'Estado reproductivo',     hint: 'Dato de la ficha',                   action: 'edit',    has: p => !!p.reproductiveStatus, healthOnly: true },
+  { key: 'vetName',  points: 8,  label: 'Nombre del veterinario',  hint: 'Para tenerlo a mano en emergencias', action: 'edit',    has: p => !!(p.vet && p.vet.name && String(p.vet.name).trim()) },
+  { key: 'vetPhone', points: 7,  label: 'Teléfono del veterinario', hint: 'Para llamar rápido',                action: 'edit',    has: p => !!(p.vet && p.vet.phone && String(p.vet.phone).trim()) },
+];
+const NO_HEALTH_SPECIES = ['Pez', 'Ave', 'Hámster', 'Reptil'];
+
+export function petCompleteness(pet) {
+  const skipHealth = NO_HEALTH_SPECIES.includes(pet?.species);
+  const fields = COMPLETENESS_FIELDS.filter(f => !(skipHealth && f.healthOnly));
+  const total = fields.reduce((a, f) => a + f.points, 0);
+  const done = fields.filter(f => f.has(pet || {}));
+  const earned = done.reduce((a, f) => a + f.points, 0);
+  const missing = fields.filter(f => !f.has(pet || {}))
+    .map(f => ({ key: f.key, label: f.label, hint: f.hint, action: f.action, gain: Math.round(f.points * 100 / total), points: f.points }))
+    .sort((a, b) => b.points - a.points);
+  return { percent: Math.round(earned * 100 / total), missing, done: done.map(f => f.key) };
+}
+
 // Para valores que entran a un literal de JS dentro de un atributo onclick:
 // solo deja los caracteres que tienen los ids internos (uuid/genId). esc() NO
 // protege ahí — el navegador decodifica las entidades antes de compilar el JS.
@@ -245,7 +283,7 @@ export function activityStreak(activities) {
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
-    getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, slugify, eventIcon, botiquinStatus,
+    getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, slugify, petCompleteness, COMPLETENESS_FIELDS, eventIcon, botiquinStatus,
     medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
     foodStockStatus, activityStreak,
   });

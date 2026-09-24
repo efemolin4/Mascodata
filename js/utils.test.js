@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   todayStr, daysFromNowStr, addDays, daysBetween, addMonths, getAge,
-  careAlertStatus, medStockStatus, foodStockStatus, esc, safeId, safeDataUrl, parseCLP, fmtCompactCLP,
+  careAlertStatus, medStockStatus, foodStockStatus, esc, safeId, safeDataUrl, petCompleteness, parseCLP, fmtCompactCLP,
 } from './utils.js';
 
 // Fija "hoy" a una fecha conocida para que las pruebas de fecha sean
@@ -243,5 +243,60 @@ describe('safeDataUrl', () => {
     expect(safeDataUrl(undefined)).toBe('');
     expect(safeDataUrl(42)).toBe('');
     expect(safeDataUrl({ toString: () => 'data:image/png;base64,AAAA' })).toBe('');
+  });
+});
+
+describe('petCompleteness', () => {
+  const full = () => ({
+    name: 'Luna', species: 'Perro', dateOfBirth: '2020-01-01', photo: 'data:image/png;base64,AAAA', breed: 'Mestizo', sex: 'Hembra',
+    chipNumber: '123', vaccines: [{}], deworming: [{}], allergies: [], chronicConditions: ['Ninguna'], weightKg: 12,
+    reproductiveStatus: 'Esterilizada', vet: { name: 'Dra. Pérez', phone: '+56 9 1' },
+  });
+
+  it('una mascota con solo nombre y especie parte en 10 %', () => {
+    const c = petCompleteness({ name: 'Luna', species: 'Perro' });
+    expect(c.percent).toBe(10);
+    expect(c.done).toEqual(['basic']);
+  });
+
+  it('con todos los campos llega a 100 % y no quedan pasos pendientes', () => {
+    const c = petCompleteness(full());
+    expect(c.percent).toBe(100);
+    expect(c.missing).toEqual([]);
+  });
+
+  it('los pasos pendientes salen de mayor a menor peso (vacuna 16 % primero)', () => {
+    const c = petCompleteness({ name: 'Luna', species: 'Perro' });
+    expect(c.missing[0]).toMatchObject({ key: 'vaccine', gain: 16, action: 'vaccine' });
+    expect(c.missing[1].key).toBe('dob');
+    expect(c.missing.map(m => m.gain)).toEqual([...c.missing.map(m => m.gain)].sort((a, b) => b - a));
+  });
+
+  it('marcar "Ninguna" en condiciones cuenta como respondido; sin alergias ni condiciones no', () => {
+    const base = { name: 'Luna', species: 'Perro' };
+    expect(petCompleteness({ ...base, chronicConditions: ['Ninguna'] }).done).toContain('allergies');
+    expect(petCompleteness({ ...base, allergies: ['Pollo'] }).done).toContain('allergies');
+    expect(petCompleteness({ ...base, allergies: [], chronicConditions: [] }).done).not.toContain('allergies');
+  });
+
+  it('en peces, aves, hámsteres y reptiles excluye vacunas, desparasitación, estado reproductivo y microchip y recalcula', () => {
+    const c = petCompleteness({ name: 'Nemo', species: 'Pez' });
+    expect(c.missing.map(m => m.key)).not.toContain('vaccine');
+    expect(c.missing.map(m => m.key)).not.toContain('chip');
+    expect(c.percent).toBe(Math.round(10 * 100 / (100 - 16 - 8 - 3 - 5)));
+    const whole = { ...full(), species: 'Ave', vaccines: [], deworming: [], chipNumber: '', reproductiveStatus: '' };
+    expect(petCompleteness(whole).percent).toBe(100);
+  });
+
+  it('el peso cuenta solo si es un número mayor que cero', () => {
+    expect(petCompleteness({ name: 'a', species: 'Perro', weightKg: '' }).done).not.toContain('weight');
+    expect(petCompleteness({ name: 'a', species: 'Perro', weightKg: 0 }).done).not.toContain('weight');
+    expect(petCompleteness({ name: 'a', species: 'Perro', weightKg: '7.5' }).done).toContain('weight');
+  });
+
+  it('el veterinario suma por separado nombre (8) y teléfono (7); los espacios no cuentan', () => {
+    expect(petCompleteness({ name: 'a', species: 'Perro', vet: { name: '  ', phone: '' } }).done).not.toContain('vetName');
+    expect(petCompleteness({ name: 'a', species: 'Perro', vet: { name: 'Dr X', phone: '' } }).done).toContain('vetName');
+    expect(petCompleteness({ name: 'a', species: 'Perro', vet: { name: 'Dr X', phone: '' } }).done).not.toContain('vetPhone');
   });
 });

@@ -218,6 +218,11 @@ export function viewDashboard() {
         </button>` : ''}`}
     </div>
 
+    ${(() => {
+      const lowest = pets.filter(p => canEditPet(p)).map(p => ({ p, c: petCompleteness(p) })).filter(x => x.c.percent < 100).sort((a, b) => a.c.percent - b.c.percent)[0];
+      return lowest ? `<div class="mb-4">${petCompletenessCard(lowest.p, { compact: true })}</div>` : '';
+    })()}
+
     <!-- Franja de hoy -->
     <div class="grid grid-cols-3 gap-2 md:gap-4 bg-white rounded-2xl shadow-sm p-3 md:p-4 mb-6">
       <button onclick="navigate('pets')" class="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 text-center sm:text-left p-1 rounded-xl hover:bg-gray-50 transition-colors">

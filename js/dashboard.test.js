@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import '../js/utils.js';
 import '../js/app.js';   // deja state/icon/esc/appShell/statCard/petAvatar reales en window
+import '../js/pets.js';   // deja petCompletenessCard real en window
 import { viewDashboard } from './dashboard.js';
 
 const day = (offset) => {
@@ -138,5 +139,45 @@ describe('viewDashboard', () => {
     window.state.pets = [healthyPet()];
     window.getFinanceExpenses = () => [{ id: 1, amount: 23500, date: day(0), category: 'Otro' }];
     expect(viewDashboard()).toContain('$23.500');
+  });
+});
+
+describe('viewDashboard — completar el perfil de la mascota', () => {
+  beforeEach(() => {
+    window.state.user = { name: 'Felipe Molina' };
+    window.state.pets = [];
+    window.state.events = [];
+    window.state.dashAttnAll = false;
+    window.getFinanceExpenses = () => [];
+  });
+
+  it('una mascota con solo lo mínimo muestra la tarjeta al 10 % con el paso de mayor peso primero', () => {
+    window.state.pets = [{ id: 'pet-1', name: 'Luna', species: 'Perro', myRole: 'owner', vaccines: [], deworming: [], medications: [] }];
+    const html = viewDashboard();
+    expect(html).toContain('Completa el perfil de');
+    expect(html).toContain('10 %');
+    expect(html.indexOf('Al menos una vacuna')).toBeGreaterThan(-1);
+    expect(html.indexOf('Al menos una vacuna')).toBeLessThan(html.indexOf('Fecha de nacimiento'));
+    expect(html).toContain("completionAction('pet-1','vaccine')");
+  });
+
+  it('muestra la mascota con el perfil MENOS completo', () => {
+    window.state.pets = [
+      { id: 'a', name: 'Casi', species: 'Perro', myRole: 'owner', dateOfBirth: '2020-01-01', photo: 'data:image/png;base64,AAAA', breed: 'Mestizo', sex: 'Macho', vaccines: [{}], deworming: [{}], weightKg: 10, vet: { name: 'X', phone: '1' }, allergies: [], chronicConditions: ['Ninguna'], chipNumber: '1', reproductiveStatus: 'Esterilizado' },
+      { id: 'b', name: 'Poco', species: 'Gato', myRole: 'owner', vaccines: [], deworming: [], medications: [] },
+    ];
+    const html = viewDashboard();
+    expect(html).toContain('Completa el perfil de Poco');
+    expect(html).not.toContain('Completa el perfil de Casi');
+  });
+
+  it('un perfil al 100 % no muestra la tarjeta', () => {
+    window.state.pets = [{ id: 'a', name: 'Listo', species: 'Perro', myRole: 'owner', dateOfBirth: '2020-01-01', photo: 'data:image/png;base64,AAAA', breed: 'Mestizo', sex: 'Macho', vaccines: [{}], deworming: [{}], weightKg: 10, vet: { name: 'X', phone: '1' }, chronicConditions: ['Ninguna'], chipNumber: '1', reproductiveStatus: 'Esterilizado', medications: [] }];
+    expect(viewDashboard()).not.toContain('Completa el perfil de');
+  });
+
+  it('un tutor de solo lectura no ve la tarjeta (no puede completar esa ficha)', () => {
+    window.state.pets = [{ id: 'pet-1', name: 'Luna', species: 'Perro', myRole: 'viewer', vaccines: [], deworming: [], medications: [] }];
+    expect(viewDashboard()).not.toContain('Completa el perfil de');
   });
 });

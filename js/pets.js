@@ -38,6 +38,7 @@ export function viewPets() {
                  <div class="mt-3 font-bold text-gray-900">${esc(p.name)}</div>
                  <div class="text-sm text-gray-400 mt-0.5">${esc(p.species)} · ${esc(p.breed || 'Mestizo')}</div>
                  <div class="text-xs text-gray-400 mt-0.5">${getAge(p.dateOfBirth)}</div>
+                 ${(() => { const c = petCompleteness(p); return `<div class="mt-2 w-full max-w-[9rem]" title="Perfil ${c.percent} % completo"><div class="flex justify-between text-[11px] text-gray-400 mb-0.5"><span>Perfil</span><span>${c.percent} %</span></div><div class="h-1.5 rounded-full bg-gray-100"><div class="h-1.5 rounded-full ${c.percent >= 100 ? 'bg-green-500' : 'bg-brand-500'}" style="width:${c.percent}%"></div></div></div>`; })()}
                  <div class="flex gap-2 mt-3 flex-wrap justify-center">
                    ${(p.personalityTags || []).slice(0,2).map(t => `<span class="tag text-xs">${esc(t)}</span>`).join('')}
                  </div>
@@ -394,8 +395,47 @@ export function viewPetProfile() {
   `);
 }
 
+// Barra de progreso del perfil + los próximos pasos (el de mayor peso primero).
+// Solo la ve quien puede editar la mascota: un tutor de solo lectura no puede completarla.
+export function petCompletenessCard(pet, { compact = false } = {}) {
+  if (!canEditPet(pet)) return '';
+  const c = petCompleteness(pet);
+  const id = safeId(pet.id);
+  if (c.percent >= 100) {
+    return compact ? '' : `<div class="bg-green-50 rounded-2xl p-4 mb-4 flex items-center gap-3"><span class="badge bg-green-100 text-green-700 text-xs font-bold flex-shrink-0">${icon('check','w-3 h-3')} Perfil completo</span><span class="text-sm text-green-700">El perfil de ${esc(pet.name)} está al 100 %.</span></div>`;
+  }
+  const next = c.missing.slice(0, compact ? 2 : 3);
+  return `
+    <div class="bg-white rounded-2xl shadow-sm p-4 md:p-5 ${compact ? '' : 'mb-4'}">
+      <div class="flex items-center justify-between gap-3 mb-2">
+        <h3 class="font-semibold text-gray-900 text-sm md:text-base">${compact ? 'Completa el perfil de' : 'Perfil de'} ${esc(pet.name)}</h3>
+        <span class="text-sm font-bold text-brand-600 flex-shrink-0">${c.percent} %</span>
+      </div>
+      <div class="h-2 rounded-full bg-gray-100 overflow-hidden" role="progressbar" aria-valuenow="${c.percent}" aria-valuemin="0" aria-valuemax="100" aria-label="Perfil completado"><div class="h-2 rounded-full bg-brand-500" style="width:${c.percent}%"></div></div>
+      <div class="mt-3 space-y-1.5">
+        ${next.map(m => `
+        <button onclick="completionAction('${id}','${m.key}')" class="w-full flex items-center gap-3 text-left px-3 py-2 rounded-xl border border-gray-200 hover:bg-brand-50 transition-colors">
+          <span class="badge bg-brand-100 text-brand-700 text-xs font-bold flex-shrink-0">+${m.gain} %</span>
+          <span class="min-w-0"><span class="block text-sm font-medium text-gray-900">${m.label}</span>${m.hint ? `<span class="block text-xs text-gray-500">${m.hint}</span>` : ''}</span>
+        </button>`).join('')}
+      </div>
+    </div>`;
+}
+
+// Un clic en un paso pendiente: abre el formulario que lo resuelve.
+export function completionAction(petId, key) {
+  const pet = state.pets.find(p => p.id === petId);
+  const field = COMPLETENESS_FIELDS.find(f => f.key === key);
+  if (!pet || !field) return;
+  track('profile_completion_click', { field: key });
+  if (field.action === 'vaccine') openVaccineModal(petId);
+  else if (field.action === 'deworm') openDewormModal(petId);
+  else openEditPetModal(petId);
+}
+
 export function tabGeneral(pet) {
   return `
+    ${petCompletenessCard(pet)}
     <div class="grid md:grid-cols-2 gap-4">
       <div class="bg-white rounded-2xl shadow-sm p-5">
         <h3 class="font-semibold text-gray-700 mb-3">Datos básicos</h3>
@@ -1179,7 +1219,7 @@ if (typeof window !== 'undefined') {
     nextStep, collectStepData, savePet, openDeletePetWithCode, sendDeleteCode,
     verifyDeleteCode, confirmDeletePet, deletePet, saveEditPet, previewPhoto,
     setActivity, toggleTag, toggleCondition, toggleAllergy, toggleTutor2,
-    updateBreedOptions, exportPetRecord, printPetRecord, openInviteTutor2Modal, createPetInvite,
+    updateBreedOptions, petCompletenessCard, completionAction, exportPetRecord, printPetRecord, openInviteTutor2Modal, createPetInvite,
     acceptPetInvite, sendTutor2Invite, removeTutor2,
   });
 }
