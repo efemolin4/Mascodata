@@ -3,7 +3,7 @@ import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js';
 import '../js/app.js'; // deja PLANS/fmtCLP/statCard/appShell/icon reales en window
 import { esc } from './utils.js';
-import { applyPlanChange, viewAdmin } from './admin.js';
+import { applyPlanChange, viewAdmin, exportPromoContacts } from './admin.js';
 
 describe('applyPlanChange', () => {
   beforeEach(() => {
@@ -223,5 +223,88 @@ describe('viewAdmin — tabla de usuarios con nombre hostil', () => {
     const html = window.openModal.mock.calls[0][0];
     expect(html).toContain('Usuario: <strong>&#39;);window.__x=1;//</strong>');
     expect(html).not.toContain("<strong>');window");
+  });
+});
+
+describe('promociones: conteo, filtro y exportación', () => {
+  const profiles = () => ([
+    { id: 'u1', name: 'Ana', email: 'ana@t.cl', phone: '+56 9 1111 1111', city: 'Santiago', plan: 'free', marketing_opt_in: true, created_at: '2026-09-01T10:00:00Z' },
+    { id: 'u2', name: 'Beto', email: 'beto@t.cl', plan: 'premium', marketing_opt_in: false, created_at: '2026-09-02T10:00:00Z' },
+    { id: 'u3', name: '=HYPERLINK("http://x")', email: 'c@t.cl', city: 'Valdivia, Chile', plan: 'free', marketing_opt_in: true },
+    { id: 'u4', name: 'Dani', email: 'd@t.cl', plan: 'free', marketing_opt_in: null },
+  ]);
+  beforeEach(() => {
+    window.state = { user: { isAdmin: true }, adminTab: 'dashboard', adminData: { profiles: profiles(), pets: [] } };
+    window.showToast = vi.fn();
+    window.esc = esc;
+  });
+
+  it('el dashboard muestra cuántos aceptan promociones y su porcentaje', () => {
+    const html = viewAdmin();
+    expect(html).toContain('Aceptan promociones');
+    expect(html).toContain('2 (50%)'); // 2 de 4; null no cuenta como aceptó
+  });
+
+  it('el filtro "Solo con promociones" lista únicamente a quienes aceptaron', () => {
+    window.state.adminTab = 'usuarios';
+    window.state.adminPromoOnly = true;
+    const html = viewAdmin();
+    expect(html).toContain('ana@t.cl');
+    expect(html).toContain('c@t.cl');
+    expect(html).not.toContain('beto@t.cl');
+    expect(html).not.toContain('d@t.cl');
+  });
+
+  it('sin filtro aparecen todos, con la columna Promos', () => {
+    window.state.adminTab = 'usuarios';
+    const html = viewAdmin();
+    expect(html).toContain('beto@t.cl');
+    expect(html).toContain('>Promos<');
+  });
+
+  async function exportedCsv() {
+    let blob;
+    window.URL.createObjectURL = vi.fn((b) => { blob = b; return 'blob:x'; });
+    window.URL.revokeObjectURL = vi.fn();
+    exportPromoContacts();
+    return await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsText(blob); });
+  }
+
+  it('exporta solo a quienes aceptaron, con encabezado y comillas escapadas', async () => {
+    const csv = await exportedCsv();
+    expect(csv).toContain('"nombre","email","telefono","ciudad","plan","registro"');
+    expect(csv).toContain('"Ana","ana@t.cl","+56 9 1111 1111","Santiago","free","2026-09-01"');
+    expect(csv).toContain('"Valdivia, Chile"');
+    expect(csv).not.toContain('beto@t.cl');
+    expect(csv).not.toContain('d@t.cl');
+  });
+
+  it('neutraliza celdas que Excel ejecutaría como fórmula', async () => {
+    const csv = await exportedCsv();
+    expect(csv).toContain(`"'=HYPERLINK(""http://x"")"`);
+    expect(csv).not.toMatch(/,"=HYPERLINK|^"=HYPERLINK/m);
+  });
+
+  it('un teléfono con + inicial se exporta tal cual, pero un "+" con contenido de fórmula se neutraliza', async () => {
+    window.state.adminData.profiles[0].phone = '+56 9 1111 1111';
+    window.state.adminData.profiles[2].phone = '+cmd|calc';
+    const csv = await exportedCsv();
+    expect(csv).toContain('"+56 9 1111 1111"');
+    expect(csv).toContain(`"'+cmd|calc"`);
+  });
+
+  it('un usuario que no es admin no puede exportar', () => {
+    window.state.user.isAdmin = false;
+    window.URL.createObjectURL = vi.fn();
+    exportPromoContacts();
+    expect(window.URL.createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('si nadie aceptó, avisa y no genera archivo', () => {
+    window.state.adminData.profiles = [{ id: 'u2', name: 'Beto', marketing_opt_in: false }];
+    window.URL.createObjectURL = vi.fn();
+    exportPromoContacts();
+    expect(window.showToast).toHaveBeenCalledWith('Nadie ha aceptado promociones todavía', 'error');
+    expect(window.URL.createObjectURL).not.toHaveBeenCalled();
   });
 });

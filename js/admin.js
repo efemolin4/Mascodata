@@ -22,6 +22,9 @@ export function viewAdmin() {
   const totalUsers  = profiles.length;
   const totalPets   = allPets.length;
   const paidUsers   = profiles.filter(p => p.plan === 'premium').length;
+  const promoUsers  = profiles.filter(p => p.marketing_opt_in === true).length;
+  const promoOnly   = !!state.adminPromoOnly;
+  const listedUsers = promoOnly ? profiles.filter(p => p.marketing_opt_in === true) : profiles;
   // Métricas de negocio: el MRR es una ESTIMACIÓN con el precio mensual de
   // Premium — hoy no se guarda si cada usuario paga mes a mes o por año, así
   // que quien paga el año completo aporta en realidad menos por mes
@@ -75,6 +78,7 @@ export function viewAdmin() {
         ${statCard(icon('paw','w-5 h-5 md:w-6 md:h-6'), 'Mascotas', totalPets, 'teal')}
         ${statCard(icon('creditCard','w-5 h-5 md:w-6 md:h-6'), 'Usuarios pagos', paidUsers, 'amber')}
         ${statCard(icon('box','w-5 h-5 md:w-6 md:h-6'), 'Plan Free', totalUsers - paidUsers, 'red')}
+        ${statCard(icon('mail','w-5 h-5 md:w-6 md:h-6'), 'Aceptan promociones', promoUsers + (totalUsers > 0 ? ' (' + Math.round(promoUsers / totalUsers * 100) + '%)' : ''), 'teal')}
       </div>
       <div class="grid md:grid-cols-2 gap-6 mb-6">
         <div class="bg-white rounded-2xl shadow-sm p-5">
@@ -130,7 +134,11 @@ export function viewAdmin() {
     if (tab === 'usuarios') return `
       <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
         <div class="flex items-center justify-between p-5 border-b border-gray-100">
-          <h3 class="font-semibold text-gray-800">Todos los usuarios <span class="text-xs text-gray-400 font-normal ml-2">${totalUsers} total</span></h3>
+          <h3 class="font-semibold text-gray-800">${promoOnly ? 'Usuarios que aceptan promociones' : 'Todos los usuarios'} <span class="text-xs text-gray-400 font-normal ml-2">${listedUsers.length} de ${totalUsers}</span></h3>
+          <div class="flex items-center gap-2 flex-wrap justify-end">
+            <button onclick="toggleAdminPromoFilter()" class="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${promoOnly ? 'bg-brand-500 text-white' : 'bg-brand-50 text-brand-700 hover:bg-brand-100'}" aria-pressed="${promoOnly}">Solo con promociones (${promoUsers})</button>
+            <button onclick="exportPromoContacts()" class="text-xs px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium transition-colors" ${promoUsers === 0 ? 'disabled' : ''}>Exportar CSV</button>
+          </div>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
@@ -139,20 +147,21 @@ export function viewAdmin() {
                 <th class="px-5 py-3 font-medium">Usuario</th>
                 <th class="px-4 py-3 font-medium hidden md:table-cell">Email</th>
                 <th class="px-4 py-3 font-medium">Plan</th>
+                <th class="px-4 py-3 font-medium hidden md:table-cell">Promos</th>
                 <th class="px-4 py-3 font-medium hidden md:table-cell">Mascotas</th>
                 <th class="px-4 py-3 font-medium hidden md:table-cell">Registro</th>
                 <th class="px-4 py-3 font-medium">Acción</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
-              ${profiles.length === 0
-                ? '<tr><td colspan="6" class="text-center py-10 text-gray-400">Sin usuarios</td></tr>'
-                : profiles.map(u => {
+              ${listedUsers.length === 0
+                ? '<tr><td colspan="7" class="text-center py-10 text-gray-400">'+(promoOnly?'Nadie ha aceptado promociones todavía':'Sin usuarios')+'</td></tr>'
+                : listedUsers.map(u => {
                     const petCount = allPets.filter(p => p.owner_id === u.id).length;
                     const plan = u.plan || 'free';
                     const pColor = planColors[plan] || planColors.free;
                     const pLbl   = planLabel[plan] || plan;
-                    return '<tr class="hover:bg-gray-50 transition-colors"><td class="px-5 py-3"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-brand-gradient flex items-center justify-center text-white text-xs font-bold flex-shrink-0">'+esc((u.name||'?')[0].toUpperCase())+'</div><div><div class="font-medium text-gray-900">'+esc(u.name||'—')+'</div>'+(u.is_admin?'<span class="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-semibold">ADMIN</span>':'')+'</div></div></td><td class="px-4 py-3 text-gray-500 hidden md:table-cell">'+esc(u.email||'—')+'</td><td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-semibold '+pColor+'">'+pLbl+'</span></td><td class="px-4 py-3 text-gray-500 hidden md:table-cell">'+petCount+'</td><td class="px-4 py-3 text-gray-400 hidden md:table-cell">'+(u.created_at?new Date(u.created_at).toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'}):'—')+'</td><td class="px-4 py-3"><button onclick="openChangePlanModal(\''+safeId(u.id)+'\')" class="text-xs px-3 py-1.5 rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100 font-medium transition-colors">Cambiar plan</button></td></tr>';
+                    return '<tr class="hover:bg-gray-50 transition-colors"><td class="px-5 py-3"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-brand-gradient flex items-center justify-center text-white text-xs font-bold flex-shrink-0">'+esc((u.name||'?')[0].toUpperCase())+'</div><div><div class="font-medium text-gray-900">'+esc(u.name||'—')+'</div>'+(u.is_admin?'<span class="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-semibold">ADMIN</span>':'')+'</div></div></td><td class="px-4 py-3 text-gray-500 hidden md:table-cell">'+esc(u.email||'—')+'</td><td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full text-xs font-semibold '+pColor+'">'+pLbl+'</span></td><td class="px-4 py-3 hidden md:table-cell">'+(u.marketing_opt_in===true?'<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Sí</span>':'<span class="text-xs text-gray-400">No</span>')+'</td><td class="px-4 py-3 text-gray-500 hidden md:table-cell">'+petCount+'</td><td class="px-4 py-3 text-gray-400 hidden md:table-cell">'+(u.created_at?new Date(u.created_at).toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'}):'—')+'</td><td class="px-4 py-3"><button onclick="openChangePlanModal(\''+safeId(u.id)+'\')" class="text-xs px-3 py-1.5 rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100 font-medium transition-colors">Cambiar plan</button></td></tr>';
                   }).join('')}
             </tbody>
           </table>
@@ -221,6 +230,39 @@ export async function applyPlanChange(userId) {
   render();
 }
 
+export function toggleAdminPromoFilter() {
+  state.adminPromoOnly = !state.adminPromoOnly;
+  render();
+}
+
+// Una celda que empieza con = + - @ se ejecuta como fórmula al abrir el CSV en
+// Excel/Sheets; el apóstrofe inicial la deja como texto.
+function csvCell(v) {
+  let t = String(v ?? '');
+  const isPlainPhone = /^\+[\d\s().-]+$/.test(t); // "+56 9 1234 5678" no es una fórmula
+  if (!isPlainPhone && /^[=+\-@\t\r]/.test(t)) t = "'" + t;
+  return '"' + t.replace(/"/g, '""') + '"';
+}
+
+// Solo exporta a quienes aceptaron promociones (marketing_opt_in = true); un
+// usuario que no las aceptó nunca debe terminar en una lista de envío.
+export function exportPromoContacts() {
+  if (!state.user?.isAdmin) return;
+  const rows = (state.adminData?.profiles || []).filter(p => p.marketing_opt_in === true);
+  if (rows.length === 0) { showToast('Nadie ha aceptado promociones todavía', 'error'); return; }
+  const header = ['nombre', 'email', 'telefono', 'ciudad', 'plan', 'registro'];
+  const lines = [header.map(csvCell).join(',')].concat(rows.map(p => [
+    p.name, p.email, p.phone, p.city, p.plan || 'free', p.created_at ? String(p.created_at).slice(0, 10) : ''
+  ].map(csvCell).join(',')));
+  const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `mascodata-promociones-${todayStr()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(`${rows.length} contacto${rows.length !== 1 ? 's' : ''} exportado${rows.length !== 1 ? 's' : ''}`, 'success');
+}
+
 if (typeof window !== 'undefined') {
-  Object.assign(window, { viewAdmin, openChangePlanModal, applyPlanChange });
+  Object.assign(window, { viewAdmin, openChangePlanModal, applyPlanChange, toggleAdminPromoFilter, exportPromoContacts });
 }
