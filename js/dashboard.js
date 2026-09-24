@@ -246,7 +246,7 @@ export function viewDashboard() {
               ${petAvatar(p)}
               <div class="flex-1 min-w-0">
                 <div class="font-medium text-gray-900 text-sm">${esc(p.name)}</div>
-                <div class="text-xs text-gray-400">${p.species} · ${getAge(p.dateOfBirth)}</div>
+                <div class="text-xs text-gray-400">${esc(p.species)} · ${getAge(p.dateOfBirth)}</div>
               </div>
               ${petStatus(p.id)}
               <span class="text-gray-300 text-lg">›</span>

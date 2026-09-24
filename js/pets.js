@@ -36,10 +36,10 @@ export function viewPets() {
                <div class="flex flex-col items-center text-center pt-4">
                  ${petAvatar(p, 'lg')}
                  <div class="mt-3 font-bold text-gray-900">${esc(p.name)}</div>
-                 <div class="text-sm text-gray-400 mt-0.5">${p.species} · ${p.breed || 'Mestizo'}</div>
+                 <div class="text-sm text-gray-400 mt-0.5">${esc(p.species)} · ${esc(p.breed || 'Mestizo')}</div>
                  <div class="text-xs text-gray-400 mt-0.5">${getAge(p.dateOfBirth)}</div>
                  <div class="flex gap-2 mt-3 flex-wrap justify-center">
-                   ${(p.personalityTags || []).slice(0,2).map(t => `<span class="tag text-xs">${t}</span>`).join('')}
+                   ${(p.personalityTags || []).slice(0,2).map(t => `<span class="tag text-xs">${esc(t)}</span>`).join('')}
                  </div>
                </div>
                <!-- Stats -->
@@ -101,7 +101,7 @@ export function stepBasic() {
     <div class="space-y-4">
       <div class="flex flex-col items-center mb-4">
         <div id="photo-preview" class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center text-4xl mb-2 overflow-hidden">
-          ${d.photo ? `<img src="${d.photo}" class="w-full h-full object-cover" />` : icon('paw','w-8 h-8 text-gray-300')}
+          ${safeDataUrl(d.photo) ? `<img src="${safeDataUrl(d.photo)}" class="w-full h-full object-cover" />` : icon('paw','w-8 h-8 text-gray-300')}
         </div>
         <label class="cursor-pointer text-sm text-brand-600 hover:underline font-medium">
           Subir foto <input type="file" accept="image/*" class="hidden" onchange="previewPhoto(event)" />
@@ -138,7 +138,7 @@ export function stepBasic() {
           </div>
           <div>
             <label class="form-label">Fecha de nacimiento <span class="text-gray-400 font-normal">(opcional)</span></label>
-            <input id="pet-dob" type="date" value="${d.dateOfBirth||''}" class="input-field" />
+            <input id="pet-dob" type="date" value="${esc(d.dateOfBirth||'')}" class="input-field" />
             <p class="text-xs text-gray-400 mt-1">Si no la sabes con exactitud, deja el campo vacío</p>
           </div>
         </div>
@@ -179,11 +179,11 @@ export function stepPhysical() {
         <label class="form-label">Peso</label>
         <div class="grid grid-cols-2 gap-3 mt-1">
           <div class="relative">
-            <input id="pet-wkg" type="number" min="0" max="200" value="${d.weightKg||''}" placeholder="0" class="input-field pr-10" />
+            <input id="pet-wkg" type="number" min="0" max="200" value="${esc(d.weightKg||'')}" placeholder="0" class="input-field pr-10" />
             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">kg</span>
           </div>
           <div class="relative">
-            <input id="pet-wgr" type="number" min="0" max="999" value="${d.weightGr||''}" placeholder="0" class="input-field pr-10" />
+            <input id="pet-wgr" type="number" min="0" max="999" value="${esc(d.weightGr||'')}" placeholder="0" class="input-field pr-10" />
             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">gr</span>
           </div>
         </div>
@@ -336,7 +336,7 @@ export function viewPetProfile() {
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0 flex-1">
                 <h1 class="text-lg md:text-xl font-bold text-gray-900 truncate">${esc(pet.name)}</h1>
-                <div class="text-xs md:text-sm text-gray-400">${pet.species} · ${pet.breed || 'Mestizo'}${pet.sex ? ` · ${pet.sex}` : ''}</div>
+                <div class="text-xs md:text-sm text-gray-400">${esc(pet.species)} · ${esc(pet.breed || 'Mestizo')}${pet.sex ? ` · ${esc(pet.sex)}` : ''}</div>
                 <div class="text-xs md:text-sm text-gray-400">${getAge(pet.dateOfBirth)}</div>
               </div>
               <div class="print:hidden flex gap-1.5 flex-shrink-0">
@@ -361,7 +361,7 @@ export function viewPetProfile() {
               </div>
             </div>
             <div class="flex flex-wrap gap-1.5 mt-2">
-              ${(pet.personalityTags||[]).map(t => `<span class="tag text-xs">${t}</span>`).join('')}
+              ${(pet.personalityTags||[]).map(t => `<span class="tag text-xs">${esc(t)}</span>`).join('')}
             </div>
           </div>
         </div>
@@ -409,7 +409,7 @@ export function tabGeneral(pet) {
         <h3 class="font-semibold text-gray-700 mb-3">Datos físicos</h3>
         <dl class="space-y-2 text-sm">
           ${infoRow('Color', esc(pet.color))} ${infoRow('Tamaño', esc(pet.sizeRange))}
-          ${infoRow('Peso', pet.weightKg ? `${pet.weightKg} kg ${pet.weightGr||0} gr` : '—')}
+          ${infoRow('Peso', pet.weightKg ? `${esc(pet.weightKg)} kg ${esc(pet.weightGr||0)} gr` : '—')}
           ${infoRow('Estado reproductivo', esc(pet.reproductiveStatus))}
           ${infoRow('Nro. chip', esc(pet.chipNumber||'Sin chip'))}
           ${infoRow('Nivel actividad', ['','Bajo','Medio','Alto'][pet.activityLevel]||'—')}
@@ -483,7 +483,7 @@ export function openEditPetModal(petId) {
       <div class="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
         <div class="flex flex-col items-center mb-2">
           <div id="ep-photo-preview" class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center text-4xl mb-2 overflow-hidden">
-            ${p.photo ? `<img src="${p.photo}" class="w-full h-full object-cover" />` : icon('paw','w-8 h-8 text-gray-300')}
+            ${safeDataUrl(p.photo) ? `<img src="${safeDataUrl(p.photo)}" class="w-full h-full object-cover" />` : icon('paw','w-8 h-8 text-gray-300')}
           </div>
           <label class="cursor-pointer text-sm text-brand-600 hover:underline font-medium">
             ${p.photo ? 'Cambiar foto' : 'Subir foto'} <input type="file" accept="image/*" class="hidden" onchange="previewEditPhoto(event)" />
@@ -502,9 +502,9 @@ export function openEditPetModal(petId) {
           <div><label class="form-label">Tamaño</label>
             <select id="ep-size" class="input-field">${sizeOpts.map(s=>`<option value="${s.label}" ${p.sizeRange===s.label?'selected':''}>${s.label} (${s.range})</option>`).join('')}</select>
           </div>
-          <div><label class="form-label">Peso (kg)</label><input id="ep-wkg" type="number" min="0" value="${p.weightKg||''}" class="input-field" /></div>
-          <div><label class="form-label">Peso (gr)</label><input id="ep-wgr" type="number" min="0" max="999" value="${p.weightGr||''}" class="input-field" /></div>
-          <div><label class="form-label">Nacimiento</label><input id="ep-dob" type="date" value="${p.dateOfBirth||''}" class="input-field" /></div>
+          <div><label class="form-label">Peso (kg)</label><input id="ep-wkg" type="number" min="0" value="${esc(p.weightKg||'')}" class="input-field" /></div>
+          <div><label class="form-label">Peso (gr)</label><input id="ep-wgr" type="number" min="0" max="999" value="${esc(p.weightGr||'')}" class="input-field" /></div>
+          <div><label class="form-label">Nacimiento</label><input id="ep-dob" type="date" value="${esc(p.dateOfBirth||'')}" class="input-field" /></div>
           <div><label class="form-label">Estado reproductivo</label>
             <select id="ep-repro" class="input-field">${['Entero/a','Esterilizado/a','Castrado/a'].map(s=>`<option ${p.reproductiveStatus===s?'selected':''}>${s}</option>`).join('')}</select>
           </div>
@@ -1041,7 +1041,7 @@ export function exportPetRecord(petId) {
 
       <div class="flex gap-3 pt-4 border-t border-gray-100 mt-4">
         <button onclick="closeModal()" class="btn-secondary flex-1">Cerrar</button>
-        <button onclick="printPetRecord('${esc(pet.name)}')" class="btn-primary flex-1 flex items-center justify-center gap-1.5">${icon('printer','w-4 h-4')} Imprimir / Guardar PDF</button>
+        <button onclick="printPetRecord('${safeId(pet.id)}')" class="btn-primary flex-1 flex items-center justify-center gap-1.5">${icon('printer','w-4 h-4')} Imprimir / Guardar PDF</button>
       </div>
     </div>`);
 }
@@ -1051,7 +1051,8 @@ export function exportPetRecord(petId) {
 // tanto el PDF como el encabezado quedaban con el nombre genérico de la
 // pestaña ("Mascodata — Gestión Integral de Mascotas") en vez del nombre
 // de la mascota.
-export function printPetRecord(petName) {
+export function printPetRecord(petId) {
+  const petName = state.pets.find(p => p.id === petId)?.name || '';
   const prevTitle = document.title;
   document.title = `Expediente médico - ${petName}`;
   track('expediente_exported');

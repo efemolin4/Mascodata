@@ -604,7 +604,7 @@ export function statCard(icon, label, value, color = 'brand') {
 
 export function petAvatar(pet, size = 'sm') {
   const dim = size === 'lg' ? 'w-24 h-24 text-4xl' : 'w-14 h-14 text-2xl';
-  if (pet.photo) return `<img src="${pet.photo}" class="${size === 'lg' ? 'pet-avatar-lg' : 'pet-avatar'}" alt="${esc(pet.name)}" />`;
+  if (safeDataUrl(pet.photo)) return `<img src="${safeDataUrl(pet.photo)}" class="${size === 'lg' ? 'pet-avatar-lg' : 'pet-avatar'}" alt="${esc(pet.name)}" />`;
   return `<div class="${dim} pet-avatar-placeholder rounded-full">${speciesEmoji(pet.species)}</div>`;
 }
 

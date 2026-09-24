@@ -370,7 +370,7 @@ export function openEditVaccineModal(petId, vaccineId) {
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div><label class="form-label">Código / Lote</label><input id="ev-code" value="${esc(v.code||'')}" class="input-field" /></div>
-          <div><label class="form-label">Fecha aplicación *</label><input id="ev-date" type="date" required value="${v.date||''}" class="input-field" /></div>
+          <div><label class="form-label">Fecha aplicación *</label><input id="ev-date" type="date" required value="${esc(v.date||'')}" class="input-field" /></div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div><label class="form-label">Periodicidad (meses)</label>
@@ -378,7 +378,7 @@ export function openEditVaccineModal(petId, vaccineId) {
               ${PERIODICITY_OPTIONS.map(o => `<option value="${o.months}" ${String(o.months)===String(v.periodicity)?'selected':''}>${o.label}</option>`).join('')}
             </select>
           </div>
-          <div><label class="form-label">Costo (CLP)</label><input id="ev-cost" type="text" inputmode="numeric" value="${v.cost||''}" class="input-field" /></div>
+          <div><label class="form-label">Costo (CLP)</label><input id="ev-cost" type="text" inputmode="numeric" value="${esc(v.cost||'')}" class="input-field" /></div>
         </div>
         <div>
           <label class="form-label">¿Cuándo recibir la alerta?</label>
@@ -390,10 +390,10 @@ export function openEditVaccineModal(petId, vaccineId) {
                 ${o.l}
               </button>`).join('')}
           </div>
-          <input type="hidden" id="ev-alert" value="${v.alertType||'same'}" />
+          <input type="hidden" id="ev-alert" value="${esc(v.alertType||'same')}" />
           <div id="eva-custom-field" class="${(v.alertType||'same')==='custom'?'':'hidden'} mt-2">
             <label class="form-label">Días de anticipación</label>
-            <input id="ev-alert-days" type="number" min="1" max="365" value="${v.alertDays||''}" placeholder="Ej: 15" class="input-field" />
+            <input id="ev-alert-days" type="number" min="1" max="365" value="${esc(v.alertDays||'')}" placeholder="Ej: 15" class="input-field" />
           </div>
         </div>
         <div class="flex gap-3 pt-2">
@@ -460,13 +460,13 @@ export function openEditDewormModal(petId, dewormId) {
             </select>
           </div>
           <div><label class="form-label">Dosis</label><input id="edw-dose" value="${esc(d.dose||'')}" class="input-field" /></div>
-          <div><label class="form-label">Fecha *</label><input id="edw-date" type="date" required value="${d.date||''}" class="input-field" /></div>
+          <div><label class="form-label">Fecha *</label><input id="edw-date" type="date" required value="${esc(d.date||'')}" class="input-field" /></div>
           <div><label class="form-label">Periodicidad</label>
             <select id="edw-period" class="input-field">
               ${PERIODICITY_OPTIONS.map(o => `<option value="${o.months}" ${String(o.months)===String(d.periodicity)?'selected':''}>${o.label}</option>`).join('')}
             </select>
           </div>
-          <div><label class="form-label">Costo (CLP)</label><input id="edw-cost" type="text" inputmode="numeric" value="${d.cost||''}" class="input-field" /></div>
+          <div><label class="form-label">Costo (CLP)</label><input id="edw-cost" type="text" inputmode="numeric" value="${esc(d.cost||'')}" class="input-field" /></div>
         </div>
         <div>
           <label class="form-label">¿Cuándo recibir la alerta?</label>
@@ -478,10 +478,10 @@ export function openEditDewormModal(petId, dewormId) {
                 ${o.l}
               </button>`).join('')}
           </div>
-          <input type="hidden" id="edw-alert" value="${d.alertType||'same'}" />
+          <input type="hidden" id="edw-alert" value="${esc(d.alertType||'same')}" />
           <div id="eda-custom-field" class="${(d.alertType||'same')==='custom'?'':'hidden'} mt-2">
             <label class="form-label">Días de anticipación</label>
-            <input id="edw-alert-days" type="number" min="1" max="365" value="${d.alertDays||''}" placeholder="Ej: 15" class="input-field" />
+            <input id="edw-alert-days" type="number" min="1" max="365" value="${esc(d.alertDays||'')}" placeholder="Ej: 15" class="input-field" />
           </div>
         </div>
         <div class="flex gap-3 pt-2">

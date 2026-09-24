@@ -126,9 +126,25 @@ export function parseCLP(str) {
 // interpolación de strings + innerHTML sin sanitizar, así que un tutor
 // compartido podría meter HTML/JS en un campo de texto y afectar la sesión
 // del otro tutor cuando abre esa ficha. NUNCA usar dentro de un atributo
-// onclick que llama una función pasándole el valor como argumento — ahí es un literal de JS, no HTML, y
-// escaparlo rompería la llamada; eso solo aplica a ids internos (uuid/genId)
-// que la propia app genera, nunca a texto libre del usuario.
+// onclick que llama una función pasándole el valor como argumento — ahí es un
+// literal de JS y el navegador decodifica las entidades antes de compilarlo,
+// así que NO protege. En onclick pasa solo ids (usa safeId) y busca el texto
+// en el estado dentro de la función.
+// Para valores que entran a un literal de JS dentro de un atributo onclick:
+// solo deja los caracteres que tienen los ids internos (uuid/genId). esc() NO
+// protege ahí — el navegador decodifica las entidades antes de compilar el JS.
+export function safeId(id) {
+  return String(id ?? '').replace(/[^A-Za-z0-9_-]/g, '');
+}
+
+// Solo acepta data URLs base64 de imágenes, PDF y Word — lo único que genera la
+// app con FileReader. Cualquier otra cosa (comillas, javascript:, HTML) vuelve
+// vacía, así que es seguro usarla directo en src/href sin escapar.
+export function safeDataUrl(str) {
+  const s = typeof str === 'string' ? str : '';
+  return /^data:(image\/(png|jpe?g|gif|webp|bmp)|application\/(pdf|msword|octet-stream|vnd\.[a-z0-9.+-]+));base64,[A-Za-z0-9+/=]+$/i.test(s) ? s : '';
+}
+
 export function esc(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -229,7 +245,7 @@ export function activityStreak(activities) {
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
-    getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, slugify, eventIcon, botiquinStatus,
+    getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, slugify, eventIcon, botiquinStatus,
     medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
     foodStockStatus, activityStreak,
   });

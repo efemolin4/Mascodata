@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   todayStr, daysFromNowStr, addDays, daysBetween, addMonths, getAge,
-  careAlertStatus, medStockStatus, foodStockStatus, esc, parseCLP, fmtCompactCLP,
+  careAlertStatus, medStockStatus, foodStockStatus, esc, safeId, safeDataUrl, parseCLP, fmtCompactCLP,
 } from './utils.js';
 
 // Fija "hoy" a una fecha conocida para que las pruebas de fecha sean
@@ -209,5 +209,39 @@ describe('fmtCompactCLP', () => {
   it('tolera null/undefined/NaN', () => {
     expect(fmtCompactCLP(null)).toBe('$0');
     expect(fmtCompactCLP(undefined)).toBe('$0');
+  });
+});
+
+describe('safeId', () => {
+  it('deja pasar uuid y genId tal cual', () => {
+    expect(safeId('98b1cfe4-51e4-4150-9d80-3b6f70e57740')).toBe('98b1cfe4-51e4-4150-9d80-3b6f70e57740');
+    expect(safeId('lq3x9a7bk2m1')).toBe('lq3x9a7bk2m1');
+  });
+
+  it('elimina comillas, paréntesis, punto y coma y barras que romperían un literal de JS', () => {
+    expect(safeId("');alert(1);//")).toBe('alert1');
+    expect(safeId(null)).toBe('');
+  });
+});
+
+describe('safeDataUrl', () => {
+  it('acepta data URLs base64 de imagen, PDF y Word', () => {
+    expect(safeDataUrl('data:image/png;base64,iVBORw0KGgo=')).toBe('data:image/png;base64,iVBORw0KGgo=');
+    expect(safeDataUrl('data:application/pdf;base64,JVBERi0xLjQ=')).not.toBe('');
+    expect(safeDataUrl('data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,UEsDBA==')).not.toBe('');
+  });
+
+  it('rechaza una comilla que rompe el atributo, javascript: y HTML', () => {
+    expect(safeDataUrl('data:image/x" onerror="window.__x=1')).toBe('');
+    expect(safeDataUrl('data:image/png;base64,AAAA" onerror="window.__x=1')).toBe('');
+    expect(safeDataUrl('javascript:alert(1)')).toBe('');
+    expect(safeDataUrl('<img src=x onerror=alert(1)>')).toBe('');
+  });
+
+  it('rechaza SVG (navegable desde un enlace) y valores que no son string', () => {
+    expect(safeDataUrl('data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=')).toBe('');
+    expect(safeDataUrl(undefined)).toBe('');
+    expect(safeDataUrl(42)).toBe('');
+    expect(safeDataUrl({ toString: () => 'data:image/png;base64,AAAA' })).toBe('');
   });
 });

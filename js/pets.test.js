@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js'; // deja esc/icon/fmtCLP/formatDate reales en window
 import '../js/app.js'; // deja canEditPet/blockIfReadOnly reales en window
-import { savePet, deletePet, openInviteTutor2Modal, exportPetRecord } from './pets.js';
+import { savePet, deletePet, openInviteTutor2Modal, exportPetRecord, printPetRecord } from './pets.js';
 
 // savePet() lee/escribe sobre `state`, `sb`, etc. como globales (ver
 // js/utils.js para el porqué de esa convención) — acá se los proveemos a
@@ -177,5 +177,45 @@ describe('gating Premium: segundo tutor y exportar expediente', () => {
     window.todayStr = vi.fn(() => '2026-06-15');
     exportPetRecord('pet-1');
     expect(window.openModal).toHaveBeenCalled();
+  });
+});
+
+// Regresión de la auditoría de seguridad: el nombre de la mascota (que puede
+// editar otro tutor) iba dentro de un literal de JS en el onclick de "Imprimir".
+// esc() no protege ahí porque el navegador decodifica las entidades antes de
+// compilar el handler; ahora el onclick lleva solo el id.
+describe('exportPetRecord/printPetRecord — nombre de mascota hostil', () => {
+  const hostile = "');window.__x=1;//";
+  let pet;
+  beforeEach(() => {
+    window.openModal = vi.fn();
+    window.blockIfNotPremium = vi.fn(() => false);
+    window.todayStr = vi.fn(() => '2026-06-15');
+    pet = { id: 'pet-1', name: hostile, myRole: 'owner', vaccines: [], medications: [], clinicalHistory: [], vet: {} };
+    window.state = { pets: [pet] };
+  });
+
+  it('el onclick de imprimir lleva solo el id de la mascota, nunca su nombre', () => {
+    exportPetRecord('pet-1');
+    const html = window.openModal.mock.calls[0][0];
+    const onclick = html.match(/onclick="printPetRecord\(([^"]*)\)"/);
+    expect(onclick[1]).toBe("'pet-1'");
+  });
+
+  it('un id con caracteres de JS queda reducido a un id inofensivo', () => {
+    pet.id = "p');alert(1);//";
+    exportPetRecord(pet.id);
+    const html = window.openModal.mock.calls[0][0];
+    expect(html.match(/onclick="printPetRecord\(([^"]*)\)"/)[1]).toBe("'palert1'");
+  });
+
+  it('printPetRecord busca el nombre en el estado y lo usa como título del documento', () => {
+    let titleWhilePrinting;
+    window.print = () => { titleWhilePrinting = document.title; };
+    window.track = vi.fn();
+    const before = document.title;
+    printPetRecord('pet-1');
+    expect(titleWhilePrinting).toBe(`Expediente médico - ${hostile}`);
+    expect(document.title).toBe(before);
   });
 });

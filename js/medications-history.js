@@ -116,14 +116,17 @@ export function tabHistory(pet) {
                        ${h.cost ? `<div class="text-xs text-gray-400 mt-1">Costo: ${fmtCLP(h.cost)}</div>` : ''}
                        ${(h.files||[]).length > 0 ? `
                          <div class="flex flex-wrap gap-2 mt-2">
-                           ${h.files.map((f,fi) => f.data.startsWith('data:image') ? `
-                             <a href="${f.data}" target="_blank" title="${esc(f.name)}">
-                               <img src="${f.data}" class="h-16 w-16 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition-opacity" />
+                           ${h.files.map((f,fi) => {
+                             const url = safeDataUrl(f.data);
+                             if (!url) return `<span class="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400">${esc(f.name)} (archivo no válido)</span>`;
+                             return url.startsWith('data:image') ? `
+                             <a href="${url}" target="_blank" rel="noopener" title="${esc(f.name)}">
+                               <img src="${url}" class="h-16 w-16 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition-opacity" />
                              </a>` : `
-                             <a href="${f.data}" download="${esc(f.name)}"
+                             <a href="${url}" download="${esc(f.name)}"
                                class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-xs text-gray-700 transition-colors">
                                ${icon('paperclip','w-3 h-3 inline align-text-bottom')} ${esc(f.name)}
-                             </a>`).join('')}
+                             </a>`; }).join('')}
                          </div>` : ''}
                      </div>
                      <div class="flex items-center gap-1 flex-shrink-0">
@@ -587,7 +590,7 @@ export function openEditMedModal(petId, medId) {
       <form onsubmit="saveEditMedication(event,'${petId}','${medId}')" class="space-y-3">
         <div><label class="form-label">Medicamento *</label><input id="em-name" required value="${esc(m.name||'')}" class="input-field" /></div>
         <div class="grid grid-cols-2 gap-3">
-          <div><label class="form-label">Dosis</label><input id="em-dose-val" type="number" step="0.1" value="${m.doseVal||''}" class="input-field" /></div>
+          <div><label class="form-label">Dosis</label><input id="em-dose-val" type="number" step="0.1" value="${esc(m.doseVal||'')}" class="input-field" /></div>
           <div><label class="form-label">Unidad</label>
             <select id="em-unit" class="input-field">
               ${['mg','ml','Comprimido(s)','Gotas','UI'].map(u => `<option ${u===m.doseUnit?'selected':''}>${u}</option>`).join('')}
@@ -598,7 +601,7 @@ export function openEditMedModal(petId, medId) {
           <label class="form-label">Frecuencia</label>
           <div class="flex items-center gap-2">
             <span class="text-sm text-gray-400 font-medium whitespace-nowrap flex-shrink-0">Cada</span>
-            <input id="em-freq-n" type="number" min="1" max="72" value="${m.freqN||''}" class="input-field !w-16 text-center flex-shrink-0" />
+            <input id="em-freq-n" type="number" min="1" max="72" value="${esc(m.freqN||'')}" class="input-field !w-16 text-center flex-shrink-0" />
             <select id="em-freq-unit" class="input-field flex-1">
               <option value="horas" ${m.freqUnit==='horas'?'selected':''}>Horas</option>
               <option value="dias" ${m.freqUnit==='dias'?'selected':''}>Días</option>
@@ -606,15 +609,15 @@ export function openEditMedModal(petId, medId) {
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
-          <div><label class="form-label">Fecha inicio</label><input id="em-start" type="date" value="${m.startDate||''}" class="input-field" /></div>
+          <div><label class="form-label">Fecha inicio</label><input id="em-start" type="date" value="${esc(m.startDate||'')}" class="input-field" /></div>
           <div><label class="form-label">Hora inicio</label>
             <select id="em-start-time" class="input-field text-center">
               ${Array.from({length:24},(_,i)=>{const h=String(i).padStart(2,'0');return`<option value="${h}:00" ${m.startTime===`${h}:00`?'selected':''}>${h}:00</option>`;}).join('')}
             </select>
           </div>
-          <div><label class="form-label">Días tratamiento</label><input id="em-days" type="number" min="1" value="${m.treatmentDays||''}" class="input-field" /></div>
-          <div><label class="form-label">Fecha caducidad</label><input id="em-expiry" type="date" value="${m.expiry||''}" class="input-field" /></div>
-          <div><label class="form-label">Costo (CLP)</label><input id="em-cost" type="text" inputmode="numeric" value="${m.cost||''}" class="input-field" /></div>
+          <div><label class="form-label">Días tratamiento</label><input id="em-days" type="number" min="1" value="${esc(m.treatmentDays||'')}" class="input-field" /></div>
+          <div><label class="form-label">Fecha caducidad</label><input id="em-expiry" type="date" value="${esc(m.expiry||'')}" class="input-field" /></div>
+          <div><label class="form-label">Costo (CLP)</label><input id="em-cost" type="text" inputmode="numeric" value="${esc(m.cost||'')}" class="input-field" /></div>
         </div>
         <div>
           <label class="form-label flex items-center gap-1">${icon('bell','w-3.5 h-3.5')} Recordatorio por dosis</label>
@@ -626,7 +629,7 @@ export function openEditMedModal(petId, medId) {
                 ${o.l}
               </button>`).join('')}
           </div>
-          <input type="hidden" id="em-reminder" value="${m.reminder||'exact'}" />
+          <input type="hidden" id="em-reminder" value="${esc(m.reminder||'exact')}" />
         </div>
         <div class="flex items-center gap-2">
           <input type="checkbox" id="em-active" ${m.active?'checked':''} class="rounded text-brand-500" />
@@ -636,7 +639,7 @@ export function openEditMedModal(petId, medId) {
         <div>
           <label class="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-2">${icon('box','w-4 h-4')} Stock del medicamento <span class="text-gray-400 font-normal">(opcional)</span></label>
           <div class="grid grid-cols-2 gap-3">
-            <div><label class="form-label">Cantidad total</label><input id="em-stock-total" type="number" min="0" value="${m.stockTotal||''}" class="input-field" /></div>
+            <div><label class="form-label">Cantidad total</label><input id="em-stock-total" type="number" min="0" value="${esc(m.stockTotal||'')}" class="input-field" /></div>
             <div><label class="form-label">Unidad</label>
               <select id="em-stock-unit" class="input-field">
                 ${['Comprimidos','ml','mg','Ampollas','Frascos'].map(u => `<option ${u===m.stockUnit?'selected':''}>${u}</option>`).join('')}
@@ -714,10 +717,10 @@ export function openEditHistoryModal(petId, histId) {
               ${['Cirugía','Esterilización','Procedimiento','Diagnóstico','Otro'].map(t => `<option ${t===h.type?'selected':''}>${t}</option>`).join('')}
             </select>
           </div>
-          <div><label class="form-label">Fecha *</label><input id="eh-date" type="date" required value="${h.date||''}" class="input-field" /></div>
+          <div><label class="form-label">Fecha *</label><input id="eh-date" type="date" required value="${esc(h.date||'')}" class="input-field" /></div>
           <div><label class="form-label">Médico</label><input id="eh-doctor" value="${esc(h.doctor||'')}" placeholder="Dr. García" class="input-field" /></div>
           <div><label class="form-label">Clínica</label><input id="eh-clinic" value="${esc(h.clinic||'')}" placeholder="Clínica Vet." class="input-field" /></div>
-          <div class="col-span-2"><label class="form-label">Costo (CLP)</label><input id="eh-cost" type="text" inputmode="numeric" value="${h.cost||''}" class="input-field" /></div>
+          <div class="col-span-2"><label class="form-label">Costo (CLP)</label><input id="eh-cost" type="text" inputmode="numeric" value="${esc(h.cost||'')}" class="input-field" /></div>
           <div class="col-span-2"><label class="form-label">Notas</label><textarea id="eh-notes" rows="3" class="input-field resize-none">${esc(h.notes||'')}</textarea></div>
         </div>
         ${(h.files||[]).length > 0 ? `

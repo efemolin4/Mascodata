@@ -48,7 +48,7 @@ export function tabSeguimiento(pet) {
         <div class="mt-2 text-xs text-gray-400 text-center">Últimas ${Math.min(history.length, 12)} mediciones</div>
       ` : pet.weightKg ? `
         <div class="text-center py-6">
-          <div class="text-2xl font-bold text-gray-800">${pet.weightKg} kg${pet.weightGr ? ` ${pet.weightGr} gr` : ''}</div>
+          <div class="text-2xl font-bold text-gray-800">${esc(pet.weightKg)} kg${pet.weightGr ? ` ${esc(pet.weightGr)} gr` : ''}</div>
           <p class="text-sm text-gray-400 mt-1">Peso registrado en la ficha de ${esc(pet.name)} — aún no tiene historial de mediciones</p>
         </div>
       ` : `
@@ -123,7 +123,7 @@ export function tabSeguimiento(pet) {
                <div class="p-3 bg-gray-50 rounded-xl">
                  <div class="flex items-center gap-2 flex-wrap mb-1">
                    <span class="text-xs text-gray-400">${formatDate(s.date)}</span>
-                   ${(s.symptoms||[]).map(sym => `<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded-lg text-xs font-medium">${sym}</span>`).join('')}
+                   ${(s.symptoms||[]).map(sym => `<span class="px-2 py-0.5 bg-red-100 text-red-700 rounded-lg text-xs font-medium">${esc(sym)}</span>`).join('')}
                  </div>
                  ${s.notes ? `<p class="text-xs text-gray-600">${esc(s.notes)}</p>` : ''}
                </div>`).join('')}
@@ -206,7 +206,7 @@ export function tabNutricion(pet) {
           const isToday = d === today;
           return `
           <div class="flex flex-col items-center gap-1 flex-1">
-            <div title="${entry ? entry.type : 'Sin dato'}"
+            <div title="${entry ? esc(entry.type) : 'Sin dato'}"
               class="w-full rounded-xl ${entry ? activityColors[entry.type] : 'bg-gray-100'} transition-all"
               style="height:${entry ? activityHeights[entry.type] : 10}px"></div>
             <div class="text-[9px] text-gray-400">${isToday ? 'Hoy' : new Date(d+'T12:00:00').toLocaleDateString('es-CL',{weekday:'short'}).slice(0,3)}</div>
@@ -288,11 +288,11 @@ export function openWeightModal(petId) {
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="form-label">Kg *</label>
-            <input id="wt-kg" type="number" required min="0" step="0.1" value="${prevKg}" placeholder="Ej: 12" class="input-field" />
+            <input id="wt-kg" type="number" required min="0" step="0.1" value="${esc(prevKg)}" placeholder="Ej: 12" class="input-field" />
           </div>
           <div>
             <label class="form-label">Gramos (0-999)</label>
-            <input id="wt-gr" type="number" min="0" max="999" step="1" value="${prevGr}" placeholder="Ej: 500" class="input-field" />
+            <input id="wt-gr" type="number" min="0" max="999" step="1" value="${esc(prevGr)}" placeholder="Ej: 500" class="input-field" />
           </div>
         </div>
         ${!pet?.weightHistory?.length && pet?.weightKg ? `<p class="text-xs text-gray-400 -mt-1">Precargado con el peso de la ficha general — ajústalo si cambió</p>` : ''}
@@ -348,7 +348,7 @@ export function openMoodModal(petId) {
               <div class="text-xs font-semibold text-gray-700">${o.l}</div>
             </button>`).join('')}
         </div>
-        <input type="hidden" id="mood-val" value="${existing?.mood||''}" />
+        <input type="hidden" id="mood-val" value="${esc(existing?.mood||'')}" />
         <div>
           <label class="form-label">Notas (opcional)</label>
           <textarea id="mood-notes" rows="2" class="input-field resize-none" placeholder="¿Cómo se comportó hoy?">${esc(existing?.notes||'')}</textarea>
@@ -476,7 +476,7 @@ export function openFoodItemModal(petId, itemId) {
           </select>
         </div>
         <div class="grid grid-cols-2 gap-3">
-          <div><label class="form-label">Tamaño del paquete *</label><input id="fi-size" type="number" required min="0" step="0.1" value="${item?.packageSize||''}" placeholder="Ej: 15" class="input-field" /></div>
+          <div><label class="form-label">Tamaño del paquete *</label><input id="fi-size" type="number" required min="0" step="0.1" value="${esc(item?.packageSize||'')}" placeholder="Ej: 15" class="input-field" /></div>
           <div><label class="form-label">Unidad</label>
             <select id="fi-unit" class="input-field">
               <option value="kg" ${item?.packageUnit==='kg'?'selected':''}>kg</option>
@@ -486,11 +486,11 @@ export function openFoodItemModal(petId, itemId) {
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
-          <div><label class="form-label">Consumo diario *</label><input id="fi-daily" type="number" required min="0" step="0.01" value="${item?.dailyAmount||''}" placeholder="Ej: 0.3" class="input-field" /></div>
-          <div><label class="form-label">Precio (CLP)</label><input id="fi-price" type="text" inputmode="numeric" value="${item?.price||''}" placeholder="0" class="input-field" /></div>
+          <div><label class="form-label">Consumo diario *</label><input id="fi-daily" type="number" required min="0" step="0.01" value="${esc(item?.dailyAmount||'')}" placeholder="Ej: 0.3" class="input-field" /></div>
+          <div><label class="form-label">Precio (CLP)</label><input id="fi-price" type="text" inputmode="numeric" value="${esc(item?.price||'')}" placeholder="0" class="input-field" /></div>
         </div>
         <p class="text-xs text-gray-400 -mt-1">Usa la misma unidad en tamaño y consumo diario (ej: paquete de 15 kg, 0.3 kg diarios).</p>
-        <div><label class="form-label">Fecha de compra</label><input id="fi-purchase" type="date" value="${item?.purchaseDate||todayStr()}" class="input-field" /></div>
+        <div><label class="form-label">Fecha de compra</label><input id="fi-purchase" type="date" value="${esc(item?.purchaseDate||todayStr())}" class="input-field" /></div>
         <div><label class="form-label">Notas (opcional)</label><input id="fi-notes" value="${esc(item?.notes||'')}" class="input-field" /></div>
         <div class="flex gap-3 pt-2">
           <button type="button" onclick="closeModal()" class="btn-secondary flex-1">Cancelar</button>

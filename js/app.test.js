@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '../js/utils.js';
-import { isPremium, blockIfNotPremium, viewToPath, pathToView, viewPlans, PLANS, YEARLY_SAVINGS_CLP, state } from './app.js';
+import { isPremium, blockIfNotPremium, viewToPath, pathToView, viewPlans, petAvatar, PLANS, YEARLY_SAVINGS_CLP, state } from './app.js';
 
 // isPremium()/blockIfNotPremium() llaman a isDemoUser() y leen `state`
 // DENTRO del mismo archivo (js/app.js) — esas referencias resuelven por el
@@ -124,5 +124,18 @@ describe('viewPlans — 2 planes con precio mensual y anual', () => {
     state.user = { id: 'user-1', plan: 'premium', name: 'Ana' };
     const html = viewPlans();
     expect(html).toContain('Tu plan actual');
+  });
+});
+
+describe('petAvatar — foto que escribió otro tutor', () => {
+  it('una foto con comilla no rompe el atributo src', () => {
+    const html = petAvatar({ name: 'Greta', photo: 'x" onerror="window.__x=1' });
+    expect(html).not.toContain('onerror');
+    expect(html).not.toContain('<img');
+  });
+
+  it('una foto válida (data URL de imagen) se muestra', () => {
+    const html = petAvatar({ name: 'Greta', photo: 'data:image/jpeg;base64,/9j/4AAQ' });
+    expect(html).toContain('<img src="data:image/jpeg;base64,/9j/4AAQ"');
   });
 });

@@ -59,7 +59,7 @@ export function viewBotiquin() {
                      <span class="badge text-xs ${statusColor[st]}">${statusLabel[st]}</span>
                    </div>
                    <div class="text-xs mt-0.5 text-gray-400">
-                     ${item.quantity ?? 0} ${item.unit||''}
+                     ${esc(item.quantity ?? 0)} ${esc(item.unit||'')}
                      ${Number(item.cost) > 0 ? ` · ${fmtCLP(item.cost)}` : ''}
                      ${item.expiryDate ? ` · <span class="${isExpired?'text-red-500':'text-gray-400'}">${isExpired?'Venció':'Vence'} ${formatDate(item.expiryDate)}</span>` : ''}
                    </div>
@@ -186,24 +186,24 @@ export function openBotiquinItemModal(itemId) {
           <div><label class="form-label">Mascota (opcional)</label>
             <select id="bq-pet" class="input-field">
               <option value="">General</option>
-              ${state.pets.map(p=>`<option value="${p.id}" ${p.id===item?.petId?'selected':''}>${esc(p.name)}</option>`).join('')}
+              ${state.pets.map(p=>`<option value="${esc(p.id)}" ${p.id===item?.petId?'selected':''}>${esc(p.name)}</option>`).join('')}
             </select>
           </div>
-          <div><label class="form-label">Cantidad *</label><input id="bq-qty" type="number" min="0" step="0.1" required value="${item?.quantity??''}" class="input-field" /></div>
+          <div><label class="form-label">Cantidad *</label><input id="bq-qty" type="number" min="0" step="0.1" required value="${esc(item?.quantity??'')}" class="input-field" /></div>
           <div><label class="form-label">Unidad</label>
             <select id="bq-unit" class="input-field">${units.map(u=>`<option ${u===item?.unit?'selected':''}>${u}</option>`).join('')}</select>
           </div>
-          <div><label class="form-label">Dosis / concentración (opcional)</label><input id="bq-dose-val" type="number" min="0" step="0.1" placeholder="Ej: 75" value="${item?.doseVal??''}" class="input-field" /></div>
+          <div><label class="form-label">Dosis / concentración (opcional)</label><input id="bq-dose-val" type="number" min="0" step="0.1" placeholder="Ej: 75" value="${esc(item?.doseVal??'')}" class="input-field" /></div>
           <div><label class="form-label">&nbsp;</label>
             <select id="bq-dose-unit" class="input-field">${doseUnits.map(u=>`<option ${u===item?.doseUnit?'selected':''}>${u}</option>`).join('')}</select>
           </div>
         </div>
         <p class="text-xs text-gray-400 -mt-1">La dosis es por unidad (ej: cada comprimido de Pregalex es de 75 mg) — distinto de la cantidad en stock de arriba.</p>
         <div class="grid grid-cols-2 gap-3">
-          <div><label class="form-label">Costo (CLP, opcional)</label><input id="bq-cost" type="text" inputmode="numeric" placeholder="0" value="${item?.cost??''}" class="input-field" /></div>
-          <div><label class="form-label">Fecha de compra</label><input id="bq-purchase" type="date" value="${item?.purchaseDate||todayStr()}" class="input-field" /></div>
+          <div><label class="form-label">Costo (CLP, opcional)</label><input id="bq-cost" type="text" inputmode="numeric" placeholder="0" value="${esc(item?.cost??'')}" class="input-field" /></div>
+          <div><label class="form-label">Fecha de compra</label><input id="bq-purchase" type="date" value="${esc(item?.purchaseDate||todayStr())}" class="input-field" /></div>
         </div>
-        <div><label class="form-label">Fecha de caducidad (opcional)</label><input id="bq-expiry" type="date" value="${item?.expiryDate||''}" class="input-field" /></div>
+        <div><label class="form-label">Fecha de caducidad (opcional)</label><input id="bq-expiry" type="date" value="${esc(item?.expiryDate||'')}" class="input-field" /></div>
         <div><label class="form-label">Notas</label><textarea id="bq-notes" rows="2" class="input-field resize-none">${esc(item?.notes||'')}</textarea></div>
         <div class="flex gap-3 pt-2">
           <button type="button" onclick="closeModal()" class="btn-secondary flex-1">Cancelar</button>

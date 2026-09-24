@@ -129,7 +129,7 @@ export function openEventModal(dateStr = '') {
           <div><label class="form-label">Mascota</label>
             <select id="ev-pet" class="input-field">
               <option value="">Sin mascota</option>
-              ${pets.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}
+              ${pets.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}
             </select>
           </div>
         </div>

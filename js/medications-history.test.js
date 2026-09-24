@@ -230,3 +230,34 @@ describe('límite de adjuntos por plan (Free: 1, Premium: ilimitado)', () => {
     expect(h.files[0].name).toBe('viejo.pdf'); // se prioriza lo ya existente sobre lo nuevo
   });
 });
+
+// Regresión de la auditoría de seguridad: los adjuntos del historial llegan de
+// la base de datos (los puede escribir otro tutor) y se interpolaban crudos en
+// href/src, así que una comilla en f.data rompía el atributo.
+describe('tabHistory — adjuntos', () => {
+  beforeEach(() => {
+    window.state = { currentView: 'petProfile', pages: {}, user: null };
+  });
+  const pet = (files) => ({ id: 'pet-1', clinicalHistory: [{ id: 'h1', title: 'Control', type: 'Otro', date: '2026-06-10', files }] });
+
+  it('un adjunto con comilla en f.data no rompe el atributo ni queda como HTML', () => {
+    const html = tabHistory(pet([{ name: 'foto', type: 'image/png', data: 'data:image/x" onerror="window.__x=1' }]));
+    expect(html).not.toContain('onerror');
+    expect(html).toContain('archivo no válido');
+  });
+
+  it('un adjunto javascript: no llega al href', () => {
+    const html = tabHistory(pet([{ name: 'doc', type: 'text/html', data: 'javascript:alert(1)' }]));
+    expect(html).not.toContain('javascript:');
+  });
+
+  it('un adjunto válido sigue mostrándose como imagen con enlace', () => {
+    const html = tabHistory(pet([{ name: 'foto', type: 'image/png', data: 'data:image/png;base64,iVBORw0KGgo=' }]));
+    expect(html).toContain('src="data:image/png;base64,iVBORw0KGgo="');
+    expect(html).toContain('rel="noopener"');
+  });
+
+  it('un f.data que no es string no rompe todo el historial', () => {
+    expect(() => tabHistory(pet([{ name: 'x', data: null }]))).not.toThrow();
+  });
+});

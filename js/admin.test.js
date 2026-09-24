@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js';
 import '../js/app.js'; // deja PLANS/fmtCLP/statCard/appShell/icon reales en window
+import { esc } from './utils.js';
 import { applyPlanChange, viewAdmin } from './admin.js';
 
 describe('applyPlanChange', () => {
@@ -185,5 +186,42 @@ describe('viewAdmin — churn e historial de cambios de plan', () => {
     window.state = { user: { isAdmin: true }, adminTab: 'dashboard', adminData: { profiles: [], pets: [], planChanges: [] } };
     const html = viewAdmin();
     expect(html).toContain('Todavía no se registró ningún cambio de plan');
+  });
+});
+
+// Regresión de la auditoría de seguridad: profiles.name lo escribe cada usuario
+// y se metía en un literal de JS del onclick de "Cambiar plan" (donde esc() no
+// protege). Ahora el onclick lleva solo el id y el nombre se busca en el estado.
+describe('viewAdmin — tabla de usuarios con nombre hostil', () => {
+  const hostile = "');window.__x=1;//";
+  beforeEach(() => {
+    window.state = {
+      user: { isAdmin: true },
+      adminTab: 'usuarios',
+      adminData: { profiles: [{ id: 'u1', name: hostile, plan: "free');alert(1);//", email: 'a@t.cl' }], pets: [] },
+    };
+    window.openModal = (html) => { document.body.innerHTML = html; };
+    window.closeModal = () => {};
+    window.esc = esc; // otro test de este archivo lo reemplaza por un mock
+  });
+
+  it('el onclick de "Cambiar plan" lleva solo el id, sin nombre ni plan', () => {
+    const html = viewAdmin();
+    const onclick = html.match(/onclick="openChangePlanModal\(([^"]*)\)"/);
+    expect(onclick[1]).toBe("'u1'");
+  });
+
+  it('un id de perfil con caracteres de JS queda reducido', () => {
+    window.state.adminData.profiles[0].id = "u1');alert(1);//";
+    const html = viewAdmin();
+    expect(html.match(/onclick="openChangePlanModal\(([^"]*)\)"/)[1]).toBe("'u1alert1'");
+  });
+
+  it('openChangePlanModal toma el nombre y el plan actual del estado, escapando el nombre', () => {
+    window.openModal = vi.fn();
+    window.openChangePlanModal('u1');
+    const html = window.openModal.mock.calls[0][0];
+    expect(html).toContain('Usuario: <strong>&#39;);window.__x=1;//</strong>');
+    expect(html).not.toContain("<strong>');window");
   });
 });
