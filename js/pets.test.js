@@ -20,7 +20,7 @@ describe('savePet', () => {
     // mano-copia acá para no desincronizarse de nuevo si el modelo de planes
     // vuelve a cambiar.
     window.state = {
-      user: { id: 'user-1', plan: 'plus' },
+      user: { id: 'user-1', plan: 'premium' },
       pets: [],
       newPetData: { name: 'Rex', species: 'Perro' },
       addPetStep: 4,
@@ -46,24 +46,16 @@ describe('savePet', () => {
     expect(window.state.pets).toHaveLength(1);
   });
 
-  it('respeta el límite de mascotas del plan Plus (4) y no llama a Supabase', async () => {
-    window.state.user.plan = 'plus';
-    window.state.pets = Array.from({ length: 4 }, (_, i) => ({ id: `pet-${i}` }));
-    window.sb = makeMockSb();
+  it('el plan Premium no tiene tope de mascotas: guarda aunque ya tenga muchas', async () => {
+    window.state.user.plan = 'premium';
+    window.state.pets = Array.from({ length: 25 }, (_, i) => ({ id: `pet-${i}` }));
+    window.sb = makeMockSb({
+      pets: { data: { id: 'new-pet' }, error: null },
+      pet_access: { data: null, error: null },
+    });
     await savePet();
-    expect(window.showToast).toHaveBeenCalledWith(expect.stringContaining('Plus'), 'error');
-    expect(window.sb.from).not.toHaveBeenCalled();
-    expect(window.state.pets).toHaveLength(4);
-  });
-
-  it('respeta el límite de mascotas del plan Pro (10) y no llama a Supabase', async () => {
-    window.state.user.plan = 'pro';
-    window.state.pets = Array.from({ length: 10 }, (_, i) => ({ id: `pet-${i}` }));
-    window.sb = makeMockSb();
-    await savePet();
-    expect(window.showToast).toHaveBeenCalledWith(expect.stringContaining('Pro'), 'error');
-    expect(window.sb.from).not.toHaveBeenCalled();
-    expect(window.state.pets).toHaveLength(10);
+    expect(window.showToast).not.toHaveBeenCalledWith(expect.stringContaining('permite'), 'error');
+    expect(window.sb.from).toHaveBeenCalled();
   });
 
   it('inserta la mascota y su fila de pet_access, y navega a la ficha', async () => {

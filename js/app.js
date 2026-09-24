@@ -20,21 +20,18 @@ export const VACCINES_BY_SPECIES = {
 };
 
 // ---- PLANES ----
-// Modelo de 3 niveles según cuántas mascotas necesites. Los dos planes
-// pagos (plus/pro) desbloquean exactamente las mismas funciones —
-// segundo tutor, Finanzas avanzada, exportar expediente, Botiquín y
-// adjuntos ilimitados en el historial (ver isPremium()/
-// blockIfNotPremium() más abajo) — y solo se diferencian por el tope de
-// mascotas y el precio. Única fuente de verdad de ambos: antes
-// "$2.000/mes" estaba tipeado a mano en 2 lugares de js/admin.js, la
-// misma clase de duplicación que ya causó bugs de desincronización en
-// otras partes de la app. También se usa para calcular el MRR.
+// Modelo de 2 planes: Free (1 mascota) y Premium (mascotas ilimitadas y todas
+// las funciones: segundo tutor, Finanzas avanzada, exportar expediente,
+// Botiquín y adjuntos ilimitados — ver isPremium()/blockIfNotPremium() más
+// abajo). Premium se puede pagar mes a mes o por año completo. Única fuente
+// de verdad de límites y precios; también se usa para estimar el MRR.
 export const PLANS = {
-  free: { id: 'free', label: 'Free', petLimit: 1,  priceCLP: 0 },
-  plus: { id: 'plus', label: 'Plus', petLimit: 4,  priceCLP: 2200 },
-  pro:  { id: 'pro',  label: 'Pro',  petLimit: 10, priceCLP: 4200 },
+  free:    { id: 'free',    label: 'Free',    petLimit: 1,        priceMonthlyCLP: 0,    priceYearlyCLP: 0 },
+  premium: { id: 'premium', label: 'Premium', petLimit: Infinity, priceMonthlyCLP: 2500, priceYearlyCLP: 19990 },
 };
-export const PAID_PLAN_IDS = ['plus', 'pro'];
+export const PAID_PLAN_IDS = ['premium'];
+// Lo que se ahorra pagando el año completo vs. 12 meses sueltos.
+export const YEARLY_SAVINGS_CLP = PLANS.premium.priceMonthlyCLP * 12 - PLANS.premium.priceYearlyCLP;
 
 // ---- PERIODICIDADES ----
 export const PERIODICITY_OPTIONS = [
@@ -251,54 +248,56 @@ export function premiumUpsell(iconName, title, desc) {
 // aviso genérico sin poder comparar los planes entre sí.
 export function viewPlans() {
   const currentPlan = state.user?.plan || 'free';
+  const P = PLANS.premium;
   const cards = [
-    { id: 'free', tagline: 'Para empezar', features: [
-      '1 mascota',
+    { id: 'free', tagline: 'Para empezar', sub: 'Para siempre · 1 mascota', features: [
       'Ficha médica completa (vacunas, desparasitaciones, tratamientos, historial)',
       'Agenda y alertas',
       'Finanzas básicas (lista, total y desglose por categoría)',
       'Seguimiento y nutrición',
       '1 archivo adjunto por evento del historial',
     ] },
-    { id: 'plus', tagline: 'El más elegido', recommended: true, features: [
-      'Hasta 4 mascotas',
-      'Todo lo de Free',
+    { id: 'premium', tagline: 'Todo incluido', recommended: true, sub: 'Mascotas ilimitadas', features: [
+      'Todo lo de Free, sin límite de mascotas',
       'Compartir con un segundo tutor',
       'Gráficos y predicción de gastos',
       'Exportar expediente en PDF',
       'Botiquín del hogar',
       'Adjuntos ilimitados en el historial',
     ] },
-    { id: 'pro', tagline: 'Para hogares con más mascotas', features: [
-      'Hasta 10 mascotas',
-      'Todo lo de Plus',
-    ] },
   ];
 
   return appShell(`
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-3xl mx-auto">
       <button onclick="navigate('dashboard')" class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4">← Volver</button>
       <div class="text-center mb-8">
-        <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Elige el plan de tu hogar</h1>
-        <p class="text-sm md:text-base text-gray-500 mt-2 max-w-lg mx-auto">El plan se ajusta a cuántas mascotas tengas. Cambia cuando quieras.</p>
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Un solo plan, todo incluido</h1>
+        <p class="text-sm md:text-base text-gray-500 mt-2 max-w-lg mx-auto">Sin escalones ni sorpresas. Paga al mes o ahorra pagando el año completo.</p>
+        <span class="badge bg-teal-100 text-teal-700 text-xs font-bold mt-4">Paga al año y ahorra ${fmtCLP(YEARLY_SAVINGS_CLP)}</span>
       </div>
-      <div class="grid md:grid-cols-3 gap-5 items-start">
+      <div class="grid md:grid-cols-2 gap-5 items-start">
         ${cards.map(c => {
           const plan = PLANS[c.id];
           const isCurrent = currentPlan === c.id;
-          const btnLabel = isCurrent ? 'Tu plan actual' : (plan.priceCLP === 0 ? 'Empezar gratis' : 'Elegir plan');
-          const btnOnclick = isCurrent ? '' : `onclick="requestPlanUpgrade('${c.id}')"`;
+          const paid = plan.priceYearlyCLP > 0;
+          const btnLabel = isCurrent ? 'Tu plan actual' : (paid ? 'Empezar' : 'Plan gratuito');
+          const btnOnclick = isCurrent || !paid ? '' : `onclick="requestPlanUpgrade('${c.id}')"`;
           return `
-          <div class="relative bg-white rounded-2xl p-6 ${c.recommended ? 'border-2 border-brand-400 shadow-md md:scale-105' : 'border border-gray-100 shadow-sm'}">
-            ${c.recommended ? `<span class="absolute -top-3 left-1/2 -translate-x-1/2 badge bg-brand-500 text-white text-xs font-bold uppercase tracking-wide">Recomendado</span>` : ''}
+          <div class="relative bg-white rounded-2xl p-6 ${c.recommended ? 'border-2 border-brand-400 shadow-md' : 'border border-gray-100 shadow-sm'}">
+            ${c.recommended ? `<span class="absolute -top-3 left-6 badge bg-brand-500 text-white text-xs font-bold uppercase tracking-wide">Recomendado</span>` : ''}
             <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide">${c.tagline}</div>
             <h2 class="text-lg font-bold text-gray-900 mt-1">${plan.label}</h2>
-            <p class="mt-2"><span class="text-3xl font-black text-gray-900">${plan.priceCLP === 0 ? 'Gratis' : fmtCLP(plan.priceCLP)}</span>${plan.priceCLP > 0 ? '<span class="text-sm text-gray-400"> /mes</span>' : ''}</p>
-            <ul class="mt-5 space-y-2 text-sm text-gray-600">
+            ${paid ? `
+            <p class="mt-2"><span class="text-3xl font-black text-gray-900">${fmtCLP(plan.priceYearlyCLP)}</span><span class="text-sm text-gray-400"> /año</span></p>
+            <p class="text-sm text-gray-500 mt-1">o ${fmtCLP(plan.priceMonthlyCLP)} /mes pagando mes a mes</p>
+            <p class="text-sm font-semibold text-teal-700 mt-1">Ahorras ${fmtCLP(YEARLY_SAVINGS_CLP)} al año</p>` : `
+            <p class="mt-2"><span class="text-3xl font-black text-gray-900">$0</span></p>`}
+            <p class="text-sm font-semibold text-gray-700 mt-3">${c.sub}</p>
+            <ul class="mt-4 space-y-2 text-sm text-gray-600">
               ${c.features.map(f => `<li class="flex items-start gap-2">${icon('check', 'w-4 h-4 text-teal-500 flex-shrink-0 mt-0.5')}<span>${f}</span></li>`).join('')}
             </ul>
-            <button ${btnOnclick} ${isCurrent ? 'disabled' : ''}
-              class="w-full mt-6 !py-2.5 ${isCurrent ? 'btn-secondary opacity-60 cursor-default' : c.recommended ? 'btn-primary' : 'btn-secondary'}">
+            <button ${btnOnclick} ${isCurrent || !paid ? 'disabled' : ''}
+              class="w-full mt-6 !py-2.5 ${isCurrent || !paid ? 'btn-secondary opacity-60 cursor-default' : 'btn-primary'}">
               ${btnLabel}
             </button>
           </div>`;
@@ -942,7 +941,7 @@ if (typeof window !== 'undefined') {
     resolveInitialViewFromUrl, navigate, iconSVG, icon, sidebar, bottomNav, mobileTopBar,
     appShell, pageHeader, statCard, petAvatar, emptyState, noPetsOnboarding,
     openModal, closeModal, injectStyles, render, initApp,
-    sb, VACCINES_BY_SPECIES, PLANS, PAID_PLAN_IDS, PERIODICITY_OPTIONS,
+    sb, VACCINES_BY_SPECIES, PLANS, PAID_PLAN_IDS, YEARLY_SAVINGS_CLP, PERIODICITY_OPTIONS,
     BREEDS, CHILE_REGIONS, PAGE_SIZE, defaultState, ROUTE_PATHS, AUTH_VIEWS, SYMPTOM_TAGS,
     ACTIVITY_LEVELS, state,
   });

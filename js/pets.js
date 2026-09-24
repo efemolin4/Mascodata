@@ -674,7 +674,7 @@ export async function savePet() {
   if (!isDemoUser()) {
     const plan = PLANS[state.user.plan] || PLANS.free;
     if (state.pets.length >= plan.petLimit) {
-      showToast(`Tu plan ${plan.label} permite hasta ${plan.petLimit} mascota${plan.petLimit!==1?'s':''}. Mejora tu plan para agregar más.`, 'error');
+      showToast(`Tu plan ${plan.label} permite ${plan.petLimit} mascota${plan.petLimit!==1?'s':''}. Pásate a Premium para agregar más.`, 'error');
       return;
     }
   }

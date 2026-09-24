@@ -334,8 +334,8 @@ export function viewProfile() {
       <div class="bg-brand-gradient rounded-2xl p-5 md:p-6 mb-5 text-white flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between">
         <div class="min-w-0">
           <span class="badge bg-white/20 text-white text-xs font-bold uppercase tracking-wide">Plan Free</span>
-          <h2 class="font-bold text-base md:text-lg mt-2">Mejora tu plan</h2>
-          <p class="text-sm text-white/80 mt-1">Más mascotas, segundo tutor, gráficos de gastos, exportar expediente y adjuntos ilimitados — desde ${fmtCLP(PLANS.plus.priceCLP)}/mes.</p>
+          <h2 class="font-bold text-base md:text-lg mt-2">Pásate a Premium</h2>
+          <p class="text-sm text-white/80 mt-1">Mascotas ilimitadas, segundo tutor, gráficos de gastos, exportar expediente y adjuntos ilimitados — ${fmtCLP(PLANS.premium.priceMonthlyCLP)}/mes o ${fmtCLP(PLANS.premium.priceYearlyCLP)}/año.</p>
         </div>
         <button onclick="requestPremium('profile')"
           class="btn-secondary !bg-white !text-brand-700 hover:!bg-brand-50 !border-0 px-5 py-2.5 text-sm font-bold flex-shrink-0 w-full sm:w-auto">

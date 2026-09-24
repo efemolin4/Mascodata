@@ -16,7 +16,7 @@ describe('viewBotiquin — gating Premium', () => {
   });
 
   it('muestra el inventario real para un usuario premium', () => {
-    state.user = { id: 'user-1', plan: 'plus' };
+    state.user = { id: 'user-1', plan: 'premium' };
     state.pets = [];
     state.botiquin = [{ id: 'b1', name: 'Vendas elásticas', category: 'Vendaje', quantity: 3, unit: 'unidades' }];
     state.botiquinTab = 'inventario';

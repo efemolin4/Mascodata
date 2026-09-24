@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '../js/utils.js';
-import { isPremium, blockIfNotPremium, viewToPath, pathToView, state } from './app.js';
+import { isPremium, blockIfNotPremium, viewToPath, pathToView, viewPlans, PLANS, YEARLY_SAVINGS_CLP, state } from './app.js';
 
 // isPremium()/blockIfNotPremium() llaman a isDemoUser() y leen `state`
 // DENTRO del mismo archivo (js/app.js) — esas referencias resuelven por el
@@ -18,11 +18,14 @@ describe('isPremium', () => {
     expect(isPremium()).toBe(false);
   });
 
-  it('un usuario real con un plan pago (plus o pro) SÍ es premium', () => {
+  it('un usuario real con plan premium SÍ es premium', () => {
+    state.user = { id: 'user-1', plan: 'premium' };
+    expect(isPremium()).toBe(true);
+  });
+
+  it('un valor de plan que ya no existe (ej. "plus") no da acceso premium', () => {
     state.user = { id: 'user-1', plan: 'plus' };
-    expect(isPremium()).toBe(true);
-    state.user = { id: 'user-1', plan: 'pro' };
-    expect(isPremium()).toBe(true);
+    expect(isPremium()).toBe(false);
   });
 });
 
@@ -46,7 +49,7 @@ describe('blockIfNotPremium', () => {
   });
 
   it('no bloquea (ni muestra toast) cuando es premium', () => {
-    state.user = { id: 'user-1', plan: 'plus' };
+    state.user = { id: 'user-1', plan: 'premium' };
     const blocked = blockIfNotPremium('Exportar el expediente');
     expect(blocked).toBe(false);
     expect(document.querySelector('.toast')).toBeNull();
@@ -96,5 +99,30 @@ describe('viewToPath/pathToView — URL de la ficha de mascota', () => {
     state.pets = [];
     expect(viewToPath('petProfile', { currentPetId: '98b1cfe4-51e4-4150-9d80-3b6f70e57740' }))
       .toBe('/pets/98b1cfe4-51e4-4150-9d80-3b6f70e57740');
+  });
+});
+
+describe('viewPlans — 2 planes con precio mensual y anual', () => {
+  beforeEach(() => { state.pets = []; });
+
+  it('muestra Free y Premium, con el precio anual, el mensual y lo que se ahorra', () => {
+    state.user = { id: 'user-1', plan: 'free', name: 'Ana' };
+    const html = viewPlans();
+    expect(html).toContain('$19.990');
+    expect(html).toContain('$2.500');
+    expect(html).toContain(`Ahorras $${YEARLY_SAVINGS_CLP.toLocaleString('es-CL')}`);
+    expect(html).not.toContain('Plus');
+    expect(html).not.toContain('Pro</h2>');
+  });
+
+  it('el ahorro anual sale de los precios de PLANS (12 meses menos el año completo)', () => {
+    expect(YEARLY_SAVINGS_CLP).toBe(PLANS.premium.priceMonthlyCLP * 12 - PLANS.premium.priceYearlyCLP);
+    expect(YEARLY_SAVINGS_CLP).toBe(10010);
+  });
+
+  it('el usuario Premium ve "Tu plan actual" deshabilitado en Premium', () => {
+    state.user = { id: 'user-1', plan: 'premium', name: 'Ana' };
+    const html = viewPlans();
+    expect(html).toContain('Tu plan actual');
   });
 });

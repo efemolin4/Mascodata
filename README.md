@@ -278,62 +278,37 @@ Repartidas entre `js/*.js` según la tabla de la sección anterior (ej.
 
 ## Planes SaaS
 
-Modelo de 3 planes (reemplaza al anterior de 2 — ver "Migración a 3
-planes" más abajo). El límite de mascotas y el precio de cada plan viven
-en `PLANS` (`js/app.js`), única fuente de verdad; `PAID_PLAN_IDS` lista
-cuáles son de pago. El resto de las funciones Premium (segundo tutor,
-gráficos y predicción de gastos, exportar expediente, Botiquín, adjuntos
-ilimitados) se gatean con `isPremium()`/`blockIfNotPremium()`/
-`premiumUpsell()` (también en `js/app.js`) — mismo patrón que ya usa
-`canEditPet()`/`blockIfReadOnly()` para el rol de solo lectura de un
-tutor compartido. `viewPlans()` (ruta `/planes`) es la página de
-comparación a la que llevan todos los "Mejorar a Premium"/"Ver planes"
-de la app.
+Modelo de 2 planes (reemplaza al de 3 niveles Free/Plus/Pro — ver "Migración
+a 2 planes" más abajo). Los límites y precios viven en `PLANS`
+(`js/app.js`), única fuente de verdad; `PAID_PLAN_IDS` lista cuáles son de
+pago y `YEARLY_SAVINGS_CLP` es lo que se ahorra pagando el año. Las
+funciones Premium (segundo tutor, gráficos y predicción de gastos,
+exportar expediente, Botiquín, adjuntos ilimitados) se gatean con
+`isPremium()`/`blockIfNotPremium()`/`premiumUpsell()` (también en
+`js/app.js`). `viewPlans()` (ruta `/planes`) es la página de comparación a
+la que llevan todos los "Mejorar a Premium"/"Ver planes" de la app.
 
 | Plan | Precio | Incluye |
 |---|---|---|
-| **Free** | $0 | 1 mascota · fichas, vacunas, desparasitaciones, tratamientos e historial clínico completos · agenda y alertas · Finanzas básicas (lista, total y desglose por categoría) · Seguimiento y Nutrición · 1 archivo adjunto por evento del historial |
-| **Plus** | $2.200/mes | Hasta 4 mascotas · todo lo de Free · compartir con un segundo tutor · gráficos y predicción de gastos · exportar expediente en PDF · Botiquín del hogar · adjuntos ilimitados en el historial |
-| **Pro** | $4.200/mes | Hasta 10 mascotas · todo lo de Plus |
+| **Free** | $0 | 1 mascota · ficha médica completa · agenda y alertas · Finanzas básicas · Seguimiento y Nutrición · 1 archivo adjunto por evento del historial |
+| **Premium** | $2.500/mes o $19.990/año (ahorras $10.010) | Mascotas ilimitadas · todo lo de Free · segundo tutor · gráficos y predicción de gastos · exportar expediente en PDF · Botiquín · adjuntos ilimitados |
 
-El modo demo (`demo@mascodata.cl`) siempre se ve con todo desbloqueado —
-es una vitrina del producto completo, no debe sentirse limitado.
+El modo demo (`demo@mascodata.cl`) siempre se ve con todo desbloqueado.
+Todavía no hay cobro en línea: el admin activa Premium a mano desde el
+panel (Usuarios → Cambiar plan). Como no se guarda si la persona paga mensual
+o anual, el "MRR estimado" del panel usa el precio mensual y sobreestima a
+quienes pagan el año.
 
-### Migración a 3 planes (2026-09-22)
+### Migración a 2 planes (2026-09-23)
 
-Antes existían 2 planes (`free`/`premium`); se reemplazó `premium` por
-dos niveles (`plus`/`pro`) para separar por cantidad de mascotas. Corré
-esto una sola vez en el SQL Editor de Supabase para migrar las cuentas
-existentes (se eligió `pro` porque cubre sin pérdida de capacidad a
-cualquier cuenta que ya tuviera hasta 5 mascotas bajo el Premium
-anterior):
+Corré esto una vez en el SQL Editor de Supabase para pasar las cuentas que
+quedaron con los niveles intermedios al Premium único:
 
 ```sql
-UPDATE public.profiles SET plan = 'pro' WHERE plan = 'premium';
+UPDATE public.profiles SET plan = 'premium' WHERE plan IN ('plus', 'pro');
 ```
 
-Las filas históricas de `plan_changes` que ya decían `from_plan`/
-`to_plan = 'premium'` se dejan tal cual (son un registro de auditoría, no
-se reescribe el pasado) — el código que lee esa tabla (`js/admin.js`)
-sigue reconociendo `'premium'` como "un plan pago" para el cálculo de
-churn y el historial.
-
-### Migración a 2 planes (2026-09-08)
-
-Antes existían 4 planes (`free`/`basic`/`pro`/`clinic`), pero el único
-límite realmente aplicado en todo el código era el número de mascotas —
-ninguna otra función estaba restringida por plan. Al simplificar a 2
-planes, corré esto una sola vez en el SQL Editor de Supabase para migrar
-las cuentas existentes:
-
-```sql
-UPDATE public.profiles SET plan = 'premium' WHERE plan IN ('basic', 'pro', 'clinic');
-```
-
-Si Supabase rechaza el `UPDATE` porque `profiles.plan` tiene un CHECK
-constraint restringiendo los valores permitidos (no hay ninguno
-documentado en este repo — `profiles.plan` es `text` plano), hay que
-ajustar ese constraint ahí mismo antes de correr la migración.
+Las filas históricas de `plan_changes` no se reescriben (son auditoría).
 
 ### Auditoría de cambios de plan (2026-09-08)
 

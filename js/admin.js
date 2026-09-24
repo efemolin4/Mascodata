@@ -14,24 +14,20 @@ export function viewAdmin() {
   const planChanges = ad.planChanges || [];
 
   const planColors = {
-    free: 'bg-gray-100 text-gray-600',
-    plus: 'bg-teal-100 text-teal-700',
-    pro:  'bg-brand-100 text-brand-700',
+    free:    'bg-gray-100 text-gray-600',
+    premium: 'bg-brand-100 text-brand-700',
   };
-  const planLabel = { free: 'Free', plus: 'Plus', pro: 'Pro', premium: 'Premium' };
+  const planLabel = { free: 'Free', premium: 'Premium' };
 
   const totalUsers  = profiles.length;
   const totalPets   = allPets.length;
-  const plusUsers   = profiles.filter(p => p.plan === 'plus').length;
-  const proUsers    = profiles.filter(p => p.plan === 'pro').length;
-  const paidUsers   = plusUsers + proUsers;
-  // Métricas de negocio: MRR pondera cada plan pago por su propio precio (ver
-  // PLANS en js/app.js). La conversión sigue siendo una foto del estado
-  // ACTUAL (% de usuarios que hoy pagan), no un embudo por cohorte — para eso
-  // además de la fecha del cambio (que ya tenemos en plan_changes) haría
-  // falta la fecha de registro de cada usuario cruzada con cuándo convirtió,
-  // un cálculo más elaborado que se deja para más adelante si hace falta.
-  const mrr = (plusUsers * PLANS.plus.priceCLP) + (proUsers * PLANS.pro.priceCLP);
+  const paidUsers   = profiles.filter(p => p.plan === 'premium').length;
+  // Métricas de negocio: el MRR es una ESTIMACIÓN con el precio mensual de
+  // Premium — hoy no se guarda si cada usuario paga mes a mes o por año, así
+  // que quien paga el año completo aporta en realidad menos por mes
+  // (PLANS.premium.priceYearlyCLP / 12). La conversión sigue siendo una foto
+  // del estado ACTUAL (% de usuarios que hoy pagan), no un embudo por cohorte.
+  const mrr = paidUsers * PLANS.premium.priceMonthlyCLP;
   const conversionPct = totalUsers > 0 ? Math.round((paidUsers / totalUsers) * 100) : 0;
   // Churn: bajas de un plan pago a Free en los últimos 30 días, según
   // plan_changes (ver applyPlanChange() en este archivo, que ahora sí deja
@@ -39,7 +35,7 @@ export function viewAdmin() {
   // filas de auditoría históricas de antes de este cambio de modelo.
   const churnCutoff = new Date(); churnCutoff.setDate(churnCutoff.getDate() - 30);
   const churnedLast30 = planChanges.filter(pc =>
-    ['premium','plus','pro'].includes(pc.from_plan) && pc.to_plan === 'free' && new Date(pc.changed_at) >= churnCutoff
+    pc.from_plan === 'premium' && pc.to_plan === 'free' && new Date(pc.changed_at) >= churnCutoff
   ).length;
 
   const speciesDist = allPets.reduce((acc, p) => { acc[p.species] = (acc[p.species]||0)+1; return acc; }, {});
@@ -69,7 +65,7 @@ export function viewAdmin() {
       <div class="mb-6">
         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Métricas de negocio</h3>
         <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          ${statCard(icon('money','w-5 h-5 md:w-6 md:h-6'), 'MRR (ingreso mensual)', fmtCLP(mrr), 'teal')}
+          ${statCard(icon('money','w-5 h-5 md:w-6 md:h-6'), 'MRR estimado', fmtCLP(mrr), 'teal')}
           ${statCard(icon('chartBar','w-5 h-5 md:w-6 md:h-6'), 'Conversión a Premium', conversionPct + '%', 'brand')}
           ${statCard(icon('arrowDown','w-5 h-5 md:w-6 md:h-6'), 'Bajas de Premium (30d)', churnedLast30, churnedLast30 > 0 ? 'red' : 'teal')}
         </div>
@@ -84,7 +80,7 @@ export function viewAdmin() {
         <div class="bg-white rounded-2xl shadow-sm p-5">
           <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-1.5">${icon('creditCard','w-4 h-4')} Distribución de planes</h3>
           <div class="space-y-3">
-            ${[['free','Free',totalUsers-paidUsers,'bg-gray-400'],['plus','Plus',plusUsers,'bg-teal-500'],['pro','Pro',proUsers,'bg-brand-500']].map(([_,label,n,color]) => {
+            ${[['free','Free',totalUsers-paidUsers,'bg-gray-400'],['premium','Premium',paidUsers,'bg-brand-500']].map(([_,label,n,color]) => {
               const pct = totalUsers > 0 ? Math.round(n/totalUsers*100) : 0;
               return '<div><div class="flex justify-between text-sm mb-1"><span class="font-medium text-gray-700">'+label+'</span><span class="text-gray-500">'+n+' usuarios ('+pct+'%)</span></div><div class="bg-gray-100 rounded-full h-2"><div class="h-2 rounded-full '+color+'" style="width:'+pct+'%"></div></div></div>';
             }).join('')}
@@ -120,7 +116,7 @@ export function viewAdmin() {
           : '<div class="space-y-2">' + planChanges.slice(0, 10).map(pc => {
               const target = profiles.find(p => p.id === pc.user_id);
               const admin  = profiles.find(p => p.id === pc.changed_by);
-              const isDowngrade = ['premium','plus','pro'].includes(pc.from_plan) && pc.to_plan === 'free';
+              const isDowngrade = pc.from_plan === 'premium' && pc.to_plan === 'free';
               const when = pc.changed_at ? new Date(pc.changed_at).toLocaleDateString('es-CL', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
               return '<div class="flex items-center justify-between gap-3 py-2 border-b border-gray-50 last:border-0 text-sm">'
                 + '<div class="min-w-0"><span class="font-medium text-gray-800">'+esc(target?.name||target?.email||'Usuario eliminado')+'</span>'
@@ -164,14 +160,13 @@ export function viewAdmin() {
       </div>`;
 
     if (tab === 'planes') return `
-      <div class="grid md:grid-cols-3 gap-4 max-w-4xl">
+      <div class="grid md:grid-cols-2 gap-4 max-w-2xl">
         ${[
-          { id:'free', name:PLANS.free.label, price:'$0',        features:['1 mascota','Fichas, vacunas, desparasitaciones y tratamientos','Historial clínico','Agenda y alertas','Finanzas básicas (lista, total y desglose por categoría)','Seguimiento y Nutrición','1 archivo adjunto por evento del historial'] },
-          { id:'plus', name:PLANS.plus.label, price:fmtCLP(PLANS.plus.priceCLP)+'/mes', features:['Hasta 4 mascotas','Todo lo de Free','Compartir con un segundo tutor','Gráficos y predicción de gastos','Exportar expediente en PDF','Botiquín del hogar','Adjuntos ilimitados en el historial'] },
-          { id:'pro', name:PLANS.pro.label, price:fmtCLP(PLANS.pro.priceCLP)+'/mes', features:['Hasta 10 mascotas','Todo lo de Plus'] },
+          { id:'free', name:PLANS.free.label, price:'$0', features:['1 mascota','Fichas, vacunas, desparasitaciones y tratamientos','Historial clínico','Agenda y alertas','Finanzas básicas (lista, total y desglose por categoría)','Seguimiento y Nutrición','1 archivo adjunto por evento del historial'] },
+          { id:'premium', name:PLANS.premium.label, price:fmtCLP(PLANS.premium.priceMonthlyCLP)+'/mes · '+fmtCLP(PLANS.premium.priceYearlyCLP)+'/año', features:['Mascotas ilimitadas','Todo lo de Free','Compartir con un segundo tutor','Gráficos y predicción de gastos','Exportar expediente en PDF','Botiquín del hogar','Adjuntos ilimitados en el historial'] },
         ].map(p => {
           const cnt = profiles.filter(u=>(u.plan||'free')===p.id).length;
-          return '<div class="bg-white rounded-2xl shadow-sm p-5 border-2 '+(p.id==='plus'?'border-brand-400':'border-transparent')+'"><div class="mb-3">'+(p.id==='plus'?'<span class="text-[10px] bg-brand-500 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Popular</span>':'')+'<h3 class="font-bold text-gray-900 text-lg mt-1">'+p.name+'</h3><p class="text-2xl font-black text-gray-900 mt-1">'+p.price+'</p></div><ul class="space-y-1.5 mb-4">'+p.features.map(f=>'<li class="flex items-start gap-2 text-sm text-gray-600"><span class="text-green-500 mt-0.5">✓</span>'+f+'</li>').join('')+'</ul><div class="pt-3 border-t border-gray-100 text-xs text-gray-400">'+cnt+' usuario'+(cnt!==1?'s':'')+' activo'+(cnt!==1?'s':'')+'</div></div>';
+          return '<div class="bg-white rounded-2xl shadow-sm p-5 border-2 '+(p.id==='premium'?'border-brand-400':'border-transparent')+'"><div class="mb-3">'+(p.id==='premium'?'<span class="text-[10px] bg-brand-500 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Popular</span>':'')+'<h3 class="font-bold text-gray-900 text-lg mt-1">'+p.name+'</h3><p class="text-2xl font-black text-gray-900 mt-1">'+p.price+'</p></div><ul class="space-y-1.5 mb-4">'+p.features.map(f=>'<li class="flex items-start gap-2 text-sm text-gray-600"><span class="text-green-500 mt-0.5">✓</span>'+f+'</li>').join('')+'</ul><div class="pt-3 border-t border-gray-100 text-xs text-gray-400">'+cnt+' usuario'+(cnt!==1?'s':'')+' activo'+(cnt!==1?'s':'')+'</div></div>';
         }).join('')}
       </div>`;
     return '';
@@ -190,9 +185,8 @@ export function viewAdmin() {
 
 export async function openChangePlanModal(userId, userName, currentPlan) {
   const plans = [
-    { id:'free', label:PLANS.free.label, desc:'Gratis' },
-    { id:'plus', label:PLANS.plus.label, desc:fmtCLP(PLANS.plus.priceCLP)+'/mes' },
-    { id:'pro',  label:PLANS.pro.label,  desc:fmtCLP(PLANS.pro.priceCLP)+'/mes' },
+    { id:'free',    label:PLANS.free.label,    desc:'Gratis' },
+    { id:'premium', label:PLANS.premium.label, desc:fmtCLP(PLANS.premium.priceMonthlyCLP)+'/mes · '+fmtCLP(PLANS.premium.priceYearlyCLP)+'/año' },
   ];
   openModal('<div class="modal-box p-5"><h3 class="text-lg font-bold text-gray-900 mb-1">Cambiar plan</h3><p class="text-sm text-gray-500 mb-4">Usuario: <strong>'+esc(userName)+'</strong></p><div class="space-y-2 mb-5">'+plans.map(p=>'<label class="flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all '+(p.id===currentPlan?'border-brand-400 bg-brand-50':'border-gray-100 hover:border-gray-200')+'"><input type="radio" name="new-plan" value="'+p.id+'" '+(p.id===currentPlan?'checked':'')+' class="accent-brand-600"><div class="flex-1"><div class="font-semibold text-sm text-gray-900">'+p.label+'</div><div class="text-xs text-gray-400">'+p.desc+'</div></div></label>').join('')+'</div><div class="flex gap-3"><button onclick="closeModal()" class="btn-secondary flex-1">Cancelar</button><button onclick="applyPlanChange(\''+userId+'\')" class="btn-primary flex-1">Guardar</button></div></div>');
 }
