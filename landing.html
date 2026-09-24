@@ -10,15 +10,19 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mascodata.cl/">
 <meta property="og:image" content="https://mascodata.cl/img/logos/mascodata-app-icon.png">
-<meta name="theme-color" content="#FFF8F0">
+<meta name="theme-color" content="#FFFFFF">
 <link rel="preload" href="/fonts/nunito-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/nunito-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" type="image/svg+xml" href="/img/logos/mascodata-isotipo.svg">
 <link rel="stylesheet" href="/css/brand.css">
 <style>
+:root{--page:#FFFFFF;--band:var(--surface)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:var(--surface);--band:var(--surface-sunken)}}
+:root[data-theme="dark"]{--page:var(--surface);--band:var(--surface-sunken)}
+body{background:var(--page)}
 .skip{position:absolute;left:-999px;top:8px;background:var(--brand);color:var(--on-brand);padding:8px 14px;border-radius:var(--radius-sm);z-index:10}
 .skip:focus{left:8px}
-header.top{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--border)}
+header.top{position:sticky;top:0;z-index:5;background:var(--page);border-bottom:1px solid var(--border)}
 header.top .wrap{display:flex;align-items:center;gap:24px;height:68px}
 .brand-lockup{display:flex;align-items:center;gap:10px;text-decoration:none}
 .brand-lockup .app{width:34px;height:34px;border-radius:9px}
@@ -29,7 +33,7 @@ nav.main a:hover{background:var(--surface-sunken);color:var(--ink)}
 nav.main .btn{margin-left:8px}
 @media(max-width:760px){nav.main a.hide-sm{display:none}}
 
-.hero{padding:72px 0 56px}
+.hero{padding:88px 0 80px}
 .hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
 .eyebrow{font:700 12px/16px var(--font);letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 16px}
 h1{font-size:48px;line-height:52px;font-weight:800;letter-spacing:-.02em;margin:0 0 20px;text-wrap:balance}
@@ -40,7 +44,8 @@ h1 .hl{color:var(--brand)}
 @media(max-width:900px){.hero{padding:40px 0}.hero .wrap{grid-template-columns:1fr;gap:40px}h1{font-size:38px;line-height:42px}}
 
 .mock{position:relative}
-.mock-tag{position:absolute;top:-14px;right:16px;z-index:1}
+.mock-panel{background:var(--band);border-radius:24px;padding:36px 24px 24px}
+.mock-tag{position:absolute;top:14px;right:18px;z-index:1}
 .mock .card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-xl);box-shadow:var(--shadow-card);padding:24px}
 .mock h2{font-size:18px;line-height:26px;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:8px}
 .mock h2 .ic{color:var(--warning)}
@@ -53,10 +58,10 @@ h1 .hl{color:var(--brand)}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
 .stat{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px}
 .stat b{display:block;font-size:24px;line-height:32px;font-weight:800}
-.stat span{font-size:12px;line-height:16px;color:var(--ink-muted)}
+.stat span{display:block;font-size:12px;line-height:16px;color:var(--ink-muted)}
 
 section{padding:72px 0;scroll-margin-top:68px}
-section.alt{background:var(--surface-sunken)}
+section.alt{background:var(--band)}
 .sec-head{max-width:640px;margin:0 0 40px}
 h2.sec{font-size:36px;line-height:40px;font-weight:800;letter-spacing:-.01em;margin:0 0 12px;text-wrap:balance}
 .sec-head p{font-size:18px;line-height:28px;color:var(--ink-muted);margin:0}
@@ -148,7 +153,7 @@ footer a:hover{color:var(--brand)}
     </div>
     <p class="fine">Gratis para 1 mascota. Sin tarjeta de crédito.</p>
   </div>
-  <div class="mock" aria-label="Ejemplo de la pantalla de inicio">
+  <div class="mock mock-panel" aria-label="Ejemplo de la pantalla de inicio">
     <span class="badge badge-neutral mock-tag">Ejemplo</span>
     <div class="card">
       <h2><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg> Necesita atención <span class="badge badge-neutral">2</span></h2>
@@ -164,7 +169,7 @@ footer a:hover{color:var(--brand)}
   </div>
 </div></section>
 
-<section id="funciones" class="alt"><div class="wrap">
+<section id="funciones"><div class="wrap">
   <div class="sec-head"><h2 class="sec">Todo su cuidado, en un solo lugar</h2><p>Deja de buscar el carnet de vacunas en el cajón. Lo importante de cada mascota queda ordenado y a mano.</p></div>
   <div class="feats">
     <article class="feat"><div class="feat-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><h3>Ficha médica</h3><p>Historial completo de cada mascota: vacunas, desparasitaciones, tratamientos y consultas.</p></article>
@@ -176,7 +181,7 @@ footer a:hover{color:var(--brand)}
   </div>
 </div></section>
 
-<section id="como"><div class="wrap">
+<section id="como" class="alt"><div class="wrap">
   <div class="sec-head"><h2 class="sec">Empezar toma un par de minutos</h2><p>Sin instalar nada: funciona desde el navegador de tu teléfono o computador.</p></div>
   <ol class="steps">
     <li><h3>Registra tu mascota</h3><p>Nombre, especie y datos básicos.</p></li>
@@ -185,7 +190,7 @@ footer a:hover{color:var(--brand)}
   </ol>
 </div></section>
 
-<section id="planes" class="alt"><div class="wrap">
+<section id="planes"><div class="wrap">
   <div class="sec-head"><h2 class="sec">Un solo plan, todo incluido</h2><p>Sin escalones ni sorpresas. Paga al mes o ahorra pagando el año completo.</p></div>
   <div class="plans"><article class="plan">
 <h3>Gratis</h3><p class="price"><span class="amt">$0</span></p>
@@ -207,12 +212,12 @@ footer a:hover{color:var(--brand)}
   </div>
 </div></section>
 
-<section id="preguntas" class="alt"><div class="wrap">
+<section id="preguntas"><div class="wrap">
   <div class="sec-head"><h2 class="sec">Preguntas frecuentes</h2></div>
   <div class="faq"><details><summary>¿Mascodata es gratis?</summary><p>Sí, con una mascota tienes la ficha médica, la agenda y las alertas sin costo y sin tarjeta de crédito. Premium suma mascotas ilimitadas y más funciones.</p></details><details><summary>¿Puedo compartir la ficha con otra persona?</summary><p>Sí. Con Premium puedes invitar a un segundo tutor para que vea y gestione a la mascota contigo. Cada persona entra con su propia cuenta.</p></details><details><summary>¿Reemplaza a mi veterinario?</summary><p>No. Los recordatorios y sugerencias son avisos generales para ayudarte a no olvidar nada; ante cualquier duda de salud, consulta a tu médico veterinario.</p></details><details><summary>¿Qué pasa con mis datos?</summary><p>Son tuyos. No los vendemos ni grabamos tu pantalla, y puedes eliminar tu cuenta cuando quieras desde Mi perfil. Lee la <a href="/privacidad">política de privacidad</a>.</p></details><details><summary>¿Cómo activo Premium?</summary><p>Escríbenos a <a href="mailto:contacto@mascodata.cl">contacto@mascodata.cl</a> diciéndonos si lo quieres mensual o anual, y lo activamos en tu cuenta. El pago en línea llegará más adelante.</p></details></div>
 </div></section>
 
-<section class="final"><div class="wrap"><div class="box">
+<section class="final alt"><div class="wrap"><div class="box">
   <div><h2>Empieza hoy con tu mascota</h2><p>Crea tu cuenta gratis y registra su primera vacuna.</p></div>
   <a class="btn btn-primary btn-lg" href="/register">Regístrate gratis</a>
 </div></div></section>

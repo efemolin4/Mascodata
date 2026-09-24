@@ -44,6 +44,10 @@ p.lead{max-width:46em;color:var(--ink-muted);margin:0 0 24px;font-size:16px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
 .rule{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px;font-size:14px;line-height:20px}
 .rule b{display:block;font-size:16px;margin-bottom:4px}
+.mini{height:120px;border-radius:var(--radius-md);border:1px solid #E6D8C9;display:grid;gap:8px;padding:10px;grid-template-columns:1fr 1fr;grid-template-rows:14px 1fr}
+.mini-bar{grid-column:1/-1;border-radius:6px;border:1px solid #E6D8C9}
+.mini-card{border-radius:8px;box-shadow:0 1px 2px rgba(29,43,58,.12)}
+.mini-band{grid-column:1/-1;border-radius:8px}
 .rule.yes::before,.rule.no::before{display:inline-block;font:700 12px/16px var(--font);padding:2px 8px;border-radius:var(--radius-sm);margin-bottom:10px}
 .rule.yes::before{content:'Sí';background:var(--accent-soft);color:var(--accent-ink)}
 .rule.no::before{content:'No';background:var(--danger-soft);color:var(--danger)}
@@ -153,6 +157,12 @@ footer{padding:32px 0 56px;border-top:1px solid var(--border);color:var(--ink-mu
   <div class="rule"><b>Una acción principal</b>brand es para una acción principal por vista, enlaces y el logotipo. Texto sobre brand siempre en on-brand.</div>
   <div class="rule"><b>Estados con ícono y palabra</b>Al día: accent-soft + accent-ink. Por vencer: warning-soft + warning. Vencido o error: danger-soft + danger. Nunca solo color.</div>
   <div class="rule"><b>Frambuesa, no terracota</b>danger es frambuesa a propósito, para no confundirse con el terracota de marca. Sin gris frío.</div>
+</div>
+<h3>Base blanca o base crema</h3>
+<p class="lead">El blanco (surface-raised) y el crema (surface) se combinan según la pieza. En la <b>app</b> la página es crema y las tarjetas, el menú y los formularios son blancos. En la <b>landing y piezas de marketing</b> el blanco es la base y el crema se reserva para franjas y paneles que separan secciones. En ambos casos crema y blanco siguen ocupando cerca del 70 % de la pantalla, y no se usa gris frío.</p>
+<div class="two">
+  <div class="tile"><div class="mini" style="background:#FFF8F0"><span class="mini-bar" style="background:#FFFFFF"></span><span class="mini-card" style="background:#FFFFFF"></span><span class="mini-card" style="background:#FFFFFF"></span></div><b>App</b><span>Página en surface (crema), tarjetas y menú en surface-raised (blanco).</span></div>
+  <div class="tile"><div class="mini" style="background:#FFFFFF;grid-template-rows:14px 1fr 14px"><span class="mini-band" style="background:#FFF8F0"></span><span class="mini-card" style="background:#FFFFFF;border:1px solid #E6D8C9;grid-column:1/-1"></span><span class="mini-band" style="background:#FFF8F0"></span></div><b>Landing y marketing</b><span>Página en blanco, franjas y paneles en surface (crema). Tarjetas blancas con borde.</span></div>
 </div>
 </section>
 
