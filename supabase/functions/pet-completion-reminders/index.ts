@@ -154,7 +154,7 @@ const INTRO = [
   'Este es el último recordatorio sobre el perfil de {name}. No te enviaremos más avisos sobre esta mascota.',
 ];
 export function buildEmail(p: Pick, o: { appUrl: string; unsubUrl: string }): { subject: string; html: string; text: string } {
-  const name = p.pet.name || 'tu mascota';
+  const name = (p.pet.name || '').trim() || 'tu mascota';
   const steps = p.missing.slice(0, 3);
   const link = `${o.appUrl}/pets/${encodeURIComponent(p.pet.id)}`;
   const intro = INTRO[p.step - 1].replace('{name}', name);
@@ -235,7 +235,7 @@ async function handle(req: Request): Promise<Response> {
 
   const picks = pickReminders({ pets, ctx, reminders, profiles, now });
   const summary = { dry, pets_considered: pets.length, skipped_without_access: allPets.length - pets.length, candidates: picks.length, sent: 0, skipped_duplicate: 0, errors: 0,
-    would_send: dry ? picks.map(p => ({ pet: p.pet.name, step: p.step, percent: p.percent, next: p.missing.slice(0, 3).map(m => m.key) })) : undefined };
+    would_send: dry ? picks.map(p => ({ pet: (p.pet.name || '').trim(), step: p.step, percent: p.percent, next: p.missing.slice(0, 3).map(m => m.key) })) : undefined };
   if (dry) return Response.json(summary);
 
   const fnUrl = `${env('SUPABASE_URL')}/functions/v1/pet-completion-reminders`;
