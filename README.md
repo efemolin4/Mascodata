@@ -74,14 +74,18 @@ Aplicación web progresiva (PWA) de página única para tutores de mascotas. Per
 
 ## Identidad de marca
 
-Desde el 22 de septiembre de 2026 la app sigue el Manual de marca
-Mascodata v1: paleta terracota/azul noche/verde azulado, tipografía
-Nunito, y el isotipo de huella con dedos en barras de gráfico. La
-paleta reusa los mismos nombres de color de Tailwind que ya usaba toda
-la app (`brand`, `teal`, `gray`, `red`, `amber`), remapeados a los
-valores del manual en `index.html` — así ninguna vista tuvo que cambiar
-sus clases. `fonts/` y `img/logos/` guardan los archivos originales del
-kit de marca (tipografía autohospedada y el isotipo/ícono de app).
+Desde el 23 de septiembre de 2026 la app sigue el **Manual de marca v2**
+(publicado en `/marca`): índigo `#4C5FD7` como color de marca, celeste
+`#E7F1FF` para fondos, coral `#FF8A6B` como acento, tipografía **Manrope**
+y el isotipo de huella con barras (coral) con el nombre completo en un solo
+color. El verde, el ámbar y la frambuesa son solo para estados. La paleta
+reusa los mismos nombres de color de Tailwind que ya usaba toda la app
+(`brand`, `gray`, `red`, `amber`, `green`), remapeados a los valores del
+manual en `index.html`; `teal` pasó a ser el coral de acento. Así ninguna
+vista tuvo que cambiar sus clases. `fonts/` guarda Manrope autohospedada
+(licencia OFL) e `img/logos/` los logotipos v2 (principal, monocromo,
+inverso, isotipo, ícono de app). Los nombres de los logotipos están
+convertidos a trazados, así que no dependen de que la fuente cargue.
 
 Sin emojis decorativos en la interfaz (saludo, cumpleaños, fondo del
 login) — quedan pendientes solo los que son parte del contenido mismo
@@ -271,9 +275,10 @@ Repartidas entre `js/*.js` según la tabla de la sección anterior (ej.
 
 ## Landing y brandsheet
 
-- `landing.html` → `/landing`: página pública de presentación (hero, funciones, planes, preguntas). Los planes salen de los mismos valores que `PLANS` en `js/app.js`; si cambian precios o límites hay que actualizarlos a mano acá también.
-- `marca.html` → `/marca`: hoja de marca (logotipo, color, tipografía, voz, componentes) con selector de tema claro/oscuro.
-- `css/brand.css`: tokens del kit de marca (colores claro/oscuro, espaciado, radios, sombras) y `@font-face` de Nunito. Ambas páginas lo comparten.
+- `landing.html` → `/landing`: landing v2 según la especificación (hero con tarjeta de producto, funciones, cómo funciona, planes, preguntas, CTA final). Es siempre de tema claro. Los precios están escritos a mano, igual que `PLANS` en `js/app.js`; si cambian hay que actualizar ambos. Registra eventos `landing_*` en PostHog (sin datos personales). El panel de "Cuidar también puede sentirse simple" es un marcador: hay que reemplazarlo por la fotografía principal (brief en `/marca`, sección Fotografía).
+- `marca.html` → `/marca`: Manual de marca v2 completo (idea, logotipo, color, tipografía, fotografía, voz, forma, componentes, aplicaciones, recursos) con selector de tema claro/oscuro.
+- `css/brand.css`: tokens `--md-*` del manual v2 (claro y oscuro), `@font-face` de Manrope y botones/insignias compartidos. `/marca`, la landing y las páginas legales lo usan.
+- `favicon.svg`: ícono coral con huella índigo.
 - `/` sigue siendo la app (login). Para que la landing sea la portada, hay que hacer que `/` sirva `landing.html` a quien no tiene sesión.
 
 ## Planes SaaS

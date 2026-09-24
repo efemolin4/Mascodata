@@ -2,22 +2,22 @@
    MASCODATA — Custom Styles
    ============================================================ */
 
-/* Nunito autohospedada (kit de marca) en vez de Google Fonts: la app queda
-   sin depender de una petición externa para su tipografía. */
-@font-face { font-family: 'Nunito'; src: url('/fonts/nunito-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Nunito'; src: url('/fonts/nunito-latin-600-normal.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Nunito'; src: url('/fonts/nunito-latin-700-normal.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Nunito'; src: url('/fonts/nunito-latin-800-normal.woff2') format('woff2'); font-weight: 800; font-style: normal; font-display: swap; }
+/* Manrope autohospedada (Manual de marca v2) en vez de Google Fonts: la app
+   queda sin depender de una petición externa para su tipografía. */
+@font-face { font-family: 'Manrope'; src: url('/fonts/manrope-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Manrope'; src: url('/fonts/manrope-latin-600-normal.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Manrope'; src: url('/fonts/manrope-latin-700-normal.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Manrope'; src: url('/fonts/manrope-latin-800-normal.woff2') format('woff2'); font-weight: 800; font-style: normal; font-display: swap; }
 
 * { box-sizing: border-box; }
 
-body { font-family: 'Nunito', ui-rounded, system-ui, sans-serif; }
+body { font-family: 'Manrope', system-ui, sans-serif; color: #252a62; }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #f6ece0; }
-::-webkit-scrollbar-thumb { background: #edbca8; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #c2471f; }
+::-webkit-scrollbar-track { background: #f1f4ff; }
+::-webkit-scrollbar-thumb { background: #c9d2f5; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4c5fd7; }
 
 /* Animations */
 @keyframes fadeIn {
@@ -55,10 +55,10 @@ body { font-family: 'Nunito', ui-rounded, system-ui, sans-serif; }
 /* Progress stepper */
 .step-connector {
   position: absolute; top: 50%; left: 50%; width: 100%;
-  height: 2px; background: #e2e8f0; z-index: 0;
+  height: 2px; background: #dfe3f4; z-index: 0;
   transform: translateY(-50%);
 }
-.step-connector.active { background: #c2471f; }
+.step-connector.active { background: #4c5fd7; }
 
 /* Calendar grid */
 .calendar-grid {
@@ -66,26 +66,26 @@ body { font-family: 'Nunito', ui-rounded, system-ui, sans-serif; }
 }
 .calendar-day {
   min-height: 80px; padding: 6px; border-radius: 8px;
-  background: #fff; border: 1px solid #f6ece0;
+  background: #fff; border: 1px solid #f1f4ff;
   transition: background 0.15s;
 }
-.calendar-day:hover { background: #fdf1ea; cursor: pointer; }
-.calendar-day.today { border-color: #c2471f; background: #fdf1ea; }
-.calendar-day.other-month { background: #fff8f0; color: #c1b2a2; }
+.calendar-day:hover { background: #f1f4ff; cursor: pointer; }
+.calendar-day.today { border-color: #4c5fd7; background: #f1f4ff; }
+.calendar-day.other-month { background: #f8f9ff; color: #cfd5ee; }
 
 /* Pet avatar */
 .pet-avatar {
   width: 64px; height: 64px; border-radius: 50%;
-  object-fit: cover; border: 3px solid #fbe3d6;
+  object-fit: cover; border: 3px solid #e7f1ff;
 }
 .pet-avatar-lg {
   width: 96px; height: 96px; border-radius: 50%;
-  object-fit: cover; border: 4px solid #fbe3d6;
+  object-fit: cover; border: 4px solid #e7f1ff;
 }
 .pet-avatar-placeholder {
   display: flex; align-items: center; justify-content: center;
   /* Mascodata usa colores planos, sin degradados. */
-  background: #fbe3d6;
+  background: #e7f1ff;
   font-size: 2rem; border-radius: 50%;
 }
 
@@ -95,7 +95,7 @@ body { font-family: 'Nunito', ui-rounded, system-ui, sans-serif; }
 }
 .card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(194,71,31,0.15);
+  box-shadow: 0 10px 25px -5px rgba(76,95,215,0.15);
 }
 
 /* Badge */
@@ -104,12 +104,11 @@ body { font-family: 'Nunito', ui-rounded, system-ui, sans-serif; }
   padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 500;
 }
 
-/* Input focus ring override — usa `focus` de marca (verde azulado), distinto
-   de `brand` (terracota), tal como lo separa el manual. */
+/* Foco visible: índigo sólido (Manual de marca v2). */
 input:focus, select:focus, textarea:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(31,122,110,0.2);
-  border-color: #1f7a6e;
+  box-shadow: 0 0 0 3px rgba(76,95,215,0.2);
+  border-color: #4c5fd7;
 }
 
 /* Toggle switch */
@@ -119,36 +118,36 @@ input:focus, select:focus, textarea:focus {
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
 .toggle-slider {
   position: absolute; cursor: pointer; inset: 0;
-  background: #c1b2a2; border-radius: 24px; transition: 0.3s;
+  background: #cfd5ee; border-radius: 24px; transition: 0.3s;
 }
 .toggle-slider:before {
   content: ''; position: absolute; width: 18px; height: 18px;
   left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s;
 }
-.toggle-switch input:checked + .toggle-slider { background: #c2471f; }
+.toggle-switch input:checked + .toggle-slider { background: #4c5fd7; }
 .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
 
 /* Mascodata usa colores planos, sin degradados (antes violeta → índigo). */
 .bg-brand-gradient {
-  background: #c2471f;
+  background: #4c5fd7;
 }
 .bg-brand-gradient-soft {
-  background: #fbe3d6;
+  background: #e7f1ff;
 }
 
 /* Sidebar nav item active */
 .nav-item-active {
-  background: #fdf1ea;
-  color: #b03f1a; font-weight: 600;
+  background: #f1f4ff;
+  color: #3e50c4; font-weight: 600;
 }
 
 /* Tag input */
 .tag {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 10px; background: #fbe3d6; color: #9e3715;
+  padding: 4px 10px; background: #e7f1ff; color: #303a88;
   border-radius: 999px; font-size: 0.75rem; font-weight: 500; cursor: pointer;
 }
-.tag.selected { background: #c2471f; color: white; }
+.tag.selected { background: #4c5fd7; color: white; }
 
 /* Modal overlay */
 .modal-overlay {
@@ -157,7 +156,7 @@ input:focus, select:focus, textarea:focus {
   display: flex; align-items: center; justify-content: center; padding: 16px;
 }
 .modal-box {
-  background: white; border-radius: 20px; width: 100%;
+  background: white; border-radius: 28px; width: 100%;
   max-width: 520px; max-height: 90vh; overflow-y: auto;
   animation: scaleIn 0.25s ease;
 }
@@ -166,12 +165,12 @@ input:focus, select:focus, textarea:focus {
 .toast {
   position: fixed; bottom: 80px; left: 16px; right: 16px; margin: 0 auto;
   width: fit-content; max-width: min(440px, calc(100vw - 32px));
-  background: #1d2b3a; color: white; padding: 10px 20px; border-radius: 20px;
+  background: #252a62; color: white; padding: 10px 20px; border-radius: 20px;
   font-size: 0.875rem; line-height: 1.4; text-align: center; z-index: 2000;
   animation: slideUp 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
-.toast.success { background: #19645a; }
-.toast.error   { background: #8f1733; }
+.toast.success { background: #237b58; }
+.toast.error   { background: #b4234a; }
 
 @media (min-width: 768px) {
   .toast { bottom: 24px; }

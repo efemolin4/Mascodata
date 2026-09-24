@@ -294,7 +294,7 @@ export function viewPlans() {
             <p class="mt-2"><span class="text-3xl font-black text-gray-900">$0</span></p>`}
             <p class="text-sm font-semibold text-gray-700 mt-3">${c.sub}</p>
             <ul class="mt-4 space-y-2 text-sm text-gray-600">
-              ${c.features.map(f => `<li class="flex items-start gap-2">${icon('check', 'w-4 h-4 text-teal-500 flex-shrink-0 mt-0.5')}<span>${f}</span></li>`).join('')}
+              ${c.features.map(f => `<li class="flex items-start gap-2">${icon('check', 'w-4 h-4 text-brand-500 flex-shrink-0 mt-0.5')}<span>${f}</span></li>`).join('')}
             </ul>
             <button ${btnOnclick} ${isCurrent || !paid ? 'disabled' : ''}
               class="w-full mt-6 !py-2.5 ${isCurrent || !paid ? 'btn-secondary opacity-60 cursor-default' : 'btn-primary'}">
@@ -488,8 +488,7 @@ export function sidebar() {
   return `
   <aside class="hidden md:flex flex-col w-60 bg-white border-r border-gray-100 fixed inset-y-0 left-0 z-20">
     <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-      <svg viewBox="0 0 64 64" class="w-8 h-8 rounded-xl flex-shrink-0" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mascodata"><rect width="64" height="64" rx="14" fill="#C2471F"/><rect x="14" y="19" width="9" height="12" rx="4.5" fill="#FFF8F0"/><rect x="27.5" y="14" width="9" height="17" rx="4.5" fill="#FFF8F0"/><rect x="41" y="9" width="9" height="22" rx="4.5" fill="#FFF8F0"/><path fill="#FFF8F0" d="M32 35c6.5 0 10.5 4.2 13.2 8.6 2.6 4.2 1 9.4-4 9.4-3.4 0-5.6-1.6-9.2-1.6s-5.8 1.6-9.2 1.6c-5 0-6.6-5.2-4-9.4C21.5 39.2 25.5 35 32 35z"/></svg>
-      <div class="font-bold text-sm leading-none"><span class="text-brand-500">Masco</span><span class="text-gray-900">da</span><span class="text-brand-500">ta</span></div>
+      <a href="/" onclick="event.preventDefault();navigate('dashboard')" aria-label="Mascodata, inicio"><img src="/img/logos/mascodata-lockup.svg" alt="Mascodata" class="h-5 w-auto"></a>
     </div>
     <nav class="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
       ${items.map(i => {
@@ -532,8 +531,7 @@ export function mobileTopBar() {
   <div class="md:hidden sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-100 flex items-center justify-between px-4 py-2.5"
     style="padding-top:calc(0.625rem + env(safe-area-inset-top))">
     <div class="flex items-center gap-2">
-      <svg viewBox="0 0 64 64" class="w-7 h-7 rounded-lg flex-shrink-0" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mascodata"><rect width="64" height="64" rx="14" fill="#C2471F"/><rect x="14" y="19" width="9" height="12" rx="4.5" fill="#FFF8F0"/><rect x="27.5" y="14" width="9" height="17" rx="4.5" fill="#FFF8F0"/><rect x="41" y="9" width="9" height="22" rx="4.5" fill="#FFF8F0"/><path fill="#FFF8F0" d="M32 35c6.5 0 10.5 4.2 13.2 8.6 2.6 4.2 1 9.4-4 9.4-3.4 0-5.6-1.6-9.2-1.6s-5.8 1.6-9.2 1.6c-5 0-6.6-5.2-4-9.4C21.5 39.2 25.5 35 32 35z"/></svg>
-      <span class="font-bold text-sm"><span class="text-brand-500">Masco</span><span class="text-gray-900">da</span><span class="text-brand-500">ta</span></span>
+      <img src="/img/logos/mascodata-lockup.svg" alt="Mascodata" class="h-5 w-auto">
     </div>
     <button onclick="navigate('profile')" title="Mi perfil"
       class="w-8 h-8 rounded-full bg-brand-gradient flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
@@ -673,20 +671,21 @@ export function injectStyles() {
   const style = document.createElement('style');
   style.textContent = `
     *{box-sizing:border-box}
-    .input-field{width:100%;padding:0.55rem 0.75rem;border:1.5px solid #e6d8c9;border-radius:0.875rem;font-size:0.875rem;transition:border-color .15s,box-shadow .15s;background:white;color:#1d2b3a;line-height:1.4}
-    .input-field:focus{border-color:#1f7a6e;box-shadow:0 0 0 3px rgba(31,122,110,.18);outline:none}
-    .input-field::placeholder{color:#9c8b7b}
+    .input-field{width:100%;padding:0.55rem 0.75rem;border:1.5px solid #dfe3f4;border-radius:0.875rem;font-size:0.875rem;transition:border-color .15s,box-shadow .15s;background:white;color:#252a62;line-height:1.4}
+    .input-field:focus{border-color:#4c5fd7;box-shadow:0 0 0 2px #fff,0 0 0 4px #4c5fd7;outline:none}
+    .input-field::placeholder{color:#9299ba}
     .input-field{box-sizing:border-box;min-width:0;max-width:100%}
     .grid>*{min-width:0}
     select.input-field{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236e6259'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.6rem center;background-size:1.1rem;padding-right:2rem;appearance:none;cursor:pointer}
-    .form-label{display:block;font-size:0.72rem;font-weight:600;color:#6e6259;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:.03em}
-    .btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;padding:.5rem 1.125rem;background:#c2471f;color:white;border-radius:0.875rem;font-weight:600;font-size:.875rem;transition:opacity .15s,transform .1s,box-shadow .15s;cursor:pointer;border:none;letter-spacing:-.01em;box-shadow:0 1px 3px 0 rgba(194,71,31,.35)}
-    .btn-primary:hover{opacity:.92;transform:translateY(-1px);box-shadow:0 4px 12px rgba(194,71,31,.4)}
-    .btn-primary:active{transform:translateY(0);opacity:1}
-    .btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;padding:.5rem 1.125rem;background:#f6ece0;color:#1d2b3a;border-radius:0.875rem;font-weight:600;font-size:.875rem;transition:background .15s,color .15s;cursor:pointer;border:1.5px solid #e6d8c9}
-    .btn-secondary:hover{background:#e6d8c9;border-color:#c1b2a2}
-    .bg-brand-gradient{background:#c2471f}
-    .card-elevated{background:white;border-radius:1.25rem;box-shadow:0 1px 2px 0 rgba(29,43,58,.06),0 4px 12px 0 rgba(29,43,58,.06);border:1px solid rgba(29,43,58,.05)}
+    .form-label{display:block;font-size:0.72rem;font-weight:600;color:#626a8a;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:.03em}
+    .btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;padding:.5rem 1.125rem;background:#4c5fd7;color:white;border-radius:0.875rem;font-weight:600;font-size:.875rem;transition:opacity .15s,transform .1s,box-shadow .15s;cursor:pointer;border:none;letter-spacing:-.01em;box-shadow:0 1px 3px 0 rgba(76,95,215,.35)}
+    .btn-primary:hover{background:#3e50c4;transform:translateY(-1px);box-shadow:0 8px 20px rgba(76,95,215,.28)}
+    .btn-primary:active{transform:translateY(0)}
+    .btn-primary:focus-visible,.btn-secondary:focus-visible,a:focus-visible,button:focus-visible{outline:2px solid #4c5fd7;outline-offset:2px}
+    .btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;padding:.5rem 1.125rem;background:#fff;color:#252a62;border-radius:0.875rem;font-weight:600;font-size:.875rem;transition:background .15s,color .15s;cursor:pointer;border:1.5px solid #cfd5ee}
+    .btn-secondary:hover{background:#f1f4ff;border-color:#9299ba}
+    .bg-brand-gradient{background:#4c5fd7}
+    .card-elevated{background:white;border-radius:1.25rem;box-shadow:0 1px 2px 0 rgba(37,42,98,.06),0 4px 12px 0 rgba(37,42,98,.06);border:1px solid rgba(37,42,98,.05)}
     .page-header-action button,.page-header-action a{white-space:nowrap}
     /* ---- Mobile overrides ---- */
     input[type="date"]::-webkit-date-and-time-value,input[type="time"]::-webkit-date-and-time-value{text-align:center;display:block;width:100%}
@@ -711,7 +710,7 @@ export function injectStyles() {
     .modal-box>div.space-y-4>div:last-child{
       position:sticky;bottom:0;background:white;
       padding-top:12px;margin-top:4px;
-      border-top:1px solid #f6ece0;z-index:2
+      border-top:1px solid #f1f4ff;z-index:2
     }
     @keyframes slideInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
     @keyframes slideUpModal{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
@@ -822,7 +821,7 @@ export async function initApp() {
   const appEl = document.getElementById('app');
   if (appEl) appEl.innerHTML = `
     <div class="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50">
-      <img src="/img/logos/mascodata-isotipo.svg" alt="" class="w-16 h-16 animate-pulse">
+      <img src="/img/logos/mascodata-isotipo.svg" alt="" class="h-16 w-auto animate-pulse">
       <p class="text-sm text-gray-400">Cargando tu cuenta…</p>
     </div>`;
 

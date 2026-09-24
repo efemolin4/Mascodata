@@ -5,109 +5,119 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mascodata — Gestión Integral de Mascotas</title>
   <meta name="description" content="App de gestión integral para tutores de mascotas. Ficha médica, vacunas, medicamentos, agenda y más." />
-  <link rel="icon" type="image/svg+xml" href="/img/logos/mascodata-app-icon.svg" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="theme-color" content="#4c5fd7" />
   <link rel="apple-touch-icon" href="/img/logos/mascodata-app-icon.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    // Paleta y tipografía del Manual de marca Mascodata v1 (septiembre 2026)
-    // — ver colores-y-tokens.json. Se reusan los mismos NOMBRES de color que
-    // ya usaba toda la app (brand/teal/gray/red/amber) para no tener que
-    // tocar las clases de cada vista una por una; solo cambian los valores.
-    // `surface`/`ink`/etc. quedan disponibles además con el nombre literal
-    // del token, para código nuevo que prefiera escribirlo así.
+    // Paleta y tipografía del Manual de marca Mascodata v2 (septiembre 2026):
+    // índigo (marca), celeste (fondos), coral (acento) y Manrope. Se reusan
+    // los mismos NOMBRES de color que ya usaba toda la app (brand/teal/gray/
+    // red/amber/green) para no tocar las clases de cada vista; solo cambian
+    // los valores. Regla del manual: el verde (`green`), el ámbar (`amber`) y
+    // la frambuesa (`red`) son SOLO para estados; `teal` pasa a ser el coral
+    // de acento (íconos, numeración, destacados), nunca para texto largo.
     tailwind.config = {
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
+            sans: ['Manrope', 'system-ui', 'sans-serif'],
+          },
+          borderRadius: {
+            xl: '14px',
+            '2xl': '20px',
+            '3xl': '28px',
+          },
+          boxShadow: {
+            sm: '0 1px 2px 0 rgb(37 42 98 / 0.06), 0 2px 8px 0 rgb(37 42 98 / 0.05)',
+            md: '0 8px 24px -4px rgb(37 42 98 / 0.10)',
+            lg: '0 20px 48px -8px rgb(37 42 98 / 0.12)',
           },
           colors: {
-            // brand: terracota Mascodata (antes violeta).
+            // brand: índigo vivo (#4C5FD7) — botón principal, enlaces, foco.
             brand: {
-              50:  '#fdf1ea',
-              100: '#fbe3d6',
-              200: '#edbca8',
-              300: '#de957a',
-              400: '#d06e4d',
-              500: '#c2471f',
-              600: '#b03f1a',
-              700: '#9e3715',
-              800: '#6e260f',
-              900: '#3d1509',
+              50:  '#f1f4ff',
+              100: '#e7f1ff',
+              200: '#c9d2f5',
+              300: '#9fadeb',
+              400: '#7686e2',
+              500: '#4c5fd7',
+              600: '#3e50c4',
+              700: '#303a88',
+              800: '#252a62',
+              900: '#191c45',
             },
-            // teal: mismo rol de "accent" que ya tenía (Premium, salud al día),
-            // ahora en el verde azulado de marca (antes cian).
+            // teal → coral de acento (#FF8A6B). Los pasos 600+ son coral
+            // oscuro para poder usarse como texto con contraste.
             teal: {
-              50:  '#eaf6f4',
-              100: '#d6eeea',
-              200: '#a8d1cb',
-              300: '#7ab4ac',
-              400: '#4d978d',
-              500: '#1f7a6e',
-              600: '#19645a',
-              700: '#134e47',
-              800: '#0e3c37',
-              900: '#0a2b27',
+              50:  '#fff0eb',
+              100: '#ffe2d9',
+              200: '#ffc7b7',
+              300: '#ffa88f',
+              400: '#ff8a6b',
+              500: '#f27152',
+              600: '#c7492b',
+              700: '#9e3a22',
+              800: '#772d1a',
+              900: '#4f1d11',
             },
-            // green: estados de "éxito"/"al día" usan el mismo verde azulado
-            // de marca que teal (el manual junta ambos bajo un solo accent).
+            // green: éxito / "al día" (#237B58). Solo estados.
             green: {
-              50:  '#eaf6f4',
-              100: '#d6eeea',
-              200: '#a8d1cb',
-              300: '#7ab4ac',
-              400: '#4d978d',
-              500: '#1f7a6e',
-              600: '#19645a',
-              700: '#134e47',
-              800: '#0e3c37',
-              900: '#0a2b27',
+              50:  '#f1f8f2',
+              100: '#e7f4e8',
+              200: '#c3e3cb',
+              300: '#93cba4',
+              400: '#54a57b',
+              500: '#237b58',
+              600: '#1c6647',
+              700: '#175339',
+              800: '#11402c',
+              900: '#0b2b1e',
             },
-            // red: "danger" de marca es frambuesa, no el rojo genérico —
-            // a propósito, para no confundirse con el terracota de marca.
+            // red: error / vencido / destructivo (#B4234A, frambuesa).
             red: {
-              50:  '#fdf0f3',
-              100: '#fbe2e7',
-              200: '#e6b0bc',
-              300: '#d07e91',
-              400: '#bb4d66',
-              500: '#a61b3b',
-              600: '#8f1733',
-              700: '#78142a',
-              800: '#611022',
-              900: '#4a0c1a',
+              50:  '#fdf2f5',
+              100: '#fbe7ec',
+              200: '#f0b9c6',
+              300: '#e28ba1',
+              400: '#cc5877',
+              500: '#b4234a',
+              600: '#9b1d3f',
+              700: '#821835',
+              800: '#69132b',
+              900: '#4e0e20',
             },
-            // amber: "warning" de marca (dorado apagado, no naranjo).
+            // amber: atención / próximo a vencer (#AD5D12).
             amber: {
-              50:  '#fef8ea',
-              100: '#fdf0d5',
-              200: '#e0caa0',
-              300: '#c4a56a',
-              400: '#a78035',
-              500: '#8a5a00',
-              600: '#774d00',
-              700: '#644000',
-              800: '#503400',
-              900: '#3d2700',
+              50:  '#fff8ec',
+              100: '#fff1dc',
+              200: '#f2d2a3',
+              300: '#e3ae6b',
+              400: '#c98037',
+              500: '#ad5d12',
+              600: '#95500f',
+              700: '#7c430d',
+              800: '#63360a',
+              900: '#4a2807',
             },
-            // gray: neutro CÁLIDO (crema/azul noche), no el gris frío por
-            // defecto de Tailwind — el manual lo pide explícitamente.
+            // gray: neutro FRÍO teñido de índigo (texto #252A62, secundario
+            // #626A8A, bordes #DFE3F4, fondo #F8F9FF).
             gray: {
-              50:  '#fff8f0',
-              100: '#f6ece0',
-              200: '#e6d8c9',
-              300: '#c1b2a2',
-              400: '#9c8b7b',
-              500: '#6e6259',
-              600: '#5a5451',
-              700: '#46464a',
-              800: '#313942',
-              900: '#1d2b3a',
+              50:  '#f8f9ff',
+              100: '#f1f4ff',
+              200: '#dfe3f4',
+              300: '#cfd5ee',
+              400: '#9299ba',
+              500: '#626a8a',
+              600: '#4d5578',
+              700: '#3a4166',
+              800: '#2d3263',
+              900: '#252a62',
             },
-            // Alias con el nombre literal del token, por si código nuevo
-            // prefiere escribir bg-surface/text-ink en vez de gray-50/gray-900.
-            surface: { DEFAULT: '#fff8f0', raised: '#ffffff', sunken: '#f6ece0' },
-            ink: { DEFAULT: '#1d2b3a', muted: '#6e6259' },
+            // Alias con el nombre literal del token del manual.
+            surface: { DEFAULT: '#f8f9ff', raised: '#ffffff', sunken: '#f1f4ff' },
+            ink: { DEFAULT: '#252a62', muted: '#626a8a' },
+            info: { DEFAULT: '#3856b8', soft: '#eaf0ff' },
           }
         }
       }
