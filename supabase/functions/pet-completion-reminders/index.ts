@@ -120,6 +120,14 @@ export function pickReminders(input: {
   return [...best.values()].sort((a, b) => a.pet.id.localeCompare(b.pet.id)).slice(0, MAX_PER_RUN);
 }
 
+// Solo cuentan las mascotas donde el dueño tiene una fila de acceso (pet_access, rol 'owner'):
+// una mascota sin esa fila existe en la tabla pero la persona no la ve ni la puede completar
+// (por ejemplo, tras un borrado que falló a medias), y escribirle sobre ella no tendría sentido.
+export function withOwnerAccess(pets: PetRow[], access: { pet_id: string; user_id: string; role: string }[]): PetRow[] {
+  const owners = new Set(access.filter(a => a.role === 'owner').map(a => `${a.pet_id}:${a.user_id}`));
+  return pets.filter(p => owners.has(`${p.id}:${p.owner_id}`));
+}
+
 // ---------- Enlace de baja firmado ----------
 const enc = new TextEncoder();
 const toHex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -211,7 +219,9 @@ async function handle(req: Request): Promise<Response> {
     .select('id, owner_id, name, species, breed, date_of_birth, sex, microchip, reproductive_status, weight_kg, allergies, chronic_conditions, vet_name, vet_phone, created_at')
     .gte('created_at', since).limit(2000);
   if (petsErr) return new Response(`pets: ${petsErr.message}`, { status: 500 });
-  const pets = (petsData ?? []) as PetRow[];
+  const allPets = (petsData ?? []) as PetRow[];
+  const access = await chunkedIn<{ pet_id: string; user_id: string; role: string }>(admin, 'pet_access', 'pet_id, user_id, role', 'pet_id', allPets.map(p => p.id));
+  const pets = withOwnerAccess(allPets, access);
   const petIds = pets.map(p => p.id);
   const ownerIds = [...new Set(pets.map(p => p.owner_id))];
 
@@ -224,7 +234,7 @@ async function handle(req: Request): Promise<Response> {
   for (const p of pets) ctx[p.id] = { hasPhoto: photoIds.has(p.id), hasVaccine: vaccIds.has(p.id), hasDeworm: dewIds.has(p.id) };
 
   const picks = pickReminders({ pets, ctx, reminders, profiles, now });
-  const summary = { dry, pets_considered: pets.length, candidates: picks.length, sent: 0, skipped_duplicate: 0, errors: 0,
+  const summary = { dry, pets_considered: pets.length, skipped_without_access: allPets.length - pets.length, candidates: picks.length, sent: 0, skipped_duplicate: 0, errors: 0,
     would_send: dry ? picks.map(p => ({ pet: p.pet.name, step: p.step, percent: p.percent, next: p.missing.slice(0, 3).map(m => m.key) })) : undefined };
   if (dry) return Response.json(summary);
 

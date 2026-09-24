@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { petCompleteness, COMPLETENESS_FIELDS } from './utils.js';
 import {
-  FIELDS, scorePet, pickReminders, buildEmail, signUnsub, verifyUnsub, safeEqual,
+  FIELDS, scorePet, pickReminders, withOwnerAccess, buildEmail, signUnsub, verifyUnsub, safeEqual,
   STEP_DAYS,
 } from '../supabase/functions/pet-completion-reminders/index.ts';
 
@@ -176,5 +176,28 @@ describe('enlace de baja firmado', () => {
     expect(safeEqual('abc', 'abc')).toBe(true);
     expect(safeEqual('abc', 'abd')).toBe(false);
     expect(safeEqual('abc', 'abcd')).toBe(false);
+  });
+});
+
+describe('withOwnerAccess — mascotas que el dueño no puede ver', () => {
+  const pets = [
+    { id: 'a', owner_id: 'u1' }, { id: 'b', owner_id: 'u1' }, { id: 'c', owner_id: 'u2' }, { id: 'd', owner_id: 'u2' },
+  ];
+  it('descarta las mascotas sin fila de acceso del dueño (huérfanas)', () => {
+    const access = [{ pet_id: 'a', user_id: 'u1', role: 'owner' }, { pet_id: 'c', user_id: 'u2', role: 'owner' }];
+    expect(withOwnerAccess(pets, access).map(p => p.id)).toEqual(['a', 'c']);
+  });
+
+  it('el acceso de otra persona, o con otro rol, no cuenta como acceso del dueño', () => {
+    const access = [
+      { pet_id: 'a', user_id: 'u9', role: 'owner' },   // otra persona
+      { pet_id: 'b', user_id: 'u1', role: 'editor' },  // mismo usuario, rol distinto
+      { pet_id: 'd', user_id: 'u2', role: 'owner' },
+    ];
+    expect(withOwnerAccess(pets, access).map(p => p.id)).toEqual(['d']);
+  });
+
+  it('sin filas de acceso no queda ninguna mascota', () => {
+    expect(withOwnerAccess(pets, [])).toEqual([]);
   });
 });
