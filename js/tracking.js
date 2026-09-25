@@ -132,6 +132,83 @@ export function tabSeguimiento(pet) {
   </div>`;
 }
 
+// Gráfico de torta en SVG (sin librerías). `segments`: [{label, value, color}].
+const FOOD_COLORS = ['#4c5fd7', '#ff8a6b', '#9fadeb', '#303a88', '#ffc7b7', '#7686e2'];
+function foodDonut(segments, centerTop, centerBottom) {
+  const total = segments.reduce((a, s) => a + s.value, 0);
+  if (!(total > 0)) return '';
+  let acc = 0;
+  const arcs = segments.filter(s => s.value > 0).map(s => {
+    const pct = s.value / total * 100;
+    const arc = `<circle cx="21" cy="21" r="15.9155" fill="none" stroke="${s.color}" stroke-width="6" stroke-dasharray="${pct.toFixed(2)} ${(100 - pct).toFixed(2)}" stroke-dashoffset="${(25 - acc).toFixed(2)}"></circle>`;
+    acc += pct;
+    return arc;
+  }).join('');
+  return `
+    <svg viewBox="0 0 42 42" class="w-32 h-32 flex-shrink-0" role="img" aria-label="${esc(segments.map(s => `${s.label}: ${Math.round(s.value / total * 100)} %`).join(', '))}">
+      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f4ff" stroke-width="6"></circle>
+      ${arcs}
+      <text x="21" y="20.5" text-anchor="middle" font-size="6.2" font-weight="700" fill="#252a62">${esc(centerTop)}</text>
+      <text x="21" y="26" text-anchor="middle" font-size="3.4" fill="#626a8a">${esc(centerBottom)}</text>
+    </svg>`;
+}
+
+const fmtGrams = g => g >= 1000 ? `${(g / 1000).toLocaleString('es-CL', { maximumFractionDigits: 2 })} kg` : `${Math.round(g)} g`;
+
+// Resumen de la alimentación calculado con las compras registradas: reparto por
+// tipo, alimento diario vs snacks y gasto de los últimos 90 días. No depende de
+// que el tutor anote lo que come cada día.
+function foodSummarySection(items) {
+  const sm = foodSummary(items);
+  if (!sm.total && !sm.spent90) return '';
+  const legend = rows => rows.map(r => `
+    <div class="flex items-start gap-2 text-xs">
+      <span class="w-2.5 h-2.5 rounded-sm flex-shrink-0 mt-0.5" style="background:${r.color}"></span>
+      <div class="min-w-0">
+        <div class="text-gray-700 leading-tight">${esc(r.label)}</div>
+        <div class="text-gray-400 tabular-nums">${fmtGrams(r.value)} · ${r.pct} %</div>
+      </div>
+    </div>`).join('');
+  const typeRows = sm.byType.map((t, i) => ({ label: t.label, value: t.grams, color: FOOD_COLORS[i % FOOD_COLORS.length], pct: Math.round(t.grams / sm.total * 100) }));
+  const mixRows = [
+    { label: 'Alimento diario', value: sm.daily, color: '#4c5fd7', pct: 100 - sm.snackPct },
+    { label: 'Snacks y premios', value: sm.snack, color: '#ff8a6b', pct: sm.snackPct },
+  ];
+  const mixNote = sm.snack === 0
+    ? `<p class="text-xs text-gray-500 mt-2">Aún no registras compras de snacks ni premios.</p>`
+    : sm.snackPct > 10
+      ? `<p class="text-xs mt-2 text-amber-700 bg-amber-50 rounded-lg px-2 py-1.5">Los snacks son el ${sm.snackPct} % de lo que has comprado. Como referencia, lo recomendado es que no pasen del 10 % de lo que come al día.</p>`
+      : `<p class="text-xs mt-2 text-green-700 bg-green-50 rounded-lg px-2 py-1.5">Los snacks son el ${sm.snackPct} % de lo que has comprado, dentro de la referencia recomendada (hasta 10 %).</p>`;
+  return `
+    <div class="mt-4 pt-4 border-t border-gray-100">
+      <h4 class="text-sm font-semibold text-gray-800 mb-3">Resumen de tus compras</h4>
+      ${sm.total ? `
+      <div class="grid md:grid-cols-2 gap-3">
+        <div class="p-3 bg-gray-50 rounded-xl">
+          <div class="text-xs font-semibold text-gray-600 mb-2">Por tipo de alimento</div>
+          <div class="flex items-center gap-3">
+            ${foodDonut(typeRows, fmtGrams(sm.total), 'comprado')}
+            <div class="flex-1 min-w-0 space-y-1.5">${legend(typeRows)}</div>
+          </div>
+        </div>
+        <div class="p-3 bg-gray-50 rounded-xl">
+          <div class="text-xs font-semibold text-gray-600 mb-2">Alimento diario vs snacks</div>
+          <div class="flex items-center gap-3">
+            ${foodDonut(mixRows, `${sm.snackPct} %`, 'snacks')}
+            <div class="flex-1 min-w-0 space-y-1.5">${legend(mixRows)}</div>
+          </div>
+          ${mixNote}
+        </div>
+      </div>
+      <p class="text-[11px] text-gray-400 mt-2">Según el peso de las compras que has registrado${sm.since ? ` desde ${formatDate(sm.since)}` : ''}, no de lo que come cada día.${sm.skipped ? ` ${sm.skipped} compra${sm.skipped !== 1 ? 's' : ''} en unidades no se incluye${sm.skipped !== 1 ? 'n' : ''}.` : ''}</p>` : ''}
+      ${sm.spent90 ? `
+      <div class="mt-3 flex items-center justify-between gap-3 p-3 bg-brand-50 rounded-xl">
+        <span class="text-xs text-gray-600">Gastado en alimento (últimos 90 días)</span>
+        <span class="text-sm font-bold text-gray-900">${fmtCLP(sm.spent90)}</span>
+      </div>` : ''}
+    </div>`;
+}
+
 export function tabNutricion(pet) {
   const foodItems = pet.foodItems || [];
   const activities = pet.activities || [];
@@ -167,8 +244,8 @@ export function tabNutricion(pet) {
                <div class="p-3 bg-gray-50 rounded-xl">
                  <div class="flex items-start justify-between gap-3">
                    <div class="min-w-0">
-                     <div class="text-sm font-semibold text-gray-800 truncate">${esc(f.product)}</div>
-                     <div class="text-xs text-gray-400">${esc(f.type || '')} · ${f.packageSize||0} ${esc(f.packageUnit||'')} · ${f.dailyAmount||0} ${esc(f.packageUnit||'')}/día${f.price ? ` · ${fmtCLP(f.price)}` : ''}${per ? ` · ${fmtCLP(per.value)}/${per.unit}` : ''}</div>
+                     <div class="text-sm font-semibold text-gray-800 truncate">${esc(f.product)}${foodCategory(f) === 'snack' ? ' <span class="badge text-[10px] bg-teal-50 text-teal-700 align-middle">Snack</span>' : ''}</div>
+                     <div class="text-xs text-gray-400">${esc(f.type || '')} · ${f.packageSize||0} ${esc(f.packageUnit||'')}${Number(f.dailyAmount) > 0 ? ` · ${f.dailyAmount} ${esc(f.packageUnit||'')}/día` : ''}${f.price ? ` · ${fmtCLP(f.price)}` : ''}${per ? ` · ${fmtCLP(per.value)}/${per.unit}` : ''}${foodCostPerDay(f) ? ` · ≈${fmtCLP(foodCostPerDay(f))}/día` : ''}</div>
                    </div>
                    ${canEdit ? `<div class="flex items-center gap-1 flex-shrink-0">
                      <button onclick="openFoodItemModal('${pet.id}','${f.id}')" class="w-7 h-7 rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 flex items-center justify-center transition-colors">${icon('pencil','w-3.5 h-3.5')}</button>
@@ -182,7 +259,7 @@ export function tabNutricion(pet) {
                    </div>
                    <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
                      <div class="h-1.5 rounded-full ${status.level==='critico'?'bg-red-500':status.level==='bajo'?'bg-amber-500':'bg-teal-500'}" style="width:${Math.max(4,Math.min(100, status.daysLeft/30*100))}%"></div>
-                   </div>` : `<p class="text-xs text-gray-400 mt-2">Completa tamaño de paquete y consumo diario para estimar cuándo se acaba</p>`}
+                   </div>` : `<p class="text-xs text-gray-400 mt-2">Si ingresas el consumo diario, te avisamos cuándo se acaba</p>`}
                  ${insight ? `<p class="text-xs mt-2 ${insightColor}">${esc(insight.text)}</p>` : ''}
                  <div class="mt-2 flex flex-wrap gap-2">
                    ${canEdit ? `<button onclick="openFoodPurchaseModal('${safeId(pet.id)}','${safeId(f.id)}')" class="btn-secondary text-xs !py-1.5 !px-3">Registré una compra</button>` : ''}
@@ -202,7 +279,7 @@ export function tabNutricion(pet) {
                  </details>` : ''}
                </div>`;
              }).join('')}
-           </div>`}
+           </div>${foodSummarySection(foodItems)}`}
     </div>
 
     <!-- Actividad: check-in diario en vez de registro detallado -->
@@ -491,9 +568,15 @@ export function openFoodItemModal(petId, itemId) {
       <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">${icon('food','w-5 h-5')} ${item ? 'Editar alimento' : 'Agregar alimento'}</h3>
       <form onsubmit="saveFoodItem(event,'${petId}'${itemId ? `,'${itemId}'` : ''})" class="space-y-3">
         <div><label class="form-label">Producto *</label><input id="fi-product" required value="${esc(item?.product||'')}" placeholder="Ej: Royal Canin Adult" class="input-field" /></div>
+        <div><label class="form-label">¿Qué es?</label>
+          <select id="fi-category" class="input-field">
+            <option value="diario" ${foodCategory(item) === 'diario' ? 'selected' : ''}>Alimento diario</option>
+            <option value="snack" ${foodCategory(item) === 'snack' ? 'selected' : ''}>Snack o premio</option>
+          </select>
+        </div>
         <div><label class="form-label">Tipo</label>
           <select id="fi-type" class="input-field">
-            ${['Seco','Húmedo','BARF','Casero','Snack'].map(t => `<option ${item?.type===t?'selected':''}>${t}</option>`).join('')}
+            ${[...['Seco','Húmedo','BARF','Casero'], ...(item?.type && !['Seco','Húmedo','BARF','Casero'].includes(item.type) ? [item.type] : [])].map(t => `<option ${item?.type===t?'selected':''}>${esc(t)}</option>`).join('')}
           </select>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -507,10 +590,10 @@ export function openFoodItemModal(petId, itemId) {
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
-          <div><label class="form-label">Consumo diario *</label><input id="fi-daily" type="number" required min="0" step="0.01" value="${esc(item?.dailyAmount||'')}" placeholder="Ej: 0.3" class="input-field" /></div>
+          <div><label class="form-label">Consumo diario (opcional)</label><input id="fi-daily" type="number" min="0" step="0.01" value="${esc(item?.dailyAmount||'')}" placeholder="Ej: 0.3" class="input-field" /></div>
           <div><label class="form-label">Precio (CLP)</label><input id="fi-price" type="text" inputmode="numeric" value="${esc(item?.price||'')}" placeholder="0" class="input-field" /></div>
         </div>
-        <p class="text-xs text-gray-400 -mt-1">Usa la misma unidad en tamaño y consumo diario (ej: paquete de 15 kg, 0.3 kg diarios).</p>
+        <p class="text-xs text-gray-400 -mt-1">El consumo diario es opcional: solo sirve para avisarte cuándo se acaba. Si lo ingresas, usa la misma unidad que el paquete (ej: paquete de 15 kg, 0.3 kg diarios).</p>
         <div><label class="form-label">Fecha de compra</label><input id="fi-purchase" type="date" value="${esc(item?.purchaseDate||todayStr())}" class="input-field" /></div>
         <div><label class="form-label">Notas (opcional)</label><input id="fi-notes" value="${esc(item?.notes||'')}" class="input-field" /></div>
         <div class="flex gap-3 pt-2">
@@ -521,13 +604,25 @@ export function openFoodItemModal(petId, itemId) {
     </div>`);
 }
 
+// Si la columna `category` aún no existe en Supabase (food_category.sql sin
+// ejecutar), reintenta sin ella para que guardar un alimento no falle.
+async function withCategoryFallback(run, payload) {
+  const res = await run(payload);
+  if (res.error && /category/i.test(res.error.message || '')) {
+    console.warn('food_items.category no existe todavía; ejecuta supabase/schema/food_category.sql', res.error);
+    const { category, ...rest } = payload;
+    return run(rest);
+  }
+  return res;
+}
+
 export async function saveFoodItem(e, petId, itemId) {
   e.preventDefault();
   const pet = state.pets.find(p => p.id === petId);
   if (!pet) return;
   if (blockIfReadOnly(pet)) return;
   const g = id => document.getElementById(id)?.value;
-  const product = g('fi-product'), type = g('fi-type');
+  const product = g('fi-product'), type = g('fi-type'), category = g('fi-category') === 'snack' ? 'snack' : 'diario';
   const packageSize = parseFloat(g('fi-size') || 0), packageUnit = g('fi-unit');
   const dailyAmount = parseFloat(g('fi-daily') || 0), price = parseCLP(g('fi-price'));
   const purchaseDate = g('fi-purchase') || todayStr(), notes = g('fi-notes');
@@ -538,17 +633,17 @@ export async function saveFoodItem(e, petId, itemId) {
       if (item) {
         const last = (item.purchases || []).find(pu => pu.date === item.purchaseDate);
         if (last && price > 0) Object.assign(last, { date: purchaseDate, price, packageSize, packageUnit });
-        Object.assign(item, { product, type, packageSize, packageUnit, dailyAmount, price, purchaseDate, notes });
+        Object.assign(item, { product, type, category, packageSize, packageUnit, dailyAmount, price, purchaseDate, notes });
       }
     } else {
-      pet.foodItems.push({ id: genId(), product, type, packageSize, packageUnit, dailyAmount, price, purchaseDate, notes,
+      pet.foodItems.push({ id: genId(), product, type, category, packageSize, packageUnit, dailyAmount, price, purchaseDate, notes,
         purchases: price > 0 ? [{ id: genId(), date: purchaseDate, price, packageSize, packageUnit }] : [] });
     }
   } else if (itemId) {
-    const { error } = await sb.from('food_items').update({
-      product, type, package_size: packageSize, package_unit: packageUnit,
+    const { error } = await withCategoryFallback(payload => sb.from('food_items').update(payload).eq('id', itemId), {
+      product, type, category, package_size: packageSize, package_unit: packageUnit,
       daily_amount: dailyAmount, price, purchase_date: purchaseDate, notes
-    }).eq('id', itemId);
+    });
     if (error) { showToast('Error al guardar', 'error'); console.error(error); return; }
     const item = pet.foodItems.find(f => f.id === itemId);
     if (item) {
@@ -560,15 +655,15 @@ export async function saveFoodItem(e, petId, itemId) {
         if (pErr) console.warn('No se pudo actualizar el historial de compras', pErr);
         else Object.assign(last, { date: purchaseDate, price, packageSize, packageUnit });
       }
-      Object.assign(item, { product, type, packageSize, packageUnit, dailyAmount, price, purchaseDate, notes });
+      Object.assign(item, { product, type, category, packageSize, packageUnit, dailyAmount, price, purchaseDate, notes });
     }
   } else {
-    const { data, error } = await sb.from('food_items').insert({
-      pet_id: petId, product, type, package_size: packageSize, package_unit: packageUnit,
+    const { data, error } = await withCategoryFallback(payload => sb.from('food_items').insert(payload).select().single(), {
+      pet_id: petId, product, type, category, package_size: packageSize, package_unit: packageUnit,
       daily_amount: dailyAmount, price, purchase_date: purchaseDate, notes
-    }).select().single();
+    });
     if (error) { showToast('Error al guardar', 'error'); console.error(error); return; }
-    pet.foodItems.push({ id: data.id, product: data.product, type: data.type, packageSize: data.package_size,
+    pet.foodItems.push({ id: data.id, product: data.product, type: data.type, category: data.category ?? category, packageSize: data.package_size,
       packageUnit: data.package_unit, dailyAmount: data.daily_amount, price: data.price,
       purchaseDate: data.purchase_date, notes: data.notes, purchases: [] });
     if (price > 0 && packageSize > 0) {

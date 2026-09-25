@@ -290,6 +290,63 @@ export function foodDaysTotal(f) {
   return Math.floor(size / daily);
 }
 
+// Categoría del alimento: 'diario' o 'snack'. Los alimentos anteriores a la
+// columna `category` con tipo "Snack" se consideran snack.
+export function foodCategory(f) {
+  if (f?.category === 'snack' || f?.category === 'diario') return f.category;
+  return f?.type === 'Snack' ? 'snack' : 'diario';
+}
+
+// Peso de un envase en gramos. Solo se puede sumar lo que está en kg o g; un
+// alimento en "unidades" devuelve null porque no tiene equivalencia en peso.
+export function foodPackageGrams(size, unit) {
+  const n = parseFloat(size);
+  if (!(n > 0)) return null;
+  if (unit === 'kg') return n * 1000;
+  if (unit === 'g') return n;
+  return null;
+}
+
+// Lo que cuesta alimentar por día con este envase: precio ÷ días que dura.
+// Solo existe si el tutor ingresó el consumo diario (es opcional): sin él
+// devuelve null, no se estima.
+export function foodCostPerDay(f) {
+  const days = foodDaysTotal(f || {});
+  const price = Number(f?.price);
+  if (!days || !(price > 0)) return null;
+  return Math.round(price / days);
+}
+
+// Resumen para los gráficos de Nutrición, calculado SOLO con las compras que el
+// tutor registró (no con lo que come cada día, que casi nadie lleva): peso
+// comprado por tipo, alimento diario vs snacks y lo gastado en los últimos 90
+// días. Un alimento sin historial aporta su propia fila como única compra.
+export function foodSummary(items) {
+  const byType = {};
+  let daily = 0, snack = 0, skipped = 0, spent90 = 0, purchases = 0, since = null;
+  const from = addDays(todayStr(), -90);
+  (items || []).forEach(f => {
+    let list = f.purchases || [];
+    if (!list.length && f.purchaseDate) list = [{ date: f.purchaseDate, price: f.price, packageSize: f.packageSize, packageUnit: f.packageUnit }];
+    list.forEach(pu => {
+      purchases++;
+      if (pu.date && (!since || pu.date < since)) since = pu.date;
+      if (pu.date >= from && Number(pu.price) > 0) spent90 += Number(pu.price);
+      const g = foodPackageGrams(pu.packageSize, pu.packageUnit);
+      if (g == null) { skipped++; return; }
+      const type = f.type || 'Otro';
+      byType[type] = (byType[type] || 0) + g;
+      if (foodCategory(f) === 'snack') snack += g; else daily += g;
+    });
+  });
+  const total = daily + snack;
+  return {
+    byType: Object.entries(byType).map(([label, grams]) => ({ label, grams })).sort((a, b) => b.grams - a.grams),
+    daily, snack, total, skipped, spent90, purchases, since,
+    snackPct: total > 0 ? Math.round(snack / total * 100) : 0,
+  };
+}
+
 export function foodRunOutDate(f) {
   const days = foodDaysTotal(f);
   if (days == null || !f.purchaseDate) return null;
@@ -376,6 +433,6 @@ if (typeof window !== 'undefined') {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
     getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, shrinkImage, slugify, petCompleteness, COMPLETENESS_FIELDS, eventIcon, botiquinStatus,
     medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
-    foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
+    foodCategory, foodPackageGrams, foodCostPerDay, foodSummary, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
   });
 }

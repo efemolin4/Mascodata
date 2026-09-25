@@ -119,7 +119,7 @@ async function loadDataFromSupabase() {
         symptomsLog: sym.filter(s => s.pet_id === pid).map(s => ({
           id: s.id, date: s.date, symptoms: s.symptoms, severity: s.severity, notes: s.notes })),
         foodItems: food.filter(f => f.pet_id === pid).map(f => ({
-          id: f.id, product: f.product, type: f.type, packageSize: f.package_size,
+          id: f.id, product: f.product, type: f.type, category: f.category, packageSize: f.package_size,
           packageUnit: f.package_unit, dailyAmount: f.daily_amount, price: f.price,
           purchaseDate: f.purchase_date, notes: f.notes,
           purchases: purchases.filter(x => x.food_item_id === f.id).map(x => ({

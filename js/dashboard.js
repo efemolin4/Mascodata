@@ -87,6 +87,7 @@ export function viewDashboard() {
 
     // Alimento por acabarse: es el momento en que sirve buscar una oferta.
     (p.foodItems || []).forEach(f => {
+      if (foodCategory(f) === 'snack') return; // solo el alimento diario genera aviso de reposición
       const st = foodStockStatus(f);
       if (!st || st.level === 'ok') return;
       const when = st.daysLeft < 0 ? 'Se estima que ya se acabó' : st.daysLeft === 0 ? 'Se acaba hoy' : `Quedan ~${st.daysLeft} día${st.daysLeft !== 1 ? 's' : ''}`;

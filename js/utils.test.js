@@ -3,6 +3,7 @@ import {
   todayStr, daysFromNowStr, addDays, daysBetween, addMonths, getAge,
   careAlertStatus, medStockStatus, foodStockStatus, esc, safeId, safeDataUrl, petCompleteness, parseCLP, fmtCompactCLP,
   foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl,
+  foodCategory, foodPackageGrams, foodCostPerDay, foodSummary,
 } from './utils.js';
 
 // Fija "hoy" a una fecha conocida para que las pruebas de fecha sean
@@ -354,5 +355,58 @@ describe('precio por kilo del alimento', () => {
     const f = { product: 'Bravery pollo & arroz', packageSize: 12, packageUnit: 'kg' };
     expect(foodOfferUrl(f, 'knasta')).toBe('https://knasta.cl/results?q=Bravery%20pollo%20%26%20arroz%2012%20kg');
     expect(foodOfferUrl(f)).toBe('https://www.google.com/search?tbm=shop&q=Bravery%20pollo%20%26%20arroz%2012%20kg');
+  });
+});
+
+describe('resumen de alimentación', () => {
+  it('la categoría usa la columna y, sin ella, el tipo "Snack" de los alimentos antiguos', () => {
+    expect(foodCategory({ category: 'snack' })).toBe('snack');
+    expect(foodCategory({ type: 'Snack' })).toBe('snack');
+    expect(foodCategory({ type: 'Seco' })).toBe('diario');
+    expect(foodCategory(null)).toBe('diario');
+  });
+
+  it('convierte el peso del envase a gramos y descarta las unidades', () => {
+    expect(foodPackageGrams(12, 'kg')).toBe(12000);
+    expect(foodPackageGrams(500, 'g')).toBe(500);
+    expect(foodPackageGrams(10, 'unidades')).toBeNull();
+    expect(foodPackageGrams(0, 'kg')).toBeNull();
+  });
+
+  it('el costo por día es el precio dividido en los días que dura el envase', () => {
+    // 10 kg a 0.5 kg/día = 20 días; $40.000 → $2.000/día
+    expect(foodCostPerDay({ packageSize: 10, dailyAmount: 0.5, price: 40000 })).toBe(2000);
+    expect(foodCostPerDay({ packageSize: 10, dailyAmount: 0.5, price: 0 })).toBeNull();
+    // sin consumo diario no se inventa un costo por día
+    expect(foodCostPerDay({ packageSize: 10, dailyAmount: 0, price: 40000 })).toBeNull();
+  });
+
+  it('calcula el reparto con las compras registradas, sin necesitar el consumo diario', () => {
+    const today = todayStr();
+    const sm = foodSummary([
+      { type: 'Seco', category: 'diario', purchases: [
+        { date: addDays(today, -10), price: 40000, packageSize: 10, packageUnit: 'kg' },
+        { date: addDays(today, -200), price: 30000, packageSize: 10, packageUnit: 'kg' }] },
+      { type: 'Húmedo', category: 'diario', dailyAmount: 0, purchases: [{ date: addDays(today, -5), price: 8000, packageSize: 2, packageUnit: 'kg' }] },
+      { type: 'Seco', category: 'snack', purchases: [{ date: addDays(today, -3), price: 5000, packageSize: 1000, packageUnit: 'g' }] },
+      { type: 'Seco', category: 'snack', purchases: [{ date: addDays(today, -3), price: 3000, packageSize: 10, packageUnit: 'unidades' }] },
+    ]);
+    expect(sm.daily).toBe(22000);
+    expect(sm.snack).toBe(1000);
+    expect(sm.snackPct).toBe(4);
+    expect(sm.skipped).toBe(1);
+    expect(sm.byType[0]).toEqual({ label: 'Seco', grams: 21000 });
+    expect(sm.spent90).toBe(40000 + 8000 + 5000 + 3000); // la compra de hace 200 días no cuenta
+    expect(sm.since).toBe(addDays(today, -200));
+  });
+
+  it('un alimento sin historial aporta su propia fila como compra', () => {
+    const sm = foodSummary([{ type: 'Seco', category: 'diario', packageSize: 15, packageUnit: 'kg', price: 62000, purchaseDate: todayStr() }]);
+    expect(sm.daily).toBe(15000);
+    expect(sm.purchases).toBe(1);
+  });
+
+  it('sin alimentos devuelve todo en cero', () => {
+    expect(foodSummary([])).toMatchObject({ total: 0, snackPct: 0, spent90: 0 });
   });
 });
