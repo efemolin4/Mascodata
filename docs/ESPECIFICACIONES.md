@@ -81,6 +81,7 @@ Inventario de medicamentos e insumos del hogar con stock y caducidad, y alertas.
 Lista única **Necesita atención** ordenada por urgencia (vencidas, por vencer, recomendaciones, alimento por acabarse, recordatorio de pesar), tarjeta de completar el perfil, franja de hoy, rachas y cumpleaños.
 
 ### 2.9 Correos automáticos
+Además de estos dos, los **correos de autenticación** de Supabase (confirmar cuenta, enlace de acceso y código, restablecer contraseña, cambio de correo, código de verificación) usan plantillas con la marca (`supabase/email-templates/`). Son genéricas a propósito: no insertan ningún dato que un usuario pueda escribir, para que nadie use nuestro dominio para enviar mensajes falsos.
 Ambos son avisos de servicio (no promociones), solo al **dueño**, con enlace de baja firmado y un interruptor único en Mi perfil.
 
 | Correo | Cuándo | Contenido |
@@ -207,7 +208,7 @@ Vitest con jsdom: **262 pruebas en 15 archivos**, más `check-exports`. Las vist
 
 **Marca y comunicación**
 - Logo nuevo en la pantalla de consentimiento de Google.
-- Plantillas de correo de Supabase Auth con la paleta v2.
+- Instalar las plantillas de correo de Supabase Auth (archivos listos en `supabase/email-templates/`) y configurar el remitente propio con Resend SMTP.
 
 **Técnica**
 - La app se describe como PWA pero no tiene manifiesto ni *service worker*: no es instalable todavía.
