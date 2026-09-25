@@ -262,7 +262,7 @@ export function tabNutricion(pet) {
                    </div>` : `<p class="text-xs text-gray-400 mt-2">Si ingresas el consumo diario, te avisamos cuándo se acaba</p>`}
                  ${insight ? `<p class="text-xs mt-2 ${insightColor}">${esc(insight.text)}</p>` : ''}
                  <div class="mt-2 flex flex-wrap gap-2">
-                   ${canEdit ? `<button onclick="openFoodPurchaseModal('${safeId(pet.id)}','${safeId(f.id)}')" class="btn-secondary text-xs !py-1.5 !px-3">Registré una compra</button>` : ''}
+                   ${canEdit ? `<button onclick="openFoodPurchaseModal('${safeId(pet.id)}','${safeId(f.id)}')" class="btn-secondary text-xs !py-1.5 !px-3">Ya repuse</button>` : ''}
                    <button onclick="openFoodOffer('${safeId(pet.id)}','${safeId(f.id)}','nutricion')" class="btn-secondary text-xs !py-1.5 !px-3">Buscar oferta</button>
                  </div>
                  ${history.length ? `
@@ -590,10 +590,16 @@ export function openFoodItemModal(petId, itemId) {
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
-          <div><label class="form-label">Consumo diario (opcional)</label><input id="fi-daily" type="number" min="0" step="0.01" value="${esc(item?.dailyAmount||'')}" placeholder="Ej: 0.3" class="input-field" /></div>
-          <div><label class="form-label">Precio (CLP)</label><input id="fi-price" type="text" inputmode="numeric" value="${esc(item?.price||'')}" placeholder="0" class="input-field" /></div>
+          <div><label class="form-label">¿Cuánto le dura?</label>
+            <select id="fi-duration" class="input-field" onchange="if(this.value)document.getElementById('fi-daily').value=''">
+              <option value="">No sé</option>
+              ${[7, 15, 30, 45, 60, 90].map(d => `<option value="${d}">${d} días</option>`).join('')}
+            </select>
+          </div>
+          <div><label class="form-label">O consumo diario</label><input id="fi-daily" type="number" min="0" step="0.01" oninput="if(this.value)document.getElementById('fi-duration').value=''" value="${Number(item?.dailyAmount) > 0 ? esc(item.dailyAmount) : ''}" placeholder="Ej: 0.3" class="input-field" /></div>
         </div>
-        <p class="text-xs text-gray-400 -mt-1">El consumo diario es opcional: solo sirve para avisarte cuándo se acaba. Si lo ingresas, usa la misma unidad que el paquete (ej: paquete de 15 kg, 0.3 kg diarios).</p>
+        <p class="text-xs text-gray-400 -mt-1">Indica cuánto le dura el paquete o su consumo diario y te avisamos cuándo se acaba. Es opcional. Si ingresas el consumo diario, usa la misma unidad que el paquete (ej: 15 kg y 0.3 kg diarios).</p>
+        <div><label class="form-label">Precio (CLP)</label><input id="fi-price" type="text" inputmode="numeric" value="${esc(item?.price||'')}" placeholder="0" class="input-field" /></div>
         <div><label class="form-label">Fecha de compra</label><input id="fi-purchase" type="date" value="${esc(item?.purchaseDate||todayStr())}" class="input-field" /></div>
         <div><label class="form-label">Notas (opcional)</label><input id="fi-notes" value="${esc(item?.notes||'')}" class="input-field" /></div>
         <div class="flex gap-3 pt-2">
@@ -624,7 +630,12 @@ export async function saveFoodItem(e, petId, itemId) {
   const g = id => document.getElementById(id)?.value;
   const product = g('fi-product'), type = g('fi-type'), category = g('fi-category') === 'snack' ? 'snack' : 'diario';
   const packageSize = parseFloat(g('fi-size') || 0), packageUnit = g('fi-unit');
-  const dailyAmount = parseFloat(g('fi-daily') || 0), price = parseCLP(g('fi-price'));
+  let dailyAmount = parseFloat(g('fi-daily') || 0);
+  const price = parseCLP(g('fi-price'));
+  // "¿Cuánto le dura?" se guarda como consumo diario equivalente (tamaño ÷ días),
+  // así el aviso de "cuándo se acaba" funciona igual sin una columna nueva.
+  const durationDays = parseInt(g('fi-duration') || 0, 10);
+  if (durationDays > 0 && packageSize > 0) dailyAmount = Math.round(packageSize / durationDays * 10000) / 10000;
   const purchaseDate = g('fi-purchase') || todayStr(), notes = g('fi-notes');
   pet.foodItems = pet.foodItems || [];
   if (isDemoUser()) {
@@ -687,7 +698,7 @@ export function openFoodPurchaseModal(petId, itemId) {
   if (!item) return;
   openModal(`
     <div class="modal-box p-4 sm:p-6">
-      <h3 class="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">${icon('food','w-5 h-5')} Registrar compra</h3>
+      <h3 class="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">${icon('food','w-5 h-5')} Ya repuse este alimento</h3>
       <p class="text-sm text-gray-500 mb-4">${esc(item.product)}</p>
       <form onsubmit="saveFoodPurchase(event,'${safeId(petId)}','${safeId(itemId)}')" class="space-y-3">
         <div class="grid grid-cols-2 gap-3">
@@ -705,7 +716,7 @@ export function openFoodPurchaseModal(petId, itemId) {
         <p class="text-xs text-gray-400">Al guardar, el conteo de stock parte de esta fecha.</p>
         <div class="flex gap-3 pt-2">
           <button type="button" onclick="closeModal()" class="btn-secondary flex-1">Cancelar</button>
-          <button type="submit" class="btn-primary flex-1">Guardar compra</button>
+          <button type="submit" class="btn-primary flex-1">Guardar</button>
         </div>
       </form>
     </div>`);
