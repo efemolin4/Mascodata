@@ -569,7 +569,7 @@ export function openFoodItemModal(petId, itemId) {
           <div><label class="form-label">O consumo diario</label><input id="fi-daily" type="number" min="0" step="0.01" oninput="if(this.value)document.getElementById('fi-duration').value=''" value="${Number(item?.dailyAmount) > 0 ? esc(item.dailyAmount) : ''}" placeholder="Ej: 0.3" class="input-field" /></div>
         </div>
         <p class="text-xs text-gray-400 -mt-1">Indica cuánto le dura el paquete o su consumo diario y te avisamos cuándo se acaba. Es opcional. Si ingresas el consumo diario, usa la misma unidad que el paquete (ej: 15 kg y 0.3 kg diarios).</p>
-        <div><label class="form-label">Precio (CLP)</label><input id="fi-price" type="text" inputmode="numeric" value="${esc(item?.price||'')}" placeholder="0" class="input-field" /></div>
+        <div><label class="form-label">Precio pagado (CLP)</label><input id="fi-price" type="text" inputmode="numeric" value="${esc(item?.price||'')}" placeholder="0" class="input-field" /></div>
         <div><label class="form-label">Fecha de compra</label><input id="fi-purchase" type="date" value="${esc(item?.purchaseDate||todayStr())}" class="input-field" /></div>
         <div><label class="form-label">Notas (opcional)</label><input id="fi-notes" value="${esc(item?.notes||'')}" class="input-field" /></div>
         <div class="flex gap-3 pt-2">

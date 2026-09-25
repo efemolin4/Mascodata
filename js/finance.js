@@ -366,35 +366,97 @@ export function viewFinance() {
 
 export function openExpenseModal() {
   const pets = state.pets;
+  // Mascota preseleccionada: la que esté filtrada en Finanzas, si hay una.
+  const filtered = pets.find(p => p.name === state.finPet);
   openModal(`
     <div class="modal-box p-4 sm:p-6">
       <h3 class="text-lg font-bold text-gray-900 mb-4">Registrar gasto</h3>
       <form onsubmit="saveExpense(event)" class="space-y-3">
-        <div><label class="form-label">Descripción *</label><input id="ex-desc" required placeholder="Ej: Consulta veterinaria" class="input-field" /></div>
-        <div class="grid grid-cols-2 gap-3">
-          <div><label class="form-label">Monto (CLP) *</label><input id="ex-amount" type="text" inputmode="numeric" required placeholder="0" class="input-field" /></div>
-          <div><label class="form-label">Fecha *</label><input id="ex-date" type="date" required value="${todayStr()}" class="input-field" /></div>
+        <div id="ex-manual" class="space-y-3">
+          <div><label class="form-label">Descripción *</label><input id="ex-desc" required placeholder="Ej: Consulta veterinaria" class="input-field" /></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="form-label">Monto (CLP) *</label><input id="ex-amount" type="text" inputmode="numeric" required placeholder="0" class="input-field" /></div>
+            <div><label class="form-label">Fecha *</label><input id="ex-date" type="date" required value="${todayStr()}" class="input-field" /></div>
+          </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div><label class="form-label">Categoría</label>
-            <select id="ex-cat" class="input-field">
+            <select id="ex-cat" class="input-field" onchange="onExpenseCategoryChange()">
               <option>Veterinaria</option><option>Medicamentos</option><option>Alimentación</option>
               <option>Peluquería</option><option>Hotel</option><option>Otro</option>
             </select>
           </div>
-          <div><label class="form-label">Mascota</label>
+          <div id="ex-pet-wrap"><label class="form-label">Mascota</label>
             <select id="ex-pet" class="input-field">
               <option value="">General</option>
               ${pets.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}
             </select>
           </div>
         </div>
-        <div class="flex gap-3 pt-2">
+        <!-- Alimentación: las compras se registran en la ficha (un solo lugar para el dato) -->
+        <div id="ex-food-panel" class="hidden space-y-3">
+          <p class="text-xs text-gray-500 bg-brand-50 rounded-xl p-3 leading-relaxed">Las compras de alimento se registran en la ficha de la mascota: así también calculamos el precio por kilo y cuándo se acaba, y el gasto aparece aquí solo.</p>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="form-label">Mascota *</label>
+              <select id="ex-food-pet" class="input-field" onchange="onExpenseFoodPetChange()">
+                <option value="">Elige una</option>
+                ${pets.map(p => `<option value="${esc(p.id)}" ${filtered?.id === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}
+              </select>
+            </div>
+            <div><label class="form-label">¿Qué alimento?</label>
+              <select id="ex-food-item" class="input-field"><option value="">Otro alimento nuevo</option></select>
+            </div>
+          </div>
+          <button type="button" onclick="continueFoodExpense()" class="btn-primary w-full">Continuar</button>
+          <button type="button" onclick="showManualExpense()" class="w-full text-xs text-gray-500 hover:text-gray-700 underline">Registrar solo como gasto</button>
+        </div>
+        <div id="ex-actions" class="flex gap-3 pt-2">
           <button type="button" onclick="closeModal()" class="btn-secondary flex-1">Cancelar</button>
           <button type="submit" class="btn-primary flex-1">Guardar</button>
         </div>
       </form>
     </div>`);
+}
+
+// Al elegir "Alimentación" el modal deja de pedir un monto suelto y lleva al
+// formulario de compra de la ficha (una sola fuente para el dato). "Registrar solo
+// como gasto" vuelve al formulario manual para gastos que no son de un alimento.
+export function onExpenseCategoryChange() {
+  const food = document.getElementById('ex-cat')?.value === 'Alimentación' && state.pets.length > 0;
+  const manualAsked = document.getElementById('ex-food-panel')?.dataset.manual === '1';
+  if (!food) { const p = document.getElementById('ex-food-panel'); if (p) p.dataset.manual = ''; }
+  const showFood = food && !manualAsked;
+  document.getElementById('ex-food-panel')?.classList.toggle('hidden', !showFood);
+  document.getElementById('ex-manual')?.classList.toggle('hidden', showFood);
+  document.getElementById('ex-pet-wrap')?.classList.toggle('hidden', showFood);
+  document.getElementById('ex-actions')?.classList.toggle('hidden', showFood);
+  if (showFood) onExpenseFoodPetChange();
+}
+
+export function onExpenseFoodPetChange() {
+  const pet = state.pets.find(p => p.id === document.getElementById('ex-food-pet')?.value);
+  const sel = document.getElementById('ex-food-item');
+  if (!sel) return;
+  sel.innerHTML = `<option value="">Otro alimento nuevo</option>` +
+    (pet?.foodItems || []).map(f => `<option value="${esc(f.id)}">${esc(f.product)}</option>`).join('');
+  // Si la mascota ya tiene alimentos, lo más común es una compra de uno de ellos.
+  if (pet?.foodItems?.length) sel.value = pet.foodItems[0].id;
+}
+
+export function showManualExpense() {
+  const panel = document.getElementById('ex-food-panel');
+  if (panel) panel.dataset.manual = '1';
+  onExpenseCategoryChange();
+}
+
+export function continueFoodExpense() {
+  const petId = document.getElementById('ex-food-pet')?.value;
+  const itemId = document.getElementById('ex-food-item')?.value;
+  if (!petId) { showToast('Elige la mascota', 'error'); return; }
+  track('expense_food_redirect', { existing: !!itemId });
+  // openModal reemplaza el contenido, así que abrir el otro formulario cierra este.
+  if (itemId) openFoodPurchaseModal(petId, itemId);
+  else openFoodItemModal(petId);
 }
 
 export async function saveExpense(e) {
@@ -421,5 +483,5 @@ export async function deleteExpense(id) {
 }
 
 if (typeof window !== 'undefined') {
-  Object.assign(window, { viewFinance, openExpenseModal, saveExpense, deleteExpense });
+  Object.assign(window, { viewFinance, openExpenseModal, onExpenseCategoryChange, onExpenseFoodPetChange, showManualExpense, continueFoodExpense, saveExpense, deleteExpense });
 }

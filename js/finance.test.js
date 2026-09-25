@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js';   // deja parseCLP real en window
 import { state } from '../js/app.js'; // isPremium() (llamada dentro de viewFinance) lee `state` del scope de app.js — hay que mutar el mismo objeto, no reemplazar window.state
-import { saveExpense, deleteExpense, viewFinance } from './finance.js';
+import { saveExpense, deleteExpense, viewFinance, openExpenseModal, onExpenseCategoryChange, onExpenseFoodPetChange, showManualExpense, continueFoodExpense } from './finance.js';
 
 describe('saveExpense', () => {
   beforeEach(() => {
@@ -204,5 +204,96 @@ describe('viewFinance — dashboard de gastos por período y categoría', () => 
   it('una categoría que no está en la paleta igual aparece (antes se descartaba en silencio)', () => {
     window.getFinanceExpenses = () => [{ id: 1, amount: 40000, date: monthsAgo(0), category: 'Cuidadora', pet: 'Greta' }];
     expect(viewFinance()).toContain('Cuidadora');
+  });
+});
+
+describe('registrar gasto — categoría Alimentación', () => {
+  const setup = (pets) => {
+    window.showToast = vi.fn();
+    window.track = vi.fn();
+    window.openFoodPurchaseModal = vi.fn();
+    window.openFoodItemModal = vi.fn();
+    window.state = { user: { id: 'u1' }, pets, expenses: [], finPet: '' };
+    document.body.innerHTML = '<div id="modal-root"></div>';
+    window.openModal = html => { document.getElementById('modal-root').innerHTML = html; };
+    openExpenseModal();
+  };
+  const choose = (cat) => { document.getElementById('ex-cat').value = cat; onExpenseCategoryChange(); };
+  const hidden = id => document.getElementById(id).classList.contains('hidden');
+  const greta = { id: 'p1', name: 'Greta', foodItems: [{ id: 'f1', product: 'Barfood' }, { id: 'f2', product: 'Snack' }] };
+
+  it('con otra categoría muestra el formulario manual de siempre', () => {
+    setup([greta]);
+    choose('Veterinaria');
+    expect(hidden('ex-food-panel')).toBe(true);
+    expect(hidden('ex-manual')).toBe(false);
+  });
+
+  it('al elegir Alimentación esconde el monto suelto y ofrece los alimentos de la mascota', () => {
+    setup([greta]);
+    choose('Alimentación');
+    expect(hidden('ex-food-panel')).toBe(false);
+    expect(hidden('ex-manual')).toBe(true);
+    expect(hidden('ex-actions')).toBe(true);
+    document.getElementById('ex-food-pet').value = 'p1';
+    onExpenseFoodPetChange();
+    expect([...document.getElementById('ex-food-item').options].map(o => o.textContent)).toEqual(['Otro alimento nuevo', 'Barfood', 'Snack']);
+    expect(document.getElementById('ex-food-item').value).toBe('f1');
+  });
+
+  it('continuar con un alimento existente abre la nueva compra de ese alimento', () => {
+    setup([greta]);
+    choose('Alimentación');
+    document.getElementById('ex-food-pet').value = 'p1';
+    onExpenseFoodPetChange();
+    continueFoodExpense();
+    expect(window.openFoodPurchaseModal).toHaveBeenCalledWith('p1', 'f1');
+    expect(window.openFoodItemModal).not.toHaveBeenCalled();
+  });
+
+  it('continuar con "otro alimento nuevo" abre el formulario de agregar alimento', () => {
+    setup([greta]);
+    choose('Alimentación');
+    document.getElementById('ex-food-pet').value = 'p1';
+    document.getElementById('ex-food-item').value = '';
+    continueFoodExpense();
+    expect(window.openFoodItemModal).toHaveBeenCalledWith('p1');
+  });
+
+  it('sin elegir mascota no avanza y avisa', () => {
+    setup([greta]);
+    choose('Alimentación');
+    document.getElementById('ex-food-pet').value = '';
+    continueFoodExpense();
+    expect(window.showToast).toHaveBeenCalledWith('Elige la mascota', 'error');
+    expect(window.openFoodPurchaseModal).not.toHaveBeenCalled();
+  });
+
+  it('"Registrar solo como gasto" vuelve al formulario manual y se mantiene mientras siga en Alimentación', () => {
+    setup([greta]);
+    choose('Alimentación');
+    showManualExpense();
+    expect(hidden('ex-manual')).toBe(false);
+    expect(hidden('ex-food-panel')).toBe(true);
+    onExpenseCategoryChange();
+    expect(hidden('ex-manual')).toBe(false);
+    choose('Otro');
+    choose('Alimentación'); // al volver a elegirla, de nuevo se ofrece el flujo de la ficha
+    expect(hidden('ex-food-panel')).toBe(false);
+  });
+
+  it('sin mascotas registradas, Alimentación sigue siendo un gasto manual', () => {
+    setup([]);
+    choose('Alimentación');
+    expect(hidden('ex-manual')).toBe(false);
+    expect(hidden('ex-food-panel')).toBe(true);
+  });
+
+  it('preselecciona la mascota filtrada en Finanzas', () => {
+    window.state = { pets: [greta, { id: 'p2', name: 'Luna' }], finPet: 'Luna' };
+    document.body.innerHTML = '<div id="modal-root"></div>';
+    window.openModal = html => { document.getElementById('modal-root').innerHTML = html; };
+    openExpenseModal();
+    expect(document.getElementById('ex-food-pet').value).toBe('p2');
   });
 });
