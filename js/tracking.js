@@ -259,7 +259,7 @@ export function tabNutricion(pet) {
                    </div>
                    <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
                      <div class="h-1.5 rounded-full ${status.level==='critico'?'bg-red-500':status.level==='bajo'?'bg-amber-500':'bg-teal-500'}" style="width:${Math.max(4,Math.min(100, status.daysLeft/30*100))}%"></div>
-                   </div>` : `<p class="text-xs text-gray-400 mt-2">Si ingresas el consumo diario, te avisamos cuándo se acaba</p>`}
+                   </div>` : `<p class="text-xs text-gray-400 mt-2">Indica cuánto le dura o su consumo diario y te avisamos cuándo se acaba</p>`}
                  ${insight ? `<p class="text-xs mt-2 ${insightColor}">${esc(insight.text)}</p>` : ''}
                  <div class="mt-2 flex flex-wrap gap-2">
                    ${canEdit ? `<button onclick="openFoodPurchaseModal('${safeId(pet.id)}','${safeId(f.id)}')" class="btn-secondary text-xs !py-1.5 !px-3">Ya repuse</button>` : ''}

@@ -141,18 +141,19 @@ export function parseCLP(str) {
 // supabase/functions/pet-completion-reminders/index.ts (hay un test de paridad).
 export const COMPLETENESS_FIELDS = [
   { key: 'basic',    points: 10, label: 'Nombre y especie',        hint: '',                                   action: 'edit',    has: p => !!(p.name && p.species) },
-  { key: 'dob',      points: 12, label: 'Fecha de nacimiento',     hint: 'Activa las sugerencias por edad',    action: 'edit',    has: p => !!p.dateOfBirth },
+  { key: 'dob',      points: 11, label: 'Fecha de nacimiento',     hint: 'Activa las sugerencias por edad',    action: 'edit',    has: p => !!p.dateOfBirth },
   { key: 'photo',    points: 7,  label: 'Foto',                    hint: 'Hace la ficha más tuya',             action: 'edit',    has: p => !!p.photo },
   { key: 'breed',    points: 5,  label: 'Raza',                    hint: 'Activa las sugerencias por raza',    action: 'edit',    has: p => !!p.breed },
   { key: 'sex',      points: 3,  label: 'Sexo',                    hint: 'Dato básico de la ficha',            action: 'edit',    has: p => !!p.sex },
   { key: 'chip',     points: 3,  label: 'Microchip',               hint: 'Útil si se pierde',                  action: 'edit',    has: p => !!p.chipNumber, healthOnly: true },
-  { key: 'vaccine',  points: 16, label: 'Al menos una vacuna',     hint: 'Activa las alertas de vacunas',      action: 'vaccine', has: p => (p.vaccines || []).length > 0, healthOnly: true },
+  { key: 'vaccine',  points: 15, label: 'Al menos una vacuna',     hint: 'Activa las alertas de vacunas',      action: 'vaccine', has: p => (p.vaccines || []).length > 0, healthOnly: true },
   { key: 'deworm',   points: 8,  label: 'Al menos una desparasitación', hint: 'Activa sus alertas',            action: 'deworm',  has: p => (p.deworming || []).length > 0, healthOnly: true },
-  { key: 'allergies', points: 8, label: 'Alergias y condiciones',  hint: 'Marca "Ninguna" si no tiene',        action: 'edit',    has: p => (p.allergies || []).length > 0 || (Array.isArray(p.chronicConditions) ? p.chronicConditions.length > 0 : !!p.chronicConditions) },
-  { key: 'weight',   points: 8,  label: 'Peso',                    hint: 'Alimenta el seguimiento',            action: 'edit',    has: p => Number(p.weightKg) > 0 },
+  { key: 'allergies', points: 7, label: 'Alergias y condiciones',  hint: 'Marca "Ninguna" si no tiene',        action: 'edit',    has: p => (p.allergies || []).length > 0 || (Array.isArray(p.chronicConditions) ? p.chronicConditions.length > 0 : !!p.chronicConditions) },
+  { key: 'weight',   points: 7,  label: 'Peso',                    hint: 'Alimenta el seguimiento',            action: 'edit',    has: p => Number(p.weightKg) > 0 },
+  { key: 'food',     points: 6,  label: 'Alimento',                hint: 'Te avisamos cuándo se acaba',        action: 'food',    has: p => (p.foodItems || []).length > 0 },
   { key: 'repro',    points: 5,  label: 'Estado reproductivo',     hint: 'Dato de la ficha',                   action: 'edit',    has: p => !!p.reproductiveStatus, healthOnly: true },
-  { key: 'vetName',  points: 8,  label: 'Nombre del veterinario',  hint: 'Para tenerlo a mano en emergencias', action: 'edit',    has: p => !!(p.vet && p.vet.name && String(p.vet.name).trim()) },
-  { key: 'vetPhone', points: 7,  label: 'Teléfono del veterinario', hint: 'Para llamar rápido',                action: 'edit',    has: p => !!(p.vet && p.vet.phone && String(p.vet.phone).trim()) },
+  { key: 'vetName',  points: 7,  label: 'Nombre del veterinario',  hint: 'Para tenerlo a mano en emergencias', action: 'edit',    has: p => !!(p.vet && p.vet.name && String(p.vet.name).trim()) },
+  { key: 'vetPhone', points: 6,  label: 'Teléfono del veterinario', hint: 'Para llamar rápido',                action: 'edit',    has: p => !!(p.vet && p.vet.phone && String(p.vet.phone).trim()) },
 ];
 const NO_HEALTH_SPECIES = ['Pez', 'Ave', 'Hámster', 'Reptil'];
 

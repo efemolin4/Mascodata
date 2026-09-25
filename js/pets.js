@@ -430,6 +430,7 @@ export function completionAction(petId, key) {
   track('profile_completion_click', { field: key });
   if (field.action === 'vaccine') openVaccineModal(petId);
   else if (field.action === 'deworm') openDewormModal(petId);
+  else if (field.action === 'food') { navigate('petProfile', { currentPetId: petId, currentTab: 'nutricion' }); openFoodItemModal(petId); }
   else openEditPetModal(petId);
 }
 

@@ -251,7 +251,7 @@ describe('safeDataUrl', () => {
 describe('petCompleteness', () => {
   const full = () => ({
     name: 'Luna', species: 'Perro', dateOfBirth: '2020-01-01', photo: 'data:image/png;base64,AAAA', breed: 'Mestizo', sex: 'Hembra',
-    chipNumber: '123', vaccines: [{}], deworming: [{}], allergies: [], chronicConditions: ['Ninguna'], weightKg: 12,
+    chipNumber: '123', vaccines: [{}], deworming: [{}], foodItems: [{}], allergies: [], chronicConditions: ['Ninguna'], weightKg: 12,
     reproductiveStatus: 'Esterilizada', vet: { name: 'Dra. Pérez', phone: '+56 9 1' },
   });
 
@@ -267,9 +267,9 @@ describe('petCompleteness', () => {
     expect(c.missing).toEqual([]);
   });
 
-  it('los pasos pendientes salen de mayor a menor peso (vacuna 16 % primero)', () => {
+  it('los pasos pendientes salen de mayor a menor peso (vacuna 15 % primero)', () => {
     const c = petCompleteness({ name: 'Luna', species: 'Perro' });
-    expect(c.missing[0]).toMatchObject({ key: 'vaccine', gain: 16, action: 'vaccine' });
+    expect(c.missing[0]).toMatchObject({ key: 'vaccine', gain: 15, action: 'vaccine' });
     expect(c.missing[1].key).toBe('dob');
     expect(c.missing.map(m => m.gain)).toEqual([...c.missing.map(m => m.gain)].sort((a, b) => b - a));
   });
@@ -285,7 +285,7 @@ describe('petCompleteness', () => {
     const c = petCompleteness({ name: 'Nemo', species: 'Pez' });
     expect(c.missing.map(m => m.key)).not.toContain('vaccine');
     expect(c.missing.map(m => m.key)).not.toContain('chip');
-    expect(c.percent).toBe(Math.round(10 * 100 / (100 - 16 - 8 - 3 - 5)));
+    expect(c.percent).toBe(Math.round(10 * 100 / (100 - 15 - 8 - 3 - 5)));
     const whole = { ...full(), species: 'Ave', vaccines: [], deworming: [], chipNumber: '', reproductiveStatus: '' };
     expect(petCompleteness(whole).percent).toBe(100);
   });
@@ -408,5 +408,19 @@ describe('resumen de alimentación', () => {
 
   it('sin alimentos devuelve todo en cero', () => {
     expect(foodSummary([])).toMatchObject({ total: 0, snackPct: 0, spent90: 0 });
+  });
+});
+
+describe('petCompleteness — alimento', () => {
+  it('registrar un alimento suma 6 puntos y quita el paso pendiente "Alimento"', () => {
+    const base = { name: 'Luna', species: 'Perro' };
+    const sin = petCompleteness(base), con = petCompleteness({ ...base, foodItems: [{ product: 'Barfood' }] });
+    expect(sin.missing.find(m => m.key === 'food')).toMatchObject({ gain: 6, action: 'food' });
+    expect(con.done).toContain('food');
+    expect(con.percent - sin.percent).toBe(6);
+  });
+
+  it('el alimento cuenta también para peces, aves, hámsteres y reptiles', () => {
+    expect(petCompleteness({ name: 'Nemo', species: 'Pez' }).missing.map(m => m.key)).toContain('food');
   });
 });

@@ -275,7 +275,7 @@ Repartidas entre `js/*.js` según la tabla de la sección anterior (ej.
 
 ## Completar el perfil de la mascota
 
-Cada mascota tiene un porcentaje de completitud (13 campos con peso que suman
+Cada mascota tiene un porcentaje de completitud (14 campos con peso que suman
 100; toda mascota parte en 10 %) calculado por `petCompleteness()` en
 `js/utils.js`. Se muestra como barra en la ficha y en la lista de mascotas, y
 como tarjeta en el panel con los próximos pasos de mayor peso (cada uno abre el

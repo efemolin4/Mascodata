@@ -37,25 +37,26 @@ export interface PetRow {
   weight_kg: number | string | null; allergies: string[] | null; chronic_conditions: string[] | string | null;
   vet_name: string | null; vet_phone: string | null; created_at: string;
 }
-export interface PetCtx { hasPhoto: boolean; hasVaccine: boolean; hasDeworm: boolean }
+export interface PetCtx { hasPhoto: boolean; hasVaccine: boolean; hasDeworm: boolean; hasFood: boolean }
 
 const list = (v: unknown) => Array.isArray(v) ? v.length > 0 : !!v;
 const filled = (v: unknown) => !!(v && String(v).trim());
 
 export const FIELDS: { key: string; points: number; label: string; hint: string; healthOnly?: boolean; has: (p: PetRow, c: PetCtx) => boolean }[] = [
   { key: 'basic',     points: 10, label: 'Nombre y especie',             hint: '',                                   has: p => !!(p.name && p.species) },
-  { key: 'dob',       points: 12, label: 'Fecha de nacimiento',          hint: 'Activa las sugerencias por edad',    has: p => !!p.date_of_birth },
+  { key: 'dob',       points: 11, label: 'Fecha de nacimiento',          hint: 'Activa las sugerencias por edad',    has: p => !!p.date_of_birth },
   { key: 'photo',     points: 7,  label: 'Foto',                         hint: 'Hace la ficha más tuya',             has: (_p, c) => c.hasPhoto },
   { key: 'breed',     points: 5,  label: 'Raza',                         hint: 'Activa las sugerencias por raza',    has: p => !!p.breed },
   { key: 'sex',       points: 3,  label: 'Sexo',                         hint: 'Dato básico de la ficha',            has: p => !!p.sex },
   { key: 'chip',      points: 3,  label: 'Microchip',                    hint: 'Útil si se pierde',                  has: p => !!p.microchip, healthOnly: true },
-  { key: 'vaccine',   points: 16, label: 'Al menos una vacuna',          hint: 'Activa las alertas de vacunas',      has: (_p, c) => c.hasVaccine, healthOnly: true },
+  { key: 'vaccine',   points: 15, label: 'Al menos una vacuna',          hint: 'Activa las alertas de vacunas',      has: (_p, c) => c.hasVaccine, healthOnly: true },
   { key: 'deworm',    points: 8,  label: 'Al menos una desparasitación', hint: 'Activa sus alertas',                 has: (_p, c) => c.hasDeworm, healthOnly: true },
-  { key: 'allergies', points: 8,  label: 'Alergias y condiciones',       hint: 'Marca "Ninguna" si no tiene',        has: p => list(p.allergies) || list(p.chronic_conditions) },
-  { key: 'weight',    points: 8,  label: 'Peso',                         hint: 'Alimenta el seguimiento',            has: p => Number(p.weight_kg) > 0 },
+  { key: 'allergies', points: 7,  label: 'Alergias y condiciones',       hint: 'Marca "Ninguna" si no tiene',        has: p => list(p.allergies) || list(p.chronic_conditions) },
+  { key: 'weight',    points: 7,  label: 'Peso',                         hint: 'Alimenta el seguimiento',            has: p => Number(p.weight_kg) > 0 },
+  { key: 'food',      points: 6,  label: 'Alimento',                     hint: 'Te avisamos cuándo se acaba',        has: (_p, c) => c.hasFood },
   { key: 'repro',     points: 5,  label: 'Estado reproductivo',          hint: 'Dato de la ficha',                   has: p => !!p.reproductive_status, healthOnly: true },
-  { key: 'vetName',   points: 8,  label: 'Nombre del veterinario',       hint: 'Para tenerlo a mano en emergencias', has: p => filled(p.vet_name) },
-  { key: 'vetPhone',  points: 7,  label: 'Teléfono del veterinario',     hint: 'Para llamar rápido',                 has: p => filled(p.vet_phone) },
+  { key: 'vetName',   points: 7,  label: 'Nombre del veterinario',       hint: 'Para tenerlo a mano en emergencias', has: p => filled(p.vet_name) },
+  { key: 'vetPhone',  points: 6,  label: 'Teléfono del veterinario',     hint: 'Para llamar rápido',                 has: p => filled(p.vet_phone) },
 ];
 const NO_HEALTH_SPECIES = ['Pez', 'Ave', 'Hámster', 'Reptil'];
 
@@ -228,10 +229,11 @@ async function handle(req: Request): Promise<Response> {
   const photoIds = new Set((await chunkedIn<{ id: string }>(admin, 'pets', 'id', 'id', petIds, q => q.not('photo', 'is', null))).map(r => r.id));
   const vaccIds = new Set((await chunkedIn<{ pet_id: string }>(admin, 'vaccines', 'pet_id', 'pet_id', petIds)).map(r => r.pet_id));
   const dewIds = new Set((await chunkedIn<{ pet_id: string }>(admin, 'dewormings', 'pet_id', 'pet_id', petIds)).map(r => r.pet_id));
+  const foodIds = new Set((await chunkedIn<{ pet_id: string }>(admin, 'food_items', 'pet_id', 'pet_id', petIds)).map(r => r.pet_id));
   const profiles = await chunkedIn<Profile>(admin, 'profiles', 'id, email, name, reminders_opt_out', 'id', ownerIds);
   const reminders = await chunkedIn<Reminder>(admin, 'pet_reminders', 'pet_id, user_id, step, sent_at', 'user_id', ownerIds);
   const ctx: Record<string, PetCtx> = {};
-  for (const p of pets) ctx[p.id] = { hasPhoto: photoIds.has(p.id), hasVaccine: vaccIds.has(p.id), hasDeworm: dewIds.has(p.id) };
+  for (const p of pets) ctx[p.id] = { hasPhoto: photoIds.has(p.id), hasVaccine: vaccIds.has(p.id), hasDeworm: dewIds.has(p.id), hasFood: foodIds.has(p.id) };
 
   const picks = pickReminders({ pets, ctx, reminders, profiles, now });
   const summary = { dry, pets_considered: pets.length, skipped_without_access: allPets.length - pets.length, candidates: picks.length, sent: 0, skipped_duplicate: 0, errors: 0,

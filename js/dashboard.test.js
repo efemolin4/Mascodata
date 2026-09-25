@@ -172,7 +172,7 @@ describe('viewDashboard — completar el perfil de la mascota', () => {
   });
 
   it('un perfil al 100 % no muestra la tarjeta', () => {
-    window.state.pets = [{ id: 'a', name: 'Listo', species: 'Perro', myRole: 'owner', dateOfBirth: '2020-01-01', photo: 'data:image/png;base64,AAAA', breed: 'Mestizo', sex: 'Macho', vaccines: [{}], deworming: [{}], weightKg: 10, vet: { name: 'X', phone: '1' }, chronicConditions: ['Ninguna'], chipNumber: '1', reproductiveStatus: 'Esterilizado', medications: [] }];
+    window.state.pets = [{ id: 'a', name: 'Listo', species: 'Perro', myRole: 'owner', dateOfBirth: '2020-01-01', photo: 'data:image/png;base64,AAAA', breed: 'Mestizo', sex: 'Macho', vaccines: [{}], deworming: [{}], foodItems: [{}], weightKg: 10, vet: { name: 'X', phone: '1' }, chronicConditions: ['Ninguna'], chipNumber: '1', reproductiveStatus: 'Esterilizado', medications: [] }];
     expect(viewDashboard()).not.toContain('Completa el perfil de');
   });
 

@@ -17,11 +17,11 @@ const toRow = (p, id = 'pet-1') => ({
   allergies: p.allergies ?? null, chronic_conditions: p.chronicConditions ?? null,
   vet_name: p.vet?.name ?? null, vet_phone: p.vet?.phone ?? null, created_at: daysAgo(3),
 });
-const toCtx = (p) => ({ hasPhoto: !!p.photo, hasVaccine: (p.vaccines || []).length > 0, hasDeworm: (p.deworming || []).length > 0 });
+const toCtx = (p) => ({ hasPhoto: !!p.photo, hasVaccine: (p.vaccines || []).length > 0, hasDeworm: (p.deworming || []).length > 0, hasFood: (p.foodItems || []).length > 0 });
 
 const FIXTURES = {
   minimo: { name: 'Luna', species: 'Perro' },
-  completo: { name: 'Luna', species: 'Perro', dateOfBirth: '2020-01-01', photo: 'data:image/png;base64,AAAA', breed: 'Mestizo', sex: 'Hembra', chipNumber: '1', vaccines: [{}], deworming: [{}], allergies: [], chronicConditions: ['Ninguna'], weightKg: 12, reproductiveStatus: 'Esterilizada', vet: { name: 'Dra. Pérez', phone: '+56 9 1' } },
+  completo: { name: 'Luna', species: 'Perro', dateOfBirth: '2020-01-01', photo: 'data:image/png;base64,AAAA', breed: 'Mestizo', sex: 'Hembra', chipNumber: '1', vaccines: [{}], deworming: [{}], foodItems: [{}], allergies: [], chronicConditions: ['Ninguna'], weightKg: 12, reproductiveStatus: 'Esterilizada', vet: { name: 'Dra. Pérez', phone: '+56 9 1' } },
   parcial: { name: 'Michi', species: 'Gato', dateOfBirth: '2022-05-05', vaccines: [{}], weightKg: '4.2', vet: { name: 'Dr X', phone: '' } },
   pez: { name: 'Nemo', species: 'Pez', breed: 'Betta' },
   ave: { name: 'Kiwi', species: 'Ave', dateOfBirth: '2024-01-01', photo: 'data:image/png;base64,AAAA', sex: 'Macho', allergies: ['Polen'], weightKg: 0.1, vet: { name: 'A', phone: 'B' }, breed: 'Canario' },
@@ -135,7 +135,7 @@ describe('buildEmail', () => {
     const m = buildEmail(mk(1), opts);
     expect(m.subject).toBe('El perfil de Luna está al 10 %');
     expect(m.html).toContain('Al menos una vacuna');
-    expect(m.html).toContain('+16 %');
+    expect(m.html).toContain('+15 %');
     expect(m.html).toContain('href="https://mascodata.cl/pets/pet-1"');
     expect(m.html).toContain('Dejar de recibir estos recordatorios');
     expect(m.html).toContain('unsub=u1&amp;t=abc');
