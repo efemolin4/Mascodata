@@ -660,13 +660,35 @@ export async function deleteFoodPurchase(petId, itemId, purchaseId) {
   render();
 }
 
-// Abre la búsqueda del alimento en Knasta en otra pestaña (solo un enlace; no
-// se extrae nada). `source` distingue desde dónde se hizo clic, para medir interés.
+// "Buscar oferta": deja elegir dónde buscar. Google Shopping muestra más
+// diversidad (incluye tiendas de la propia marca); Knasta compara las grandes
+// tiendas. `source` distingue desde dónde se hizo clic, para medir interés.
 export function openFoodOffer(petId, itemId, source) {
   const item = state.pets.find(p => p.id === petId)?.foodItems?.find(f => f.id === itemId);
   if (!item) return;
-  track('food_offer_click', { source: source || 'nutricion', store: 'knasta' });
-  window.open(foodOfferUrl(item), '_blank', 'noopener');
+  track('food_offer_click', { source: source || 'nutricion' });
+  const btn = (store, title, desc) => `
+    <button type="button" onclick="goFoodOffer('${safeId(petId)}','${safeId(itemId)}','${store}')" class="w-full text-left p-3 rounded-xl border border-gray-200 hover:border-brand-300 hover:bg-brand-50 transition-colors">
+      <div class="text-sm font-semibold text-gray-800">${title}</div>
+      <div class="text-xs text-gray-500 mt-0.5">${desc}</div>
+    </button>`;
+  openModal(`
+    <div class="modal-box p-4 sm:p-6">
+      <h3 class="text-lg font-bold text-gray-900 mb-1">Buscar oferta</h3>
+      <p class="text-sm text-gray-500 mb-4">${esc(item.product)}</p>
+      <div class="space-y-2">
+        ${btn('google', 'Google Shopping', 'Más variedad de tiendas, incluida la de la propia marca. Mejor para marcas pequeñas.')}
+        ${btn('knasta', 'Knasta', 'Compara las grandes tiendas y muestra el historial de precios. Mejor para marcas conocidas.')}
+      </div>
+      <button type="button" onclick="closeModal()" class="btn-secondary w-full mt-4">Cerrar</button>
+    </div>`);
+}
+
+export function goFoodOffer(petId, itemId, store) {
+  const item = state.pets.find(p => p.id === petId)?.foodItems?.find(f => f.id === itemId);
+  if (!item) return;
+  track('food_offer_store', { store });
+  window.open(foodOfferUrl(item, store === 'knasta' ? 'knasta' : 'google'), '_blank', 'noopener');
 }
 
 export async function deleteFoodItem(petId, itemId) {
@@ -703,6 +725,6 @@ if (typeof window !== 'undefined') {
     tabSeguimiento, tabNutricion, renderWeightChart, setBCS, openWeightModal,
     saveWeight, openMoodModal, selectMood, saveMood, openSymptomsModal,
     toggleSymptomTag, saveSymptoms, openFoodItemModal, saveFoodItem,
-    deleteFoodItem, openFoodPurchaseModal, saveFoodPurchase, deleteFoodPurchase, openFoodOffer, logActivity,
+    deleteFoodItem, openFoodPurchaseModal, saveFoodPurchase, deleteFoodPurchase, openFoodOffer, goFoodOffer, logActivity,
   });
 }

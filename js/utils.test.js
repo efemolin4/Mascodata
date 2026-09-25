@@ -350,8 +350,9 @@ describe('precio por kilo del alimento', () => {
     ] })).toBeNull();
   });
 
-  it('el enlace a Knasta lleva el producto y el tamaño codificados', () => {
-    const url = foodOfferUrl({ product: 'Bravery pollo & arroz', packageSize: 12, packageUnit: 'kg' });
-    expect(url).toBe('https://knasta.cl/results?q=Bravery%20pollo%20%26%20arroz%2012%20kg');
+  it('el enlace de búsqueda lleva el producto y el tamaño codificados', () => {
+    const f = { product: 'Bravery pollo & arroz', packageSize: 12, packageUnit: 'kg' };
+    expect(foodOfferUrl(f, 'knasta')).toBe('https://knasta.cl/results?q=Bravery%20pollo%20%26%20arroz%2012%20kg');
+    expect(foodOfferUrl(f)).toBe('https://www.google.com/search?tbm=shop&q=Bravery%20pollo%20%26%20arroz%2012%20kg');
   });
 });

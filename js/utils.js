@@ -351,12 +351,16 @@ export function foodPriceInsight(f) {
   };
 }
 
-// Búsqueda del alimento en Knasta (comparador de precios). Es solo un enlace que
-// abre el usuario: no se extrae ningún dato de Knasta.
-export function foodOfferUrl(f) {
+// Búsqueda del alimento en un comparador (enlace que abre el usuario; no se
+// extrae ningún dato). Google Shopping cubre marcas de nicho que venden en su
+// propia tienda (Knasta solo indexa las grandes tiendas); Knasta compara bien
+// las marcas masivas y muestra historial de precios.
+export function foodOfferUrl(f, store = 'google') {
   const size = f?.packageUnit === 'kg' || f?.packageUnit === 'g' ? `${f.packageSize || ''} ${f.packageUnit}` : '';
-  const q = `${f?.product || ''} ${size}`.replace(/\s+/g, ' ').trim();
-  return `https://knasta.cl/results?q=${encodeURIComponent(q)}`;
+  const q = encodeURIComponent(`${f?.product || ''} ${size}`.replace(/\s+/g, ' ').trim());
+  return store === 'knasta'
+    ? `https://knasta.cl/results?q=${q}`
+    : `https://www.google.com/search?tbm=shop&q=${q}`;
 }
 
 // Racha de días consecutivos (incluyendo hoy) con actividad registrada.
