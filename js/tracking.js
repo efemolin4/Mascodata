@@ -6,6 +6,9 @@
    ánimo, síntomas) y Nutrición (stock de alimento, check-in de
    actividad con racha). */
 
+// Orden estable por fecha: dos mediciones del mismo día conservan el orden en que se registraron.
+const cmpDate = (a, b) => (a.date === b.date ? 0 : a.date > b.date ? 1 : -1);
+
 // Peso en kg de una medición (kg + gramos).
 const weightKgOf = h => parseFloat(h.kg || 0) + (parseInt(h.gr || 0, 10) / 1000);
 const fmtKg = n => `${n.toLocaleString('es-CL', { maximumFractionDigits: 3 })} kg`;
@@ -15,11 +18,16 @@ const fmtKg = n => `${n.toLocaleString('es-CL', { maximumFractionDigits: 3 })} k
 // ficha nunca estuvo en el historial, lo muestran como punto "Ficha" al comienzo.
 // Sin mediciones no hay serie: en ese caso la pestaña muestra solo el peso de la ficha.
 export function weightSeries(pet) {
-  const history = [...(pet.weightHistory || [])].sort((a, b) => (a.date > b.date ? 1 : -1));
+  const history = [...(pet.weightHistory || [])].sort((a, b) => cmpDate(a, b));
   if (!history.length) return [];
-  const rows = history.map(h => ({ id: h.id, label: formatDate(h.date), kg: weightKgOf(h), real: true }));
+  const rows = history.map(h => ({ id: h.id, date: h.date, label: formatDate(h.date), kg: weightKgOf(h), real: true }));
   const ficha = parseFloat(pet.weightKg || 0) + (parseInt(pet.weightGr || 0, 10) / 1000);
-  if (ficha > 0 && !rows.some(r => Math.abs(r.kg - ficha) < 0.0005)) rows.unshift({ id: null, label: 'Ficha', kg: ficha, real: false });
+  if (ficha > 0 && !rows.some(r => Math.abs(r.kg - ficha) < 0.0005)) {
+    // Sin fecha propia: se ubica en la creación de la mascota o, si no se conoce, una semana antes de la primera medición.
+    const first = rows[0].date;
+    const created = pet.createdAt ? String(pet.createdAt).slice(0, 10) : null;
+    rows.unshift({ id: null, date: created && created < first ? created : addDays(first, -7), label: 'Ficha', kg: ficha, real: false });
+  }
   return rows;
 }
 
@@ -351,6 +359,9 @@ export async function deleteWeight(petId, weightId) {
   showToast('Medición eliminada', 'success');
 }
 
+// Gráfico de peso: eje horizontal con las fechas reales (dos mediciones con meses de por
+// medio no se ven pegadas), eje vertical con margen para que un cambio pequeño no parezca
+// un salto, sin área sombreada (con un eje recortado exagera) y con el peso sobre cada punto.
 export function renderWeightChart(pet) {
   setTimeout(() => {
     const canvas = document.getElementById(`weight-chart-${pet.id}`);
@@ -359,29 +370,70 @@ export function renderWeightChart(pet) {
       window._weightCharts[pet.id].destroy();
     }
     if (!window._weightCharts) window._weightCharts = {};
-    const history = weightSeries(pet).slice(-13);
-    if (history.length === 0) return;
+    const rows = weightSeries(pet).slice(-13);
+    if (rows.length === 0) return;
+    const pts = rows.map(r => ({ x: Date.parse(`${r.date}T12:00:00`), y: r.kg, real: r.real, label: r.label }));
+    const ys = pts.map(p => p.y), lo = Math.min(...ys), hi = Math.max(...ys);
+    const pad = Math.max((hi - lo) * 0.25, hi * 0.05);
+    const dayMs = 86_400_000;
+    const xSpan = Math.max(pts[pts.length - 1].x - pts[0].x, 7 * dayMs);
+    const shortDate = v => new Date(v).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    const labelsPlugin = {
+      id: 'weightLabels',
+      afterDatasetsDraw(chart) {
+        if (pts.length > 8) return;
+        const { ctx } = chart;
+        ctx.save();
+        ctx.font = '600 11px Manrope, system-ui, sans-serif';
+        ctx.fillStyle = '#252a62';
+        ctx.textAlign = 'center';
+        chart.getDatasetMeta(0).data.forEach((el, i) => ctx.fillText(fmtKg(pts[i].y), el.x, el.y - 10));
+        ctx.restore();
+      },
+    };
     window._weightCharts[pet.id] = new Chart(canvas, {
       type: 'line',
       data: {
-        labels: history.map(h => h.label),
         datasets: [{
           label: 'Peso (kg)',
-          data: history.map(h => h.kg),
-          borderColor: '#4c5fd7',
-          backgroundColor: 'rgba(76,95,215,0.08)',
-          tension: 0.2, fill: true,
-          pointBackgroundColor: '#4c5fd7', pointRadius: 4,
-        }]
+          data: pts,
+          borderColor: '#4c5fd7', backgroundColor: '#4c5fd7', borderWidth: 2,
+          tension: 0, fill: false,
+          pointRadius: 5, pointHoverRadius: 7,
+          pointBackgroundColor: pts.map(p => (p.real ? '#4c5fd7' : '#ffffff')),
+          pointBorderColor: '#4c5fd7', pointBorderWidth: 2,
+        }],
       },
       options: {
         responsive: true,
-        plugins: { legend: { display: false } },
+        layout: { padding: { top: 18, right: 14 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => (pts[items[0].dataIndex].real ? shortDate(items[0].parsed.x) : 'Peso de la ficha'),
+              label: item => fmtKg(item.parsed.y),
+            },
+          },
+        },
         scales: {
-          y: { beginAtZero: false, grid: { color: '#f1f4ff' } },
-          x: { grid: { display: false } }
-        }
-      }
+          x: {
+            type: 'linear',
+            min: pts[0].x - xSpan * 0.04, max: pts[pts.length - 1].x + xSpan * 0.04,
+            grid: { display: false },
+            // Una marca por cada medición (hasta 6); con más, las marcas automáticas.
+            afterBuildTicks: axis => { if (pts.length <= 6) axis.ticks = pts.map(p => ({ value: p.x })); },
+            ticks: { callback: v => shortDate(v), maxRotation: 0, autoSkip: false },
+          },
+          y: {
+            min: Math.max(0, Math.floor((lo - pad) * 2) / 2),
+            max: Math.ceil((hi + pad) * 2) / 2,
+            grid: { color: '#f1f4ff' },
+            ticks: { maxTicksLimit: 5, callback: v => fmtKg(v) },
+          },
+        },
+      },
+      plugins: [labelsPlugin],
     });
   }, 100);
 }
@@ -440,7 +492,7 @@ export function openWeightModal(petId) {
 
 // La ficha muestra siempre el peso actual: el de la medición más reciente.
 async function syncFichaWeight(pet) {
-  const latest = [...(pet.weightHistory || [])].sort((a, b) => (a.date > b.date ? 1 : -1)).pop();
+  const latest = [...(pet.weightHistory || [])].sort((a, b) => cmpDate(a, b)).pop();
   if (!latest) return;
   const kg = parseFloat(latest.kg || 0), gr = parseInt(latest.gr || 0, 10) || 0;
   if (String(pet.weightKg) === String(kg) && String(pet.weightGr) === String(gr)) return;
@@ -451,26 +503,22 @@ async function syncFichaWeight(pet) {
   pet.weightKg = kg; pet.weightGr = gr;
 }
 
-export async function saveWeight(e, petId) {
-  e.preventDefault();
-  const pet = state.pets.find(p => p.id === petId);
-  if (!pet) return;
-  if (blockIfReadOnly(pet)) return;
-  const g = id => document.getElementById(id)?.value;
-  const kg = parseFloat(g('wt-kg') || 0);
-  const gr = parseInt(g('wt-gr') || 0);
-  const date = g('wt-date');
+// Registra una medición de peso y deja la ficha con el peso más reciente. Antes de que la
+// ficha cambie, el peso que tenía (el inicial) se guarda como una medición más, con la
+// fecha de creación de la mascota, para no perderlo. No duplica una medición idéntica del
+// mismo día. Devuelve false si Supabase rechaza el guardado.
+export async function recordWeight(pet, kg, gr, date) {
   pet.weightHistory = pet.weightHistory || [];
+  const total = kg + (gr || 0) / 1000;
+  if (pet.weightHistory.some(h => h.date === date && Math.abs(weightKgOf(h) - total) < 0.0005)) return true;
 
-  // Antes de que la ficha pase a mostrar el peso nuevo, el peso que tenía (el inicial) se
-  // guarda como una medición más, con la fecha de creación de la mascota, para no perderlo.
   const ficha = parseFloat(pet.weightKg || 0) + (parseInt(pet.weightGr || 0, 10) / 1000);
   const represented = pet.weightHistory.some(h => Math.abs(weightKgOf(h) - ficha) < 0.0005);
   let baseline = null;
   if (ficha > 0 && !represented) {
     const earliest = [...pet.weightHistory.map(h => h.date), date].filter(Boolean).sort()[0];
     const created = pet.createdAt ? String(pet.createdAt).slice(0, 10) : earliest;
-    baseline = { date: created < earliest ? created : earliest, kg: parseFloat(pet.weightKg || 0), gr: parseInt(pet.weightGr || 0, 10) || 0 };
+    baseline = { date: created < earliest ? created : addDays(earliest, -1), kg: parseFloat(pet.weightKg || 0), gr: parseInt(pet.weightGr || 0, 10) || 0 };
   }
 
   if (isDemoUser()) {
@@ -481,18 +529,29 @@ export async function saveWeight(e, petId) {
     // isDemoUser() — en modo demo intentaba escribir en Supabase real con
     // un pet_id que no existe ahí (ej. "pet-greta"), fallando siempre.
     if (baseline) {
-      const { data: b, error: bErr } = await sb.from('weight_history').insert({ pet_id: petId, ...baseline }).select().single();
-      if (bErr) { showToast('Error al guardar peso', 'error'); return; }
+      const { data: b, error: bErr } = await sb.from('weight_history').insert({ pet_id: pet.id, ...baseline }).select().single();
+      if (bErr) { console.warn('No se pudo guardar el peso inicial', bErr); return false; }
       pet.weightHistory.push({ id: b.id, date: b.date, kg: b.kg, gr: b.gr, notes: b.notes });
     }
-    const { data, error } = await sb.from('weight_history').insert({
-      pet_id: petId, date, kg, gr
-    }).select().single();
-    if (error) { showToast('Error al guardar peso', 'error'); return; }
+    const { data, error } = await sb.from('weight_history').insert({ pet_id: pet.id, date, kg, gr }).select().single();
+    if (error) { console.warn('No se pudo guardar el peso', error); return false; }
     pet.weightHistory.push({ id: data.id, date: data.date, kg: data.kg, gr: data.gr, notes: data.notes });
   }
-  pet.weightHistory.sort((a, b) => a.date > b.date ? 1 : -1);
+  pet.weightHistory.sort((a, b) => cmpDate(a, b));
   await syncFichaWeight(pet);
+  return true;
+}
+
+export async function saveWeight(e, petId) {
+  e.preventDefault();
+  const pet = state.pets.find(p => p.id === petId);
+  if (!pet) return;
+  if (blockIfReadOnly(pet)) return;
+  const g = id => document.getElementById(id)?.value;
+  const kg = parseFloat(g('wt-kg') || 0);
+  const gr = parseInt(g('wt-gr') || 0);
+  const ok = await recordWeight(pet, kg, gr, g('wt-date'));
+  if (!ok) { showToast('Error al guardar peso', 'error'); return; }
   closeModal(); render();
   track('record_saved', { kind: 'weight' });
   showToast('Peso registrado ✓', 'success');
@@ -916,7 +975,7 @@ export async function logActivity(petId, level) {
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     tabSeguimiento, tabNutricion, renderWeightChart, setBCS, openWeightModal,
-    saveWeight, deleteWeight, weightSeries, openMoodModal, selectMood, saveMood, openSymptomsModal,
+    saveWeight, recordWeight, deleteWeight, weightSeries, openMoodModal, selectMood, saveMood, openSymptomsModal,
     toggleSymptomTag, saveSymptoms, openFoodItemModal, saveFoodItem,
     deleteFoodItem, openFoodPurchaseModal, saveFoodPurchase, deleteFoodPurchase, adjustFoodDuration, openFoodOffer, goFoodOffer, logActivity,
   });

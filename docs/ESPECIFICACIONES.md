@@ -38,7 +38,8 @@ Mascodata es una aplicación web de página única (SPA) para tutores de mascota
 - **Historial clínico:** consultas, cirugías, análisis, emergencias; costo y adjuntos (imágenes reducidas a 1.600 px; PDF y Word hasta 5 MB). Plan Free: 1 adjunto por evento.
 - **Seguimiento:** estado de ánimo y energía, diario de síntomas con severidad y **peso histórico**:
   - La **ficha siempre muestra el peso actual** (el de la última medición). Al registrar el primer peso, el que tenía la ficha se guarda como medición con la fecha de creación de la mascota, para no perderlo.
-  - Gráfico con resumen del último peso y su cambio frente a la medición anterior, y lista de mediciones que se pueden **eliminar** (la ficha vuelve al peso de la anterior).
+  - **Editar el peso en la ficha** también registra una medición de hoy (y conserva el peso anterior como inicial), así ficha e historial no se contradicen.
+  - Gráfico con las **fechas reales** en el eje horizontal, margen en el vertical para que un cambio pequeño no parezca un salto, el peso sobre cada punto y un resumen del último peso frente a la medición anterior. Lista de mediciones que se pueden **eliminar** (la ficha vuelve al peso de la anterior).
   - **Recordatorio mensual de pesar** en el panel: aparece a los 30 días de la última medición (o de la creación, si nunca se pesó), solo para quien puede editar y no en peces. Por ahora no hay correo.
 
 ### 2.4 Nutrición (nuevo)

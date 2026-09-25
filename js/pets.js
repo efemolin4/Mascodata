@@ -924,12 +924,20 @@ export async function saveEditPet(petId) {
     }).eq('id', petId);
     if (error) { showToast('Error al guardar', 'error'); console.error(error); return; }
   }
+  // Si cambió el peso, también queda como medición de hoy (así el historial y la ficha
+  // no se contradicen). Debe correr antes de sobrescribir el peso de la ficha en memoria.
+  const newTotal = parseFloat(weightKg || 0) + (parseInt(weightGr || 0, 10) / 1000);
+  const oldTotal = parseFloat(p.weightKg || 0) + (parseInt(p.weightGr || 0, 10) / 1000);
+  let weightNotSaved = false;
+  if (newTotal > 0 && Math.abs(newTotal - oldTotal) >= 0.0005) {
+    weightNotSaved = !(await recordWeight(p, parseFloat(weightKg || 0), parseInt(weightGr || 0, 10) || 0, todayStr()));
+  }
   Object.assign(p, { name, species, breed, dateOfBirth, sex, color, weightKg, weightGr,
     reproductiveStatus, chipNumber, sizeRange, activityLevel, personalityTags, photo,
     allergies, chronicConditions, vet });
   state.editPetData = null;
   closeModal(); render();
-  showToast('Cambios guardados', 'success');
+  showToast(weightNotSaved ? 'Cambios guardados, pero no se pudo registrar la medición de peso' : 'Cambios guardados', weightNotSaved ? 'error' : 'success');
 }
 
 export function previewPhoto(e) {

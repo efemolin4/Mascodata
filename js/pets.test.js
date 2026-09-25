@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js'; // deja esc/icon/fmtCLP/formatDate reales en window
 import '../js/app.js'; // deja canEditPet/blockIfReadOnly reales en window
-import { savePet, deletePet, openInviteTutor2Modal, exportPetRecord, printPetRecord } from './pets.js';
+import '../js/tracking.js'; // deja recordWeight real en window (saveEditPet lo usa)
+import { savePet, deletePet, openInviteTutor2Modal, exportPetRecord, printPetRecord, saveEditPet } from './pets.js';
 
 // savePet() lee/escribe sobre `state`, `sb`, etc. como globales (ver
 // js/utils.js para el porqué de esa convención) — acá se los proveemos a
@@ -217,5 +218,55 @@ describe('exportPetRecord/printPetRecord — nombre de mascota hostil', () => {
     printPetRecord('pet-1');
     expect(titleWhilePrinting).toBe(`Expediente médico - ${hostile}`);
     expect(document.title).toBe(before);
+  });
+});
+
+describe('saveEditPet — el peso de la ficha también queda como medición', () => {
+  const makeSb = () => {
+    const inserted = [];
+    const sb = { from: vi.fn(table => ({
+      update: vi.fn(() => ({ eq: () => Promise.resolve({ error: null }) })),
+      insert: vi.fn(row => { inserted.push({ table, row }); return { select: () => ({ single: () => Promise.resolve({ data: { id: `n${inserted.length}`, ...row }, error: null }) }) }; }),
+    })) };
+    return { sb, inserted };
+  };
+  const setup = (over = {}, wkg = '7', wgr = '200') => {
+    const pet = { id: 'pet-1', myRole: 'owner', name: 'Greta', species: 'Perro', weightKg: '6', weightGr: '500', weightHistory: [], createdAt: '2026-05-01T10:00:00Z', ...over };
+    window.state = { pets: [pet], editPetData: null };
+    window.showToast = vi.fn();
+    window.render = vi.fn();
+    window.closeModal = vi.fn();
+    window.isDemoUser = vi.fn(() => false);
+    window.track = vi.fn();
+    const made = makeSb();
+    window.sb = made.sb;
+    document.body.innerHTML = `<input id="ep-wkg" value="${wkg}" /><input id="ep-wgr" value="${wgr}" />`;
+    return { pet, ...made };
+  };
+
+  it('si cambia el peso, registra una medición de hoy y conserva el peso anterior como inicial', async () => {
+    const { pet, inserted } = setup();
+    await saveEditPet('pet-1');
+    const rows = inserted.filter(i => i.table === 'weight_history').map(i => i.row);
+    expect(rows.map(r => `${r.date === '2026-05-01' ? 'inicial' : 'hoy'}:${r.kg}.${r.gr}`)).toEqual(['inicial:6.500', 'hoy:7.200']);
+    expect(pet.weightKg).toBe('7');
+    expect(pet.weightGr).toBe('200');
+  });
+
+  it('si el peso no cambió, no registra ninguna medición', async () => {
+    const { inserted } = setup({}, '6', '500');
+    await saveEditPet('pet-1');
+    expect(inserted.filter(i => i.table === 'weight_history')).toHaveLength(0);
+  });
+
+  it('si no se puede registrar la medición, guarda los cambios igual y avisa', async () => {
+    const { pet } = setup();
+    window.sb = { from: vi.fn(() => ({
+      update: vi.fn(() => ({ eq: () => Promise.resolve({ error: null }) })),
+      insert: vi.fn(() => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: { message: 'boom' } }) }) })),
+    })) };
+    await saveEditPet('pet-1');
+    expect(pet.weightKg).toBe('7');
+    expect(window.showToast).toHaveBeenCalledWith('Cambios guardados, pero no se pudo registrar la medición de peso', 'error');
   });
 });
