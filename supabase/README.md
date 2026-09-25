@@ -110,3 +110,27 @@ Para guardar el precio por kilo de cada compra (y mostrar "Pagaste $2.450/kg en
 marzo…"), ejecutar en el SQL Editor el archivo `supabase/schema/food_purchases.sql`.
 Es idempotente y copia el precio actual de cada alimento como su primera compra.
 Si no se ejecuta, la app funciona igual pero sin historial de compras.
+
+## Categoría del alimento (diario / snack)
+
+Ejecutar `supabase/schema/food_category.sql` (idempotente). Sin él la app funciona,
+pero no recuerda la categoría al recargar y el gráfico "alimento diario vs snacks"
+no distingue los snacks.
+
+## Aviso de "el alimento se está acabando" por correo
+
+Función: `functions/food-restock-reminders/index.ts`. Tabla: `schema/food_restock_reminders.sql`.
+Avisa al dueño cuando a un alimento diario (con consumo o duración indicada) le quedan
+3 días o menos, un aviso por alimento y por ciclo de compra, y un solo correo por
+persona aunque tenga varios alimentos. Comparte el interruptor de recordatorios
+(`profiles.reminders_opt_out`) y los secretos con `pet-completion-reminders`.
+
+Puesta en marcha (una sola vez):
+
+1. **SQL Editor**: correr `schema/food_restock_reminders.sql` (crea la tabla).
+2. **Edge Functions → New function** `food-restock-reminders`: pegar el archivo,
+   **desactivar "Verify JWT"** y Deploy. No requiere secretos nuevos.
+3. **Probar sin enviar nada** (`?dry=1`, igual que la otra función; ver el paso 5 de
+   arriba con la URL de esta función).
+4. **Programar** con el bloque comentado al final de `schema/food_restock_reminders.sql`
+   (13:30 UTC). Para pausarlo: `select cron.unschedule('food-restock-reminders');`

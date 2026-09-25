@@ -377,11 +377,11 @@ export function viewProfile() {
         ${u.remindersOptOut === undefined ? '' : `
         <div class="flex items-start justify-between gap-4 p-3.5 rounded-xl bg-gray-50">
           <div class="min-w-0">
-            <div class="text-sm font-semibold text-gray-800">Recordatorios para completar el perfil</div>
-            <div class="text-xs text-gray-500 mt-0.5">Hasta 3 correos por mascota, con los datos que le faltan a su perfil. Son avisos de servicio, distintos de las promociones.</div>
+            <div class="text-sm font-semibold text-gray-800">Recordatorios por correo</div>
+            <div class="text-xs text-gray-500 mt-0.5">Datos que le faltan al perfil de tu mascota y aviso cuando se le está acabando el alimento. Son avisos de servicio, distintos de las promociones.</div>
           </div>
           <label class="toggle-switch flex-shrink-0">
-            <input type="checkbox" id="pf-reminders" ${u.remindersOptOut ? '' : 'checked'} aria-label="Recibir recordatorios para completar el perfil" />
+            <input type="checkbox" id="pf-reminders" ${u.remindersOptOut ? '' : 'checked'} aria-label="Recibir recordatorios por correo" />
             <span class="toggle-slider"></span>
           </label>
         </div>`}
