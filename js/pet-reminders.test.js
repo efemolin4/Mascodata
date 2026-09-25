@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { petCompleteness, COMPLETENESS_FIELDS } from './utils.js';
 import {
   FIELDS, scorePet, pickReminders, withOwnerAccess, buildEmail, signUnsub, verifyUnsub, safeEqual,
-  STEP_DAYS,
+  STEP_DAYS, MAX_PER_RUN,
 } from '../supabase/functions/pet-completion-reminders/index.ts';
 
 const DAY = 86_400_000;
@@ -52,6 +52,14 @@ describe('pickReminders — cadencia', () => {
 
   it('no avisa antes del día 2', () => {
     expect(run({ pets: [pet({ created_at: daysAgo(1) })] })).toEqual([]);
+  });
+
+  it('respeta el tope diario para no pasarse del límite de Resend (100/día compartidos con el aviso de alimento)', () => {
+    expect(MAX_PER_RUN).toBe(50);
+    const n = MAX_PER_RUN + 10;
+    const profiles = Array.from({ length: n }, (_, i) => prof({ id: `u${i}`, email: `${i}@t.cl` }));
+    const pets = profiles.map((p, i) => pet({ owner_id: p.id, created_at: daysAgo(3) }, `pet-${String(i).padStart(3, '0')}`));
+    expect(run({ pets, profiles })).toHaveLength(MAX_PER_RUN);
   });
 
   it('el primer aviso toca desde el día 2', () => {

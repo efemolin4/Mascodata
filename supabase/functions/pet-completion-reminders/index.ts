@@ -75,7 +75,7 @@ export function scorePet(p: PetRow, c: PetCtx): { percent: number; missing: Miss
 // ---------- Cadencia ----------
 export const STEP_DAYS = [2, 7, 21];      // día desde que se creó la mascota en que toca cada aviso
 export const MIN_USER_GAP_DAYS = 7;       // máximo 1 correo por persona a la semana
-export const MAX_PER_RUN = 200;
+export const MAX_PER_RUN = 50;         // Resend gratis: 100 correos/día en total, compartidos con food-restock-reminders (40) y los de cuenta
 const DAY = 86_400_000;
 
 export interface Reminder { pet_id: string; user_id: string; step: number; sent_at: string }
