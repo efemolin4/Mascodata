@@ -218,7 +218,7 @@ Vitest con jsdom: **262 pruebas en 15 archivos**, más `check-exports`. Las vist
 - Los gastos manuales de *Alimentación* anteriores al flujo nuevo pueden duplicar compras registradas en la ficha; se revisan a mano.
 - Correo de reposición: evaluar un interruptor propio, separado del de recordatorios de perfil.
 - Recordatorio de pesar por correo (hoy solo en la plataforma): requeriría rebajar los topes de los otros correos para respetar los 100 diarios de Resend.
-- **Cuidado compartido, etapas siguientes:** aviso al otro tutor cuando se registra algo importante; quién dio de comer y quién sacó a pasear (hoy el check-in de actividad no guarda autor); editar una serie de turnos completa (hoy se rehace con *Quitar las estadías futuras*); gastos compartidos con saldo; rol de co-dueño; cuidadores temporales con acceso limitado; ubicación del botiquín y del alimento por hogar.
+- **Cuidado compartido, etapas siguientes:** aviso al otro tutor cuando se registra algo importante; quién dio de comer y quién sacó a pasear (hoy el check-in de actividad no guarda autor); editar una serie de turnos completa (hoy se rehace con *Quitar las estadías futuras*); repartos distintos de 50/50 y saldo entre varias mascotas; rol de co-dueño; cuidadores temporales con acceso limitado; ubicación del botiquín y del alimento por hogar.
 - Ideas de Seguimiento pendientes: rango de peso saludable por raza y tamaño, alerta de cambio de peso mensual, cambios de alimento sobre el gráfico de peso.
 
 ---
