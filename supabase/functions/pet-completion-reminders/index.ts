@@ -97,7 +97,7 @@ export function pickReminders(input: {
   for (const pet of pets) {
     const prof = profById.get(pet.owner_id);
     if (!prof || !prof.email || prof.reminders_opt_out === true) continue;
-    const c = ctx[pet.id] ?? { hasPhoto: false, hasVaccine: false, hasDeworm: false };
+    const c = ctx[pet.id] ?? { hasPhoto: false, hasVaccine: false, hasDeworm: false, hasFood: false };
     const { percent, missing } = scorePet(pet, c);
     if (percent >= 100) continue;
     const sent = byPet.get(pet.id) ?? [];
