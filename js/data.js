@@ -97,11 +97,13 @@ async function loadDataFromSupabase() {
         })(),
         vaccines: vacc.filter(v => v.pet_id === pid).map(v => ({
           id: v.id, name: v.name, code: v.code, date: v.date, periodicity: v.periodicity,
-          nextDate: v.next_date, alertType: v.alert_type, alertDays: v.alert_days, cost: v.cost })),
+          nextDate: v.next_date, alertType: v.alert_type, alertDays: v.alert_days, cost: v.cost,
+          createdBy: v.created_by || null, createdByName: v.created_by_name || null })),
         deworming: dew.filter(d => d.pet_id === pid).map(d => ({
           id: d.id, product: d.product, type: d.type, format: d.format, dose: d.dose, unit: d.unit,
           date: d.date, periodicity: d.periodicity,
-          nextDate: d.next_date, alertType: d.alert_type, alertDays: d.alert_days, cost: d.cost })),
+          nextDate: d.next_date, alertType: d.alert_type, alertDays: d.alert_days, cost: d.cost,
+          createdBy: d.created_by || null, createdByName: d.created_by_name || null })),
         medications: med.filter(m => m.pet_id === pid).map(m => ({
           id: m.id, name: m.name, doseVal: m.dose_val, doseUnit: m.dose_unit,
           dose: m.dose_val != null ? `${m.dose_val} ${m.dose_unit||''}`.trim() : '',
@@ -110,13 +112,16 @@ async function loadDataFromSupabase() {
           startDate: m.start_date, startTime: m.start_time,
           treatmentDays: m.treatment_days, endDate: m.end_date, active: m.active,
           reminder: m.reminder, stockTotal: m.stock_qty, stockUnit: m.stock_unit,
-          expiry: m.expiry_date, cost: m.cost })),
+          expiry: m.expiry_date, cost: m.cost,
+          createdBy: m.created_by || null, createdByName: m.created_by_name || null })),
         clinicalHistory: hist.filter(h => h.pet_id === pid).map(h => ({
           id: h.id, title: h.title, type: h.type, date: h.date,
           doctor: h.vet, clinic: h.clinic, cost: h.cost, notes: h.notes,
-          files: (h.files || []).map(f => { try { return JSON.parse(f); } catch(e) { return null; } }).filter(Boolean) })),
+          files: (h.files || []).map(f => { try { return JSON.parse(f); } catch(e) { return null; } }).filter(Boolean),
+          createdBy: h.created_by || null, createdByName: h.created_by_name || null })),
         weightHistory: wh.filter(w => w.pet_id === pid).map(w => ({
-          id: w.id, date: w.date, kg: w.kg, gr: w.gr, notes: w.notes })),
+          id: w.id, date: w.date, kg: w.kg, gr: w.gr, notes: w.notes,
+          createdBy: w.created_by || null, createdByName: w.created_by_name || null })),
         moodLog: mood.filter(m => m.pet_id === pid).map(m => ({
           id: m.id, date: m.date, mood: m.mood, energy: m.energy, notes: m.notes })),
         symptomsLog: sym.filter(s => s.pet_id === pid).map(s => ({
@@ -126,22 +131,26 @@ async function loadDataFromSupabase() {
           packageUnit: f.package_unit, dailyAmount: f.daily_amount, price: f.price,
           purchaseDate: f.purchase_date, notes: f.notes,
           purchases: purchases.filter(x => x.food_item_id === f.id).map(x => ({
-            id: x.id, date: x.purchase_date, price: x.price, packageSize: x.package_size, packageUnit: x.package_unit })) })),
+            id: x.id, date: x.purchase_date, price: x.price, packageSize: x.package_size, packageUnit: x.package_unit,
+            createdBy: x.created_by || null, createdByName: x.created_by_name || null })) })),
         activities: act.filter(a => a.pet_id === pid).map(a => ({
           id: a.id, date: a.date, type: a.type, duration: a.duration, distance: a.distance, notes: a.notes })),
         doseLog: dose.filter(d => d.pet_id === pid).map(d => ({
-          id: d.id, medicationId: d.med_id, date: d.date, given: d.confirmed })),
+          id: d.id, medicationId: d.med_id, date: d.date, given: d.confirmed, loggedAt: d.logged_at || null,
+          createdBy: d.created_by || null, createdByName: d.created_by_name || null })),
       };
     });
 
     state.events = (evRes.data || []).map(e => ({
       id: e.id, title: e.title, date: e.date, time: e.time, userId: e.user_id,
-      endDate: e.end_date || null, holder: e.holder || null,
+      endDate: e.end_date || null, holder: e.holder || null, createdBy: e.created_by || e.user_id || null, createdByName: e.created_by_name || null,
       type: e.type, petId: e.pet_id, pet: state.pets.find(p => p.id === e.pet_id)?.name || null, notes: e.notes }));
 
     state.expenses = (expRes.data || []).map(e => ({
       id: e.id, petId: e.pet_id, pet: state.pets.find(p => p.id === e.pet_id)?.name || null,
       date: e.date, category: e.category, amount: e.amount, description: e.description }));
+
+    state.lastDataLoadAt = Date.now();
 
     // store botiquin separately (not inside pet objects)
     state.botiquin = (botRes.data || []).map(b => ({
@@ -245,8 +254,26 @@ function getFinanceExpenses() {
   return [...manual, ...synth];
 }
 
-export { loadDataFromSupabase, loadAdminData, getAgendaEvents, getFinanceExpenses };
+// Con dos tutores, lo que uno registra no llega solo a la pantalla del otro. Al volver a la
+// pestaña (o a la ventana) se recargan los datos, como máximo una vez por minuto, y solo si la
+// persona comparte alguna mascota, no está en el modo demo, no hay un modal abierto ni está
+// creando una mascota (para no borrarle lo que estaba escribiendo).
+async function refreshSharedData() {
+  if (!state.isLoggedIn || !state.user?.id || isDemoUser()) return;
+  if (!(state.pets || []).some(p => p.tutor2)) return;
+  if (state.currentView === 'addPet') return;
+  if (document.querySelector('#modal-root .modal-overlay')) return;
+  if (Date.now() - (state.lastDataLoadAt || 0) < 60000) return;
+  await loadDataFromSupabase();
+  render();
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshSharedData(); });
+  window.addEventListener('focus', refreshSharedData);
+}
+
+export { loadDataFromSupabase, loadAdminData, getAgendaEvents, getFinanceExpenses, refreshSharedData };
 
 if (typeof window !== 'undefined') {
-  Object.assign(window, { loadDataFromSupabase, loadAdminData, getAgendaEvents, getFinanceExpenses });
+  Object.assign(window, { loadDataFromSupabase, loadAdminData, getAgendaEvents, getFinanceExpenses, refreshSharedData });
 }

@@ -12,7 +12,10 @@ export function tabMedications(pet) {
   const today = todayStr();
   const reminderLabels = { exact:'Horario exacto', '15':'15 min antes', '30':'30 min antes', '60':'60 min antes' };
   const hasActive = (pet.medications||[]).some(m => m.active);
-  const doseGivenToday = (pet.doseLog||[]).some(dl => dl.date === today && dl.given);
+  const doseToday = (pet.doseLog||[]).find(dl => dl.date === today && dl.given);
+  const doseGivenToday = !!doseToday;
+  const doseBy = doseToday ? actorLabel(doseToday, state.user?.id) : null;
+  const doseAt = doseToday ? timeOf(doseToday.loggedAt) : '';
   return `
     <div class="bg-white rounded-2xl shadow-sm p-5">
       <div class="flex items-center justify-between mb-4">
@@ -22,7 +25,7 @@ export function tabMedications(pet) {
         </div>
         <div class="flex items-center gap-2">
           ${hasActive ? (doseGivenToday
-            ? `<span class="badge bg-green-100 text-green-700">✓ Dosis de hoy registrada</span>`
+            ? `<span class="badge bg-green-100 text-green-700">✓ Dosis de hoy registrada${doseBy ? ` por ${esc(doseBy === 'Tú' ? 'ti' : doseBy)}` : ''}${doseAt ? ` · ${doseAt}` : ''}</span>`
             : `<button onclick="markDoseTaken('${pet.id}')" class="btn-secondary text-sm flex items-center gap-1.5">${icon('fire','w-4 h-4')} Marcar dosis de hoy</button>`) : ''}
           <button onclick="openMedModal('${pet.id}')" class="btn-primary text-sm">+ Agregar</button>
         </div>
@@ -389,14 +392,29 @@ export async function markDoseTaken(petId) {
   const activeMed = activeMeds.length === 1 ? activeMeds[0] : null;
   pet.doseLog = pet.doseLog || [];
   if (pet.doseLog.some(dl => dl.date === today && dl.given)) return;
+  const me = { createdBy: state.user?.id || null, createdByName: state.user?.name || null };
   if (isDemoUser()) {
-    pet.doseLog.push({ id: genId(), medicationId: activeMed?.id || null, date: today, given: true });
+    pet.doseLog.push({ id: genId(), medicationId: activeMed?.id || null, date: today, given: true, loggedAt: new Date().toISOString(), ...me });
   } else {
+    // Con dos tutores, el otro pudo haberla dado hace un rato y esta pantalla no lo sabe: se
+    // consulta antes de registrar para no dar la dosis dos veces.
+    const { data: already } = await sb.from('dose_logs').select('*').eq('pet_id', petId).eq('date', today).eq('confirmed', true).limit(1);
+    if (already?.length) {
+      const d = already[0];
+      const rec = { id: d.id, medicationId: d.med_id, date: d.date, given: true, loggedAt: d.logged_at || null, createdBy: d.created_by || null, createdByName: d.created_by_name || null };
+      pet.doseLog.push(rec);
+      render();
+      const who = actorLabel(rec, state.user?.id);
+      showToast(`La dosis de hoy ya estaba registrada${who && who !== 'Tú' ? ` por ${who}` : ''}${rec.loggedAt ? ` a las ${timeOf(rec.loggedAt)}` : ''}`, 'error');
+      return;
+    }
     const { data, error } = await sb.from('dose_logs').insert({
       pet_id: petId, med_id: activeMed?.id || null, date: today, confirmed: true
     }).select().single();
     if (error) { showToast('Error al registrar la dosis', 'error'); console.error(error); return; }
-    pet.doseLog.push({ id: data.id, medicationId: data.med_id, date: data.date, given: data.confirmed });
+    pet.doseLog.push({ id: data.id, medicationId: data.med_id, date: data.date, given: data.confirmed,
+      loggedAt: data.logged_at || new Date().toISOString(),
+      createdBy: data.created_by || me.createdBy, createdByName: data.created_by_name || me.createdByName });
   }
   render();
   showToast('¡Dosis de hoy registrada!', 'success');

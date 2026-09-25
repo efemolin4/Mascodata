@@ -434,6 +434,23 @@ export function completionAction(petId, key) {
   else openEditPetModal(petId);
 }
 
+// Actividad reciente de la mascota, de todos sus tutores y con quién la hizo. Solo se muestra
+// cuando hay otro tutor: con uno solo sería puro ruido.
+export function petActivityCard(pet) {
+  if (!hasOtherTutor(pet)) return '';
+  const rows = recentActivity(pet, state.events, state.user?.id, 6);
+  if (!rows.length) return '';
+  return `<div class="bg-white rounded-2xl shadow-sm p-4 md:p-5 mb-4">
+    <h3 class="font-semibold text-gray-800 mb-2">Actividad reciente</h3>
+    <div class="divide-y divide-gray-100">
+      ${rows.map(r => `<div class="flex items-center justify-between gap-3 py-2 text-sm">
+        <div class="min-w-0 truncate text-gray-700">${r.by ? `<span class="font-semibold text-gray-900">${esc(r.by)}</span> · ` : ''}${esc(r.text)}</div>
+        <div class="text-xs text-gray-400 flex-shrink-0 tabular-nums">${formatDate(r.date)}${r.at && timeOf(r.at) ? ` · ${timeOf(r.at)}` : ''}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
 // "Hoy está con…" para mascotas con tutores separados: la estadía que cubre hoy, o un aviso si no hay.
 export function petWhereToday(pet, opts = {}) {
   if (pet.careMode !== 'separated' || !hasOtherTutor(pet)) return '';
@@ -449,6 +466,7 @@ export function petWhereToday(pet, opts = {}) {
 export function tabGeneral(pet) {
   return `
     ${petWhereToday(pet, { className: 'mb-4' })}
+    ${petActivityCard(pet)}
     ${petCompletenessCard(pet)}
     <div class="grid md:grid-cols-2 gap-4">
       <div class="bg-white rounded-2xl shadow-sm p-5">
@@ -1252,7 +1270,7 @@ export async function removeTutor2(petId) {
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     viewPets, viewAddPet, stepBasic, stepPhysical, stepHealth, stepTutors,
-    viewPetProfile, tabGeneral, petWhereToday, infoRow, openEditPetModal, toggleEditAllergy,
+    viewPetProfile, tabGeneral, petWhereToday, petActivityCard, infoRow, openEditPetModal, toggleEditAllergy,
     toggleEditCondition, toggleEditPersonality, setEditActivity, previewEditPhoto,
     openPet, setTab, cancelAddPet, prevStep, showFieldError, clearFieldError,
     nextStep, collectStepData, savePet, openDeletePetWithCode, sendDeleteCode,

@@ -7,7 +7,7 @@ import { vi } from 'vitest';
 // librería real, donde nada se envía hasta que se awaitea la cadena.
 function makeChain(result) {
   const chain = {};
-  ['select', 'insert', 'update', 'upsert', 'delete', 'eq', 'in', 'order', 'single', 'match']
+  ['select', 'insert', 'update', 'upsert', 'delete', 'eq', 'in', 'order', 'single', 'match', 'limit', 'or']
     .forEach(method => { chain[method] = vi.fn(() => chain); });
   chain.then = (resolve, reject) => Promise.resolve(result).then(resolve, reject);
   chain.catch = (reject) => Promise.resolve(result).catch(reject);

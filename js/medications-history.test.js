@@ -55,7 +55,7 @@ describe('markDoseTaken', () => {
     window.state = { pets: [pet] };
     window.sb = makeMockSb({ dose_logs: { data: { id: 'dl-1', med_id: 'med-1', date: '2026-06-15', confirmed: true }, error: null } });
     await markDoseTaken('pet-1');
-    const insertPayload = window.sb.from.mock.results[0].value.insert.mock.calls[0][0];
+    const insertPayload = window.sb.from.mock.results.map(r => r.value.insert.mock.calls[0]?.[0]).find(Boolean);
     expect(insertPayload.med_id).toBe('med-1');
   });
 
@@ -65,8 +65,29 @@ describe('markDoseTaken', () => {
     window.state = { pets: [pet] };
     window.sb = makeMockSb({ dose_logs: { data: { id: 'dl-1', med_id: null, date: '2026-06-15', confirmed: true }, error: null } });
     await markDoseTaken('pet-1');
-    const insertPayload = window.sb.from.mock.results[0].value.insert.mock.calls[0][0];
+    const insertPayload = window.sb.from.mock.results.map(r => r.value.insert.mock.calls[0]?.[0]).find(Boolean);
     expect(insertPayload.med_id).toBeNull(); // antes: siempre 'med-1' (el primero), sin importar cuál correspondía
+  });
+
+  it('si el otro tutor ya registró la dosis de hoy, no la registra otra vez y avisa quién la dio', async () => {
+    const pet = { id: 'pet-1', myRole: 'editor', doseLog: [], medications: [{ id: 'med-1', active: true }] };
+    const today = new Date().toISOString().slice(0, 10);
+    window.state = { pets: [pet], user: { id: 'yo', name: 'Ana' } };
+    window.sb = makeMockSb({ dose_logs: { data: [{ id: 'dl-9', med_id: 'med-1', date: today, confirmed: true, created_by: 'otro', created_by_name: 'Pedro', logged_at: '2026-10-01T12:04:00Z' }], error: null } });
+    await markDoseTaken('pet-1');
+    const inserts = window.sb.from.mock.results.map(r => r.value.insert.mock.calls.length).reduce((a, b) => a + b, 0);
+    expect(inserts).toBe(0);
+    expect(pet.doseLog).toHaveLength(1);
+    expect(pet.doseLog[0]).toMatchObject({ createdByName: 'Pedro', given: true });
+    expect(window.showToast.mock.calls[0][0]).toContain('ya estaba registrada por Pedro');
+  });
+
+  it('al registrar una dosis guarda quién la dio y a qué hora', async () => {
+    const pet = { id: 'pet-1', myRole: 'owner', doseLog: [], medications: [{ id: 'med-1', active: true }] };
+    window.state = { pets: [pet], user: { id: 'yo', name: 'Ana' } };
+    window.sb = makeMockSb({ dose_logs: { data: { id: 'dl-1', med_id: 'med-1', date: '2026-06-15', confirmed: true, logged_at: '2026-06-15T12:00:00Z', created_by: 'yo', created_by_name: 'Ana' }, error: null } });
+    await markDoseTaken('pet-1');
+    expect(pet.doseLog[0]).toMatchObject({ createdBy: 'yo', createdByName: 'Ana', loggedAt: '2026-06-15T12:00:00Z' });
   });
 
   it('no llama a Supabase si el tutor tiene acceso de solo lectura', async () => {

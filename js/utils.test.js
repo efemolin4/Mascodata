@@ -4,7 +4,7 @@ import {
   careAlertStatus, medStockStatus, foodStockStatus, esc, safeId, safeDataUrl, petCompleteness, parseCLP, fmtCompactCLP,
   foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl,
   foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, lastWeighedDate,
-  STAY_TYPE, hasOtherTutor, stayWho, eventCoversDate, petStayOn,
+  STAY_TYPE, hasOtherTutor, stayWho, eventCoversDate, petStayOn, actorLabel, timeOf, recentActivity,
 } from './utils.js';
 
 // Fija "hoy" a una fecha conocida para que las pruebas de fecha sean
@@ -486,5 +486,46 @@ describe('estadías (tutores separados)', () => {
       { id: 'b', type: STAY_TYPE, petId: 'p1', date: '2026-10-10', endDate: '2026-10-12' },
     ];
     expect(petStayOn({ id: 'p1' }, events, '2026-10-11').id).toBe('b');
+  });
+});
+
+describe('quién hizo qué', () => {
+  it('actorLabel: "Tú" para mis registros, el nombre para los del otro tutor, null si no se sabe', () => {
+    expect(actorLabel({ createdBy: 'yo', createdByName: 'Ana' }, 'yo')).toBe('Tú');
+    expect(actorLabel({ createdBy: 'otro', createdByName: ' Pedro ' }, 'yo')).toBe('Pedro');
+    expect(actorLabel({ createdBy: 'otro', createdByName: '' }, 'yo')).toBeNull();
+    expect(actorLabel({}, 'yo')).toBeNull();
+    expect(actorLabel(null, 'yo')).toBeNull();
+  });
+
+  it('timeOf devuelve la hora local o vacío', () => {
+    expect(timeOf('')).toBe('');
+    expect(timeOf('no-es-fecha')).toBe('');
+    expect(timeOf('2026-10-01T12:04:00Z')).toMatch(/^\d{2}:\d{2}/);
+  });
+
+  it('recentActivity junta registros de varias tablas, del más reciente al más antiguo, con su autor', () => {
+    const pet = {
+      id: 'p1',
+      vaccines: [{ date: '2026-09-01', name: 'Antirrábica', createdBy: 'otro', createdByName: 'Pedro' }],
+      weightHistory: [{ date: '2026-09-20', kg: 12, gr: 500, createdBy: 'yo', createdByName: 'Ana' }],
+      doseLog: [{ date: '2026-09-25', given: true, loggedAt: '2026-09-25T12:00:00Z', createdBy: 'otro', createdByName: 'Pedro' }, { date: '2026-09-26', given: false }],
+      clinicalHistory: [{ date: '2026-09-10', title: 'Control anual' }],
+      foodItems: [{ product: 'Barfood', purchases: [{ date: '2026-09-15', createdBy: 'yo', createdByName: 'Ana' }] }],
+    };
+    const events = [{ petId: 'p1', date: '2026-09-22', title: 'Peluquería' }, { petId: 'p2', date: '2026-09-30', title: 'Ajeno' }, { petId: 'p1', type: STAY_TYPE, date: '2026-09-29' }];
+    const rows = recentActivity(pet, events, 'yo');
+    expect(rows.map(r => r.text)).toEqual(['Dosis dada', 'Evento: Peluquería', 'Peso: 12,5 kg', 'Compra de alimento: Barfood', 'Control anual', 'Vacuna: Antirrábica']);
+    expect(rows.map(r => r.by)).toEqual(['Pedro', null, 'Tú', 'Tú', null, 'Pedro']);
+  });
+
+  it('respeta el límite y ordena por hora dos registros del mismo día', () => {
+    const pet = { id: 'p1', doseLog: [
+      { date: '2026-09-25', given: true, loggedAt: '2026-09-25T09:00:00Z' },
+      { date: '2026-09-25', given: true, loggedAt: '2026-09-25T20:00:00Z' },
+    ], weightHistory: [{ date: '2026-09-01', kg: 5, gr: 0 }] };
+    const rows = recentActivity(pet, [], 'yo', 2);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].at > rows[1].at).toBe(true);
   });
 });

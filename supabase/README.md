@@ -141,3 +141,10 @@ Ejecutar `schema/shared_events_care_mode.sql` (idempotente): agrega `events.end_
 y `pets.care_mode`, y reemplaza la regla de `events` para que los eventos con mascota los vean todos
 sus tutores. Después, `schema/test_shared_events.sql` comprueba las reglas con sesiones simuladas (no
 guarda nada). La app funciona antes de ejecutarlo, pero las estadías avisan que falta actualizar la base.
+
+## Quién hizo qué (autor de cada registro)
+
+Ejecutar `schema/activity_attribution.sql` (idempotente): agrega `created_by`, `created_by_name` (y `dose_logs.logged_at`)
+a las tablas de registros y un trigger que los completa con la sesión y el nombre del perfil. Luego
+`schema/test_activity_attribution.sql` lo comprueba con sesiones simuladas (no guarda nada). Sin el SQL la app
+funciona, pero no muestra autores.

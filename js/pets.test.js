@@ -3,7 +3,7 @@ import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js'; // deja esc/icon/fmtCLP/formatDate reales en window
 import '../js/app.js'; // deja canEditPet/blockIfReadOnly reales en window
 import '../js/tracking.js'; // deja recordWeight real en window (saveEditPet lo usa)
-import { savePet, deletePet, openInviteTutor2Modal, exportPetRecord, printPetRecord, saveEditPet } from './pets.js';
+import { savePet, deletePet, openInviteTutor2Modal, exportPetRecord, printPetRecord, saveEditPet, petActivityCard } from './pets.js';
 
 // savePet() lee/escribe sobre `state`, `sb`, etc. como globales (ver
 // js/utils.js para el porqué de esa convención) — acá se los proveemos a
@@ -268,5 +268,31 @@ describe('saveEditPet — el peso de la ficha también queda como medición', ()
     await saveEditPet('pet-1');
     expect(pet.weightKg).toBe('7');
     expect(window.showToast).toHaveBeenCalledWith('Cambios guardados, pero no se pudo registrar la medición de peso', 'error');
+  });
+});
+
+describe('petActivityCard — actividad reciente de los tutores', () => {
+  const pet = (over = {}) => ({ id: 'p1', name: 'Greta', tutor2: { name: 'Pedro' }, weightHistory: [{ date: '2026-09-20', kg: 12, gr: 500, createdBy: 'yo', createdByName: 'Ana' }],
+    vaccines: [{ date: '2026-09-25', name: 'Antirrábica', createdBy: 'otro', createdByName: 'Pedro' }], ...over });
+  beforeEach(() => { window.state = { user: { id: 'yo' }, events: [] }; });
+
+  it('muestra quién hizo cada cosa, marcando "Tú" en lo propio', () => {
+    const html = petActivityCard(pet());
+    expect(html).toContain('Actividad reciente');
+    expect(html).toContain('Pedro');
+    expect(html).toContain('Vacuna: Antirrábica');
+    expect(html).toContain('Tú');
+    expect(html).toContain('Peso: 12,5 kg');
+  });
+
+  it('no aparece si la mascota no tiene otro tutor ni si no hay actividad', () => {
+    expect(petActivityCard(pet({ tutor2: null }))).toBe('');
+    expect(petActivityCard(pet({ weightHistory: [], vaccines: [] }))).toBe('');
+  });
+
+  it('escapa el nombre de quien registró y el texto del registro', () => {
+    const html = petActivityCard(pet({ vaccines: [{ date: '2026-09-25', name: '<b>x</b>', createdBy: 'otro', createdByName: '<img src=x onerror=1>' }] }));
+    expect(html).not.toContain('<img src=x');
+    expect(html).not.toContain('<b>x</b>');
   });
 });

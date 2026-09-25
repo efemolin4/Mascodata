@@ -449,6 +449,41 @@ export function petStayOn(pet, events, dateStr) {
     .sort((a, b) => (a.date < b.date ? 1 : -1))[0] || null;
 }
 
+// ---- Quién hizo qué ----
+// Quién creó un registro, visto desde quien mira: "Tú", el nombre de la otra persona o null si
+// no se sabe (registros anteriores a que se guardara el autor).
+export function actorLabel(rec, myId) {
+  if (rec?.createdBy && myId && rec.createdBy === myId) return 'Tú';
+  const name = (rec?.createdByName || '').trim();
+  return name || null;
+}
+
+// Hora (HH:MM) en que se registró algo, si se conoce.
+export function timeOf(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+// Últimos registros de una mascota, de todos sus tutores, con quién los hizo. Se arma con lo que
+// ya está cargado; ordenado por fecha (y hora, cuando se conoce), del más reciente al más antiguo.
+export function recentActivity(pet, events, myId, limit = 8) {
+  const items = [];
+  const add = (date, text, rec, at) => { if (date) items.push({ date, at: at || '', text, by: actorLabel(rec, myId) }); };
+  (pet?.vaccines || []).forEach(v => add(v.date, `Vacuna: ${v.name}`, v));
+  (pet?.deworming || []).forEach(d => add(d.date, `Desparasitación: ${d.product}`, d));
+  (pet?.medications || []).forEach(m => add(m.startDate, `Tratamiento: ${m.name}`, m));
+  (pet?.clinicalHistory || []).forEach(h => add(h.date, h.title || 'Historial clínico', h));
+  (pet?.weightHistory || []).forEach(w => add(w.date, `Peso: ${(parseFloat(w.kg || 0) + (parseInt(w.gr || 0, 10) / 1000)).toLocaleString('es-CL', { maximumFractionDigits: 3 })} kg`, w));
+  (pet?.doseLog || []).filter(d => d.given).forEach(d => add(d.date, 'Dosis dada', d, d.loggedAt));
+  (pet?.foodItems || []).forEach(f => (f.purchases || []).forEach(pu => add(pu.date, `Compra de alimento: ${f.product}`, pu)));
+  (events || []).filter(e => e.petId === pet?.id && e.type !== STAY_TYPE).forEach(e => add(e.date, `Evento: ${e.title}`, e));
+  return items
+    .map((it, i) => ({ ...it, i }))
+    .sort((a, b) => (a.date === b.date ? (a.at === b.at ? b.i - a.i : (a.at < b.at ? 1 : -1)) : (a.date < b.date ? 1 : -1)))
+    .slice(0, limit);
+}
+
 // Racha de días consecutivos (incluyendo hoy) con actividad registrada.
 export function activityStreak(activities) {
   const dates = new Set((activities||[]).map(a => a.date));
@@ -462,6 +497,6 @@ if (typeof window !== 'undefined') {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
     getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, shrinkImage, slugify, petCompleteness, COMPLETENESS_FIELDS, eventIcon, botiquinStatus,
     medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
-    STAY_TYPE, hasOtherTutor, stayWho, eventCoversDate, petStayOn, lastWeighedDate, foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
+    actorLabel, timeOf, recentActivity, STAY_TYPE, hasOtherTutor, stayWho, eventCoversDate, petStayOn, lastWeighedDate, foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
   });
 }

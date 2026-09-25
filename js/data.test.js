@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js'; // deja todayStr real en window
-import { getFinanceExpenses } from './data.js';
+import { getFinanceExpenses, refreshSharedData } from './data.js';
 
 // Regresión: food_items (pestaña Nutrición, agregada 2026-09-07) nunca se
 // sumó a esta función — un costo de alimento cargado ahí simplemente no
@@ -41,5 +42,51 @@ describe('getFinanceExpenses', () => {
     window.state.pets[0].foodItems.push({ id: 'f2', purchaseDate: '2026-01-01', product: 'Sin precio', price: null });
     const expenses = getFinanceExpenses();
     expect(expenses.some(e => e.description === 'Alimento: Sin precio')).toBe(false);
+  });
+});
+
+// Con dos tutores, lo que uno registra no llega solo al otro: al volver a la pestaña se recargan
+// los datos, pero sin pisar lo que la persona estaba haciendo.
+describe('refreshSharedData', () => {
+  beforeEach(() => {
+    window.render = vi.fn();
+    window.isDemoUser = vi.fn(() => false);
+    window.sb = makeMockSb({ pet_access: { data: [], error: null } });
+    window.state = { isLoggedIn: true, user: { id: 'u1' }, currentView: 'dashboard', pets: [{ id: 'p1', tutor2: { name: 'Pedro' } }], lastDataLoadAt: 0 };
+    document.body.innerHTML = '<div id="modal-root"></div>';
+  });
+  const called = () => window.sb.from.mock.calls.length > 0;
+
+  it('recarga cuando la mascota es compartida y pasó más de un minuto', async () => {
+    await refreshSharedData();
+    expect(called()).toBe(true);
+    expect(window.render).toHaveBeenCalled();
+  });
+
+  it('no recarga si no comparte ninguna mascota, si está en el modo demo o sin sesión', async () => {
+    window.state.pets = [{ id: 'p1', tutor2: null }];
+    await refreshSharedData();
+    window.state.pets = [{ id: 'p1', tutor2: { name: 'Pedro' } }];
+    window.isDemoUser = vi.fn(() => true);
+    await refreshSharedData();
+    window.isDemoUser = vi.fn(() => false);
+    window.state.isLoggedIn = false;
+    await refreshSharedData();
+    expect(called()).toBe(false);
+  });
+
+  it('no recarga si hubo una carga hace menos de un minuto', async () => {
+    window.state.lastDataLoadAt = Date.now() - 10_000;
+    await refreshSharedData();
+    expect(called()).toBe(false);
+  });
+
+  it('no recarga con un modal abierto ni mientras se crea una mascota', async () => {
+    document.getElementById('modal-root').innerHTML = '<div class="modal-overlay"></div>';
+    await refreshSharedData();
+    document.getElementById('modal-root').innerHTML = '';
+    window.state.currentView = 'addPet';
+    await refreshSharedData();
+    expect(called()).toBe(false);
   });
 });
