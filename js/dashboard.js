@@ -85,6 +85,16 @@ export function viewDashboard() {
       attention.push({ petId: p.id, level: 1, date: m.endDate, title: `Tratamiento terminado · ${esc(m.name)}`, sub: `${name} · Terminó el ${formatDate(m.endDate)} y sigue marcado como activo`, actionLabel: 'Revisar', action: `navigate('petProfile',{currentPetId:'${p.id}',currentTab:'medicamentos'})` });
     });
 
+    // Alimento por acabarse: es el momento en que sirve buscar una oferta.
+    (p.foodItems || []).forEach(f => {
+      const st = foodStockStatus(f);
+      if (!st || st.level === 'ok') return;
+      const when = st.daysLeft < 0 ? 'Se estima que ya se acabó' : st.daysLeft === 0 ? 'Se acaba hoy' : `Quedan ~${st.daysLeft} día${st.daysLeft !== 1 ? 's' : ''}`;
+      attention.push({ petId: p.id, level: 1, date: st.runOutDate, title: `Alimento por acabarse · ${esc(f.product)}`, sub: `${name} · ${when}`,
+        actionLabel: 'Buscar oferta', action: `openFoodOffer('${safeId(p.id)}','${safeId(f.id)}','dashboard')`,
+        actionLabel2: canEditPet(p) ? 'Ya repuse' : '', action2: `openFoodPurchaseModal('${safeId(p.id)}','${safeId(f.id)}')` });
+    });
+
     const ageYears = p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (365.25*86400000)) : 0;
     const lastVaccDate = (p.vaccines || []).reduce((max, v) => v.date > max ? v.date : max, '');
     const vaccineAge = lastVaccDate ? Math.floor((Date.now() - new Date(lastVaccDate).getTime()) / (30.44*86400000)) : 999;
@@ -209,7 +219,10 @@ export function viewDashboard() {
                 <div class="text-sm font-medium text-gray-900 leading-snug">${a.title}</div>
                 ${a.sub ? `<div class="text-xs text-gray-500 mt-0.5">${a.sub}</div>` : ''}
               </div>
-              <button onclick="${a.action}" class="btn-secondary text-xs !py-1.5 !px-3 flex-shrink-0">${a.actionLabel}</button>
+              <div class="flex flex-col sm:flex-row gap-1.5 flex-shrink-0">
+                <button onclick="${a.action}" class="btn-secondary text-xs !py-1.5 !px-3">${a.actionLabel}</button>
+                ${a.actionLabel2 ? `<button onclick="${a.action2}" class="btn-secondary text-xs !py-1.5 !px-3">${a.actionLabel2}</button>` : ''}
+              </div>
             </div>`).join('')}
         </div>
         ${attention.length > ATTN_LIMIT ? `

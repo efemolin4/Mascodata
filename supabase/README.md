@@ -103,3 +103,10 @@ Puesta en marcha (una sola vez, en este orden):
 6. **Programar** (bloque comentado al final de `schema/pet_reminders.sql`; requiere
    activar las extensiones `pg_cron` y `pg_net`). Para pausarlo:
    `select cron.unschedule('pet-completion-reminders');`
+
+## Historial de compras de alimento (opcional)
+
+Para guardar el precio por kilo de cada compra (y mostrar "Pagaste $2.450/kg en
+marzo…"), ejecutar en el SQL Editor el archivo `supabase/schema/food_purchases.sql`.
+Es idempotente y copia el precio actual de cada alimento como su primera compra.
+Si no se ejecuta, la app funciona igual pero sin historial de compras.

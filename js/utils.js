@@ -307,6 +307,58 @@ export function foodStockStatus(f) {
   };
 }
 
+// Precio por kilo (o por unidad) de una compra de alimento. Sirve para comparar
+// compras de distinto tamaño de envase: 15 kg a $39.990 y 3 kg a $9.990 no se
+// pueden comparar por precio total. Devuelve null si faltan datos.
+export function foodPricePerUnit(price, size, unit) {
+  const p = Number(price), n = Number(size);
+  if (!(p > 0) || !(n > 0)) return null;
+  if (unit === 'g') return { value: Math.round(p / (n / 1000)), unit: 'kg' };
+  if (unit === 'kg') return { value: Math.round(p / n), unit: 'kg' };
+  if (unit === 'unidades') return { value: Math.round(p / n), unit: 'unidad' };
+  return null;
+}
+
+// Compras de un alimento, de la más reciente a la más antigua, con su precio
+// por kilo. Un alimento sin historial (creado antes de food_purchases) usa su
+// propia fila como única compra.
+export function foodPurchaseHistory(f) {
+  let list = (f?.purchases || []).map(p => ({ ...p }));
+  if (!list.length && Number(f?.price) > 0 && f?.purchaseDate) {
+    list = [{ id: null, date: f.purchaseDate, price: f.price, packageSize: f.packageSize, packageUnit: f.packageUnit }];
+  }
+  return list
+    .map(p => ({ ...p, per: foodPricePerUnit(p.price, p.packageSize, p.packageUnit) }))
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+}
+
+// "Pagaste $2.450/kg en marzo; en tu última compra pagaste $2.780/kg" comparando
+// las dos compras más recientes. Solo compara si ambas están en la misma unidad.
+export function foodPriceInsight(f) {
+  const [cur, prev] = foodPurchaseHistory(f).filter(h => h.per);
+  if (!cur || !prev || cur.per.unit !== prev.per.unit) return null;
+  const pct = Math.round((cur.per.value - prev.per.value) / prev.per.value * 100);
+  const monthOf = d => {
+    const dt = new Date(d + 'T12:00:00');
+    const opts = dt.getFullYear() === new Date().getFullYear() ? { month: 'long' } : { month: 'long', year: 'numeric' };
+    return dt.toLocaleDateString('es-CL', opts);
+  };
+  const unit = cur.per.unit;
+  const trend = pct === 0 ? '' : pct > 0 ? 'más caro' : 'más barato';
+  return {
+    pct, trend, unit, prev, cur,
+    text: `Pagaste ${fmtCLP(prev.per.value)}/${unit} en ${monthOf(prev.date)}; en tu última compra pagaste ${fmtCLP(cur.per.value)}/${unit}${pct === 0 ? '' : ` (${Math.abs(pct)} % ${trend})`}.`,
+  };
+}
+
+// Búsqueda del alimento en Knasta (comparador de precios). Es solo un enlace que
+// abre el usuario: no se extrae ningún dato de Knasta.
+export function foodOfferUrl(f) {
+  const size = f?.packageUnit === 'kg' || f?.packageUnit === 'g' ? `${f.packageSize || ''} ${f.packageUnit}` : '';
+  const q = `${f?.product || ''} ${size}`.replace(/\s+/g, ' ').trim();
+  return `https://knasta.cl/results?q=${encodeURIComponent(q)}`;
+}
+
 // Racha de días consecutivos (incluyendo hoy) con actividad registrada.
 export function activityStreak(activities) {
   const dates = new Set((activities||[]).map(a => a.date));
@@ -320,6 +372,6 @@ if (typeof window !== 'undefined') {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
     getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, shrinkImage, slugify, petCompleteness, COMPLETENESS_FIELDS, eventIcon, botiquinStatus,
     medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
-    foodStockStatus, activityStreak,
+    foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
   });
 }

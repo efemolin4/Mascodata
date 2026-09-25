@@ -35,7 +35,7 @@ async function loadDataFromSupabase() {
 
     const petIds = accessRows.map(r => r.pet_id);
 
-    const [vaccRes, dewRes, medRes, histRes, wRes, moodRes, symRes, foodRes, actRes, doseRes, evRes, expRes, botRes, invRes] = await Promise.all([
+    const [vaccRes, dewRes, medRes, histRes, wRes, moodRes, symRes, foodRes, actRes, doseRes, evRes, expRes, botRes, invRes, purRes] = await Promise.all([
       sb.from('vaccines').select('*').in('pet_id', petIds),
       sb.from('dewormings').select('*').in('pet_id', petIds),
       sb.from('medications').select('*').in('pet_id', petIds),
@@ -50,6 +50,9 @@ async function loadDataFromSupabase() {
       sb.from('expenses').select('*').eq('user_id', state.user.id),
       sb.from('botiquin_items').select('*').eq('user_id', state.user.id),
       sb.from('invitations').select('*').in('pet_id', petIds).order('created_at', { ascending: false }),
+      // Historial de compras de alimento: tabla opcional (supabase/schema/food_purchases.sql).
+      // No entra en allResults: si aún no se creó, la app sigue sin historial y sin avisos de error.
+      sb.from('food_purchases').select('*').in('pet_id', petIds),
     ]);
 
     // Ninguna de estas 14 queries revisaba `.error` — un fallo puntual
@@ -68,6 +71,7 @@ async function loadDataFromSupabase() {
     const sym = symRes.data || [], food = foodRes.data || [], act = actRes.data || [];
     const dose = doseRes.data || [];
     const invites = invRes.data || [];
+    const purchases = purRes?.error ? [] : (purRes?.data || []);
 
     state.pets = accessRows.map(row => {
       const pet = row.pets;
@@ -117,7 +121,9 @@ async function loadDataFromSupabase() {
         foodItems: food.filter(f => f.pet_id === pid).map(f => ({
           id: f.id, product: f.product, type: f.type, packageSize: f.package_size,
           packageUnit: f.package_unit, dailyAmount: f.daily_amount, price: f.price,
-          purchaseDate: f.purchase_date, notes: f.notes })),
+          purchaseDate: f.purchase_date, notes: f.notes,
+          purchases: purchases.filter(x => x.food_item_id === f.id).map(x => ({
+            id: x.id, date: x.purchase_date, price: x.price, packageSize: x.package_size, packageUnit: x.package_unit })) })),
         activities: act.filter(a => a.pet_id === pid).map(a => ({
           id: a.id, date: a.date, type: a.type, duration: a.duration, distance: a.distance, notes: a.notes })),
         doseLog: dose.filter(d => d.pet_id === pid).map(d => ({
@@ -217,9 +223,16 @@ function getFinanceExpenses() {
     (pet.clinicalHistory || []).forEach(h => { if (Number(h.cost) > 0) synth.push({
       id: 'his-'+h.id, petId: pet.id, pet: pet.name, date: h.date, category: 'Veterinaria',
       amount: h.cost, description: h.title, source: 'history' }); });
-    (pet.foodItems || []).forEach(f => { if (Number(f.price) > 0) synth.push({
-      id: 'food-'+f.id, petId: pet.id, pet: pet.name, date: f.purchaseDate || todayStr(), category: 'Alimentación',
-      amount: f.price, description: `Alimento: ${f.product}`, source: 'food' }); });
+    // Cada compra registrada es un gasto; un alimento sin historial usa su propio precio.
+    (pet.foodItems || []).forEach(f => {
+      if (f.purchases?.length) {
+        f.purchases.forEach(pu => { if (Number(pu.price) > 0) synth.push({
+          id: 'food-'+pu.id, petId: pet.id, pet: pet.name, date: pu.date || todayStr(), category: 'Alimentación',
+          amount: pu.price, description: `Alimento: ${f.product}`, source: 'food' }); });
+      } else if (Number(f.price) > 0) synth.push({
+        id: 'food-'+f.id, petId: pet.id, pet: pet.name, date: f.purchaseDate || todayStr(), category: 'Alimentación',
+        amount: f.price, description: `Alimento: ${f.product}`, source: 'food' });
+    });
   });
   (state.botiquin || []).forEach(item => { if (Number(item.cost) > 0) synth.push({
     id: 'bot-'+item.id, petId: item.petId, pet: (state.pets||[]).find(p => p.id === item.petId)?.name || null,

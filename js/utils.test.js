@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   todayStr, daysFromNowStr, addDays, daysBetween, addMonths, getAge,
   careAlertStatus, medStockStatus, foodStockStatus, esc, safeId, safeDataUrl, petCompleteness, parseCLP, fmtCompactCLP,
+  foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl,
 } from './utils.js';
 
 // Fija "hoy" a una fecha conocida para que las pruebas de fecha sean
@@ -298,5 +299,59 @@ describe('petCompleteness', () => {
     expect(petCompleteness({ name: 'a', species: 'Perro', vet: { name: '  ', phone: '' } }).done).not.toContain('vetName');
     expect(petCompleteness({ name: 'a', species: 'Perro', vet: { name: 'Dr X', phone: '' } }).done).toContain('vetName');
     expect(petCompleteness({ name: 'a', species: 'Perro', vet: { name: 'Dr X', phone: '' } }).done).not.toContain('vetPhone');
+  });
+});
+
+describe('precio por kilo del alimento', () => {
+  it('calcula el precio por kilo según la unidad del envase', () => {
+    expect(foodPricePerUnit(39990, 15, 'kg')).toEqual({ value: 2666, unit: 'kg' });
+    expect(foodPricePerUnit(3000, 500, 'g')).toEqual({ value: 6000, unit: 'kg' });
+    expect(foodPricePerUnit(12000, 12, 'unidades')).toEqual({ value: 1000, unit: 'unidad' });
+  });
+
+  it('devuelve null si faltan datos o la unidad no se reconoce', () => {
+    expect(foodPricePerUnit(0, 15, 'kg')).toBeNull();
+    expect(foodPricePerUnit(1000, 0, 'kg')).toBeNull();
+    expect(foodPricePerUnit(1000, 5, 'litros')).toBeNull();
+  });
+
+  it('el historial va de la compra más reciente a la más antigua', () => {
+    const h = foodPurchaseHistory({ purchases: [
+      { id: 'a', date: '2026-03-01', price: 30000, packageSize: 12, packageUnit: 'kg' },
+      { id: 'b', date: '2026-08-01', price: 36000, packageSize: 12, packageUnit: 'kg' },
+    ] });
+    expect(h.map(x => x.id)).toEqual(['b', 'a']);
+    expect(h[0].per.value).toBe(3000);
+  });
+
+  it('un alimento sin historial usa su propia fila como única compra', () => {
+    const h = foodPurchaseHistory({ price: 20000, purchaseDate: '2026-05-01', packageSize: 10, packageUnit: 'kg' });
+    expect(h).toHaveLength(1);
+    expect(h[0].per.value).toBe(2000);
+    expect(foodPurchaseHistory({ price: null })).toEqual([]);
+  });
+
+  it('compara las dos últimas compras y dice cuánto subió', () => {
+    const ins = foodPriceInsight({ purchases: [
+      { id: 'a', date: '2025-03-10', price: 24500, packageSize: 10, packageUnit: 'kg' },
+      { id: 'b', date: '2026-08-10', price: 27800, packageSize: 10, packageUnit: 'kg' },
+    ] });
+    expect(ins.pct).toBe(13);
+    expect(ins.text).toContain('2.450');
+    expect(ins.text).toContain('2.780');
+    expect(ins.text).toContain('13 % más caro');
+  });
+
+  it('no compara con una sola compra ni entre unidades distintas', () => {
+    expect(foodPriceInsight({ purchases: [{ id: 'a', date: '2026-01-01', price: 1000, packageSize: 1, packageUnit: 'kg' }] })).toBeNull();
+    expect(foodPriceInsight({ purchases: [
+      { id: 'a', date: '2026-01-01', price: 1000, packageSize: 1, packageUnit: 'kg' },
+      { id: 'b', date: '2026-02-01', price: 1000, packageSize: 10, packageUnit: 'unidades' },
+    ] })).toBeNull();
+  });
+
+  it('el enlace a Knasta lleva el producto y el tamaño codificados', () => {
+    const url = foodOfferUrl({ product: 'Bravery pollo & arroz', packageSize: 12, packageUnit: 'kg' });
+    expect(url).toBe('https://knasta.cl/results?q=Bravery%20pollo%20%26%20arroz%2012%20kg');
   });
 });

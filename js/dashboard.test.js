@@ -181,3 +181,38 @@ describe('viewDashboard — completar el perfil de la mascota', () => {
     expect(viewDashboard()).not.toContain('Completa el perfil de');
   });
 });
+
+describe('viewDashboard — alimento por acabarse', () => {
+  beforeEach(() => {
+    window.state.user = { name: 'Felipe Molina' };
+    window.state.events = [];
+    window.state.dashAttnAll = true;
+    window.getFinanceExpenses = () => [];
+    window.canEditPet = () => true;
+  });
+
+  it('avisa cuando al alimento le quedan pocos días, con buscar oferta y "ya repuse"', () => {
+    // 10 kg a 0.5 kg/día = 20 días; comprado hace 17 → quedan ~3
+    window.state.pets = [healthyPet({ foodItems: [
+      { id: 'f1', product: 'Bravery Pollo', packageSize: 10, packageUnit: 'kg', dailyAmount: 0.5, purchaseDate: day(-17) }] })];
+    const html = viewDashboard();
+    expect(html).toContain('Alimento por acabarse · Bravery Pollo');
+    expect(html).toContain("openFoodOffer('pet-1','f1','dashboard')");
+    expect(html).toContain("openFoodPurchaseModal('pet-1','f1')");
+  });
+
+  it('no avisa si queda alimento para más de una semana', () => {
+    window.state.pets = [healthyPet({ foodItems: [
+      { id: 'f1', product: 'Bravery Pollo', packageSize: 10, packageUnit: 'kg', dailyAmount: 0.5, purchaseDate: day(-2) }] })];
+    expect(viewDashboard()).not.toContain('Alimento por acabarse');
+  });
+
+  it('un tutor de solo lectura ve buscar oferta pero no "ya repuse"', () => {
+    window.canEditPet = () => false;
+    window.state.pets = [healthyPet({ foodItems: [
+      { id: 'f1', product: 'Bravery Pollo', packageSize: 10, packageUnit: 'kg', dailyAmount: 0.5, purchaseDate: day(-17) }] })];
+    const html = viewDashboard();
+    expect(html).toContain('Buscar oferta');
+    expect(html).not.toContain('Ya repuse');
+  });
+});

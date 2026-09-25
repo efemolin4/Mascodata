@@ -158,13 +158,17 @@ export function tabNutricion(pet) {
         : `<div class="space-y-3">
              ${foodItems.map(f => {
                const status = foodStockStatus(f);
+               const history = foodPurchaseHistory(f);
+               const per = history[0]?.per || null;
+               const insight = foodPriceInsight(f);
+               const insightColor = !insight || insight.pct === 0 ? 'text-gray-500' : insight.pct > 0 ? 'text-amber-600' : 'text-green-600';
                const statusColor = { critico: 'text-red-600 bg-red-50', bajo: 'text-amber-600 bg-amber-50', ok: 'text-teal-600 bg-teal-50' };
                return `
                <div class="p-3 bg-gray-50 rounded-xl">
                  <div class="flex items-start justify-between gap-3">
                    <div class="min-w-0">
                      <div class="text-sm font-semibold text-gray-800 truncate">${esc(f.product)}</div>
-                     <div class="text-xs text-gray-400">${esc(f.type || '')} · ${f.packageSize||0} ${esc(f.packageUnit||'')} · ${f.dailyAmount||0} ${esc(f.packageUnit||'')}/día${f.price ? ` · ${fmtCLP(f.price)}` : ''}</div>
+                     <div class="text-xs text-gray-400">${esc(f.type || '')} · ${f.packageSize||0} ${esc(f.packageUnit||'')} · ${f.dailyAmount||0} ${esc(f.packageUnit||'')}/día${f.price ? ` · ${fmtCLP(f.price)}` : ''}${per ? ` · ${fmtCLP(per.value)}/${per.unit}` : ''}</div>
                    </div>
                    ${canEdit ? `<div class="flex items-center gap-1 flex-shrink-0">
                      <button onclick="openFoodItemModal('${pet.id}','${f.id}')" class="w-7 h-7 rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 flex items-center justify-center transition-colors">${icon('pencil','w-3.5 h-3.5')}</button>
@@ -179,6 +183,23 @@ export function tabNutricion(pet) {
                    <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
                      <div class="h-1.5 rounded-full ${status.level==='critico'?'bg-red-500':status.level==='bajo'?'bg-amber-500':'bg-teal-500'}" style="width:${Math.max(4,Math.min(100, status.daysLeft/30*100))}%"></div>
                    </div>` : `<p class="text-xs text-gray-400 mt-2">Completa tamaño de paquete y consumo diario para estimar cuándo se acaba</p>`}
+                 ${insight ? `<p class="text-xs mt-2 ${insightColor}">${esc(insight.text)}</p>` : ''}
+                 <div class="mt-2 flex flex-wrap gap-2">
+                   ${canEdit ? `<button onclick="openFoodPurchaseModal('${safeId(pet.id)}','${safeId(f.id)}')" class="btn-secondary text-xs !py-1.5 !px-3">Registré una compra</button>` : ''}
+                   <button onclick="openFoodOffer('${safeId(pet.id)}','${safeId(f.id)}','nutricion')" class="btn-secondary text-xs !py-1.5 !px-3">Buscar oferta</button>
+                 </div>
+                 ${history.length ? `
+                 <details class="mt-2">
+                   <summary class="text-xs text-gray-500 cursor-pointer hover:text-gray-700">Historial de compras (${history.length})</summary>
+                   <div class="mt-1 divide-y divide-gray-100">
+                     ${history.slice(0, 8).map(h => `
+                       <div class="flex items-center justify-between gap-2 py-1.5 text-xs">
+                         <span class="text-gray-500">${formatDate(h.date)}</span>
+                         <span class="text-gray-700 text-right">${fmtCLP(h.price)}${h.per ? ` · <span class="font-semibold">${fmtCLP(h.per.value)}/${h.per.unit}</span>` : ''}</span>
+                         ${canEdit && h.id ? `<button onclick="deleteFoodPurchase('${safeId(pet.id)}','${safeId(f.id)}','${safeId(h.id)}')" class="text-gray-300 hover:text-red-500 flex-shrink-0" title="Eliminar compra">×</button>` : ''}
+                       </div>`).join('')}
+                   </div>
+                 </details>` : ''}
                </div>`;
              }).join('')}
            </div>`}
@@ -514,9 +535,14 @@ export async function saveFoodItem(e, petId, itemId) {
   if (isDemoUser()) {
     if (itemId) {
       const item = pet.foodItems.find(f => f.id === itemId);
-      if (item) Object.assign(item, { product, type, packageSize, packageUnit, dailyAmount, price, purchaseDate, notes });
+      if (item) {
+        const last = (item.purchases || []).find(pu => pu.date === item.purchaseDate);
+        if (last && price > 0) Object.assign(last, { date: purchaseDate, price, packageSize, packageUnit });
+        Object.assign(item, { product, type, packageSize, packageUnit, dailyAmount, price, purchaseDate, notes });
+      }
     } else {
-      pet.foodItems.push({ id: genId(), product, type, packageSize, packageUnit, dailyAmount, price, purchaseDate, notes });
+      pet.foodItems.push({ id: genId(), product, type, packageSize, packageUnit, dailyAmount, price, purchaseDate, notes,
+        purchases: price > 0 ? [{ id: genId(), date: purchaseDate, price, packageSize, packageUnit }] : [] });
     }
   } else if (itemId) {
     const { error } = await sb.from('food_items').update({
@@ -525,7 +551,17 @@ export async function saveFoodItem(e, petId, itemId) {
     }).eq('id', itemId);
     if (error) { showToast('Error al guardar', 'error'); console.error(error); return; }
     const item = pet.foodItems.find(f => f.id === itemId);
-    if (item) Object.assign(item, { product, type, packageSize, packageUnit, dailyAmount, price, purchaseDate, notes });
+    if (item) {
+      // Editar precio/fecha corrige la compra más reciente en vez de dejarla desactualizada.
+      const last = (item.purchases || []).find(pu => pu.date === item.purchaseDate);
+      if (last && price > 0) {
+        const { error: pErr } = await sb.from('food_purchases').update({
+          purchase_date: purchaseDate, price, package_size: packageSize, package_unit: packageUnit }).eq('id', last.id);
+        if (pErr) console.warn('No se pudo actualizar el historial de compras', pErr);
+        else Object.assign(last, { date: purchaseDate, price, packageSize, packageUnit });
+      }
+      Object.assign(item, { product, type, packageSize, packageUnit, dailyAmount, price, purchaseDate, notes });
+    }
   } else {
     const { data, error } = await sb.from('food_items').insert({
       pet_id: petId, product, type, package_size: packageSize, package_unit: packageUnit,
@@ -534,10 +570,103 @@ export async function saveFoodItem(e, petId, itemId) {
     if (error) { showToast('Error al guardar', 'error'); console.error(error); return; }
     pet.foodItems.push({ id: data.id, product: data.product, type: data.type, packageSize: data.package_size,
       packageUnit: data.package_unit, dailyAmount: data.daily_amount, price: data.price,
-      purchaseDate: data.purchase_date, notes: data.notes });
+      purchaseDate: data.purchase_date, notes: data.notes, purchases: [] });
+    if (price > 0 && packageSize > 0) {
+      const { data: pu, error: pErr } = await sb.from('food_purchases').insert({
+        food_item_id: data.id, pet_id: petId, purchase_date: purchaseDate, price, package_size: packageSize, package_unit: packageUnit
+      }).select().single();
+      if (pErr) console.warn('No se pudo guardar el historial de compras', pErr);
+      else pet.foodItems[pet.foodItems.length - 1].purchases.push({
+        id: pu.id, date: pu.purchase_date, price: pu.price, packageSize: pu.package_size, packageUnit: pu.package_unit });
+    }
   }
   closeModal(); render();
   showToast('Alimento guardado', 'success');
+}
+
+// "Ya repuse": guarda la compra en el historial y reinicia el conteo de stock
+// (la fecha de compra del alimento pasa a ser esta).
+export function openFoodPurchaseModal(petId, itemId) {
+  const pet = state.pets.find(p => p.id === petId);
+  const item = pet?.foodItems?.find(f => f.id === itemId);
+  if (!item) return;
+  openModal(`
+    <div class="modal-box p-4 sm:p-6">
+      <h3 class="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">${icon('food','w-5 h-5')} Registrar compra</h3>
+      <p class="text-sm text-gray-500 mb-4">${esc(item.product)}</p>
+      <form onsubmit="saveFoodPurchase(event,'${safeId(petId)}','${safeId(itemId)}')" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="form-label">Precio pagado (CLP) *</label><input id="fp-price" type="text" inputmode="numeric" required placeholder="0" class="input-field" /></div>
+          <div><label class="form-label">Fecha de compra</label><input id="fp-date" type="date" value="${todayStr()}" class="input-field" /></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="form-label">Tamaño del paquete *</label><input id="fp-size" type="number" required min="0" step="0.1" value="${esc(item.packageSize||'')}" class="input-field" /></div>
+          <div><label class="form-label">Unidad</label>
+            <select id="fp-unit" class="input-field">
+              ${['kg','g','unidades'].map(u => `<option value="${u}" ${item.packageUnit===u?'selected':''}>${u}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <p class="text-xs text-gray-400">Al guardar, el conteo de stock parte de esta fecha.</p>
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="closeModal()" class="btn-secondary flex-1">Cancelar</button>
+          <button type="submit" class="btn-primary flex-1">Guardar compra</button>
+        </div>
+      </form>
+    </div>`);
+}
+
+export async function saveFoodPurchase(e, petId, itemId) {
+  e.preventDefault();
+  const pet = state.pets.find(p => p.id === petId);
+  const item = pet?.foodItems?.find(f => f.id === itemId);
+  if (!item) return;
+  if (blockIfReadOnly(pet)) return;
+  const g = id => document.getElementById(id)?.value;
+  const price = parseCLP(g('fp-price')), packageSize = parseFloat(g('fp-size') || 0);
+  const packageUnit = g('fp-unit') || item.packageUnit, purchaseDate = g('fp-date') || todayStr();
+  if (!(price > 0) || !(packageSize > 0)) { showToast('Ingresa el precio y el tamaño del paquete', 'error'); return; }
+  item.purchases = item.purchases || [];
+  let purchaseId = genId();
+  if (!isDemoUser()) {
+    const { error } = await sb.from('food_items').update({
+      price, purchase_date: purchaseDate, package_size: packageSize, package_unit: packageUnit }).eq('id', itemId);
+    if (error) { showToast('Error al guardar', 'error'); console.error(error); return; }
+    const { data: pu, error: pErr } = await sb.from('food_purchases').insert({
+      food_item_id: itemId, pet_id: petId, purchase_date: purchaseDate, price, package_size: packageSize, package_unit: packageUnit
+    }).select().single();
+    if (pErr) {
+      console.warn('No se pudo guardar el historial de compras', pErr);
+      purchaseId = null;
+      showToast('Compra guardada, pero el historial de precios aún no está disponible', 'error');
+    } else purchaseId = pu.id;
+  }
+  if (purchaseId) item.purchases.push({ id: purchaseId, date: purchaseDate, price, packageSize, packageUnit });
+  Object.assign(item, { price, purchaseDate, packageSize, packageUnit });
+  track('food_purchase_logged');
+  closeModal(); render();
+  showToast('Compra registrada', 'success');
+}
+
+export async function deleteFoodPurchase(petId, itemId, purchaseId) {
+  const pet = state.pets.find(p => p.id === petId);
+  const item = pet?.foodItems?.find(f => f.id === itemId);
+  if (!item || blockIfReadOnly(pet)) return;
+  if (!isDemoUser()) {
+    const { error } = await sb.from('food_purchases').delete().eq('id', purchaseId);
+    if (error) { showToast('Error al eliminar', 'error'); console.error(error); return; }
+  }
+  item.purchases = (item.purchases || []).filter(pu => pu.id !== purchaseId);
+  render();
+}
+
+// Abre la búsqueda del alimento en Knasta en otra pestaña (solo un enlace; no
+// se extrae nada). `source` distingue desde dónde se hizo clic, para medir interés.
+export function openFoodOffer(petId, itemId, source) {
+  const item = state.pets.find(p => p.id === petId)?.foodItems?.find(f => f.id === itemId);
+  if (!item) return;
+  track('food_offer_click', { source: source || 'nutricion', store: 'knasta' });
+  window.open(foodOfferUrl(item), '_blank', 'noopener');
 }
 
 export async function deleteFoodItem(petId, itemId) {
@@ -574,6 +703,6 @@ if (typeof window !== 'undefined') {
     tabSeguimiento, tabNutricion, renderWeightChart, setBCS, openWeightModal,
     saveWeight, openMoodModal, selectMood, saveMood, openSymptomsModal,
     toggleSymptomTag, saveSymptoms, openFoodItemModal, saveFoodItem,
-    deleteFoodItem, logActivity,
+    deleteFoodItem, openFoodPurchaseModal, saveFoodPurchase, deleteFoodPurchase, openFoodOffer, logActivity,
   });
 }
