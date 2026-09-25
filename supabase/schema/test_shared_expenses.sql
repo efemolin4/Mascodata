@@ -13,10 +13,15 @@ begin
   select id into c from profiles where id <> a and id <> b order by created_at limit 1;
   if a is null or b is null then raise exception 'Se necesitan al menos 2 cuentas'; end if;
 
-  -- Preparación (como administrador): B es editor de la mascota; A tiene un gasto con mascota.
+  -- Preparación: B es editor de la mascota (como administrador); A registra dos gastos con su propia sesión,
+  -- para comprobar de paso que el gasto queda firmado a su nombre.
   insert into pet_access(pet_id, user_id, role) values (pet, b, 'editor') on conflict do nothing;
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  perform set_config('request.jwt.claim.sub', a::text, true);
+  set local role authenticated;
   insert into expenses(user_id, pet_id, date, category, amount, description) values (a, pet, current_date, 'Veterinaria', 30000, 'zz-gasto') returning id into ex_a;
   insert into expenses(user_id, pet_id, date, category, amount, description) values (a, null, current_date, 'Otro', 1000, 'zz-personal') returning id into ex_solo;
+  reset role;
 
   -- ===== Como B, con la mascota SIN dividir gastos =====
   update pets set expense_split = 'none' where id = pet;
