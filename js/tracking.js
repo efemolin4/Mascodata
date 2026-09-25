@@ -6,6 +6,22 @@
    ánimo, síntomas) y Nutrición (stock de alimento, check-in de
    actividad con racha). */
 
+// Peso en kg de una medición (kg + gramos).
+const weightKgOf = h => parseFloat(h.kg || 0) + (parseInt(h.gr || 0, 10) / 1000);
+const fmtKg = n => `${n.toLocaleString('es-CL', { maximumFractionDigits: 3 })} kg`;
+
+// Serie para el gráfico: el peso de la ficha (que se guarda aparte del historial, sin
+// fecha) va primero como punto "Ficha", seguido de las mediciones registradas. Sin
+// mediciones no hay serie: en ese caso la pestaña muestra solo el peso de la ficha.
+export function weightSeries(pet) {
+  const history = [...(pet.weightHistory || [])].sort((a, b) => (a.date > b.date ? 1 : -1));
+  if (!history.length) return [];
+  const rows = history.map(h => ({ id: h.id, label: formatDate(h.date), kg: weightKgOf(h), real: true }));
+  const ficha = parseFloat(pet.weightKg || 0) + (parseInt(pet.weightGr || 0, 10) / 1000);
+  if (ficha > 0) rows.unshift({ id: null, label: 'Ficha', kg: ficha, real: false });
+  return rows;
+}
+
 export function tabSeguimiento(pet) {
   const today = todayStr();
   const history = pet.weightHistory || [];
@@ -44,8 +60,10 @@ export function tabSeguimiento(pet) {
         ${canEdit ? `<button onclick="openWeightModal('${pet.id}')" class="btn-primary text-sm">+ Registrar peso</button>` : ''}
       </div>
       ${hasWeight ? `
+        ${weightSummary(pet)}
         <canvas id="weight-chart-${pet.id}" height="180"></canvas>
-        <div class="mt-2 text-xs text-gray-400 text-center">Últimas ${Math.min(history.length, 12)} mediciones</div>
+        <div class="mt-2 text-xs text-gray-400 text-center">${history.length} medición${history.length !== 1 ? 'es' : ''}${pet.weightKg ? ' · el primer punto es el peso de la ficha' : ''}</div>
+        ${weightList(pet, canEdit)}
       ` : pet.weightKg ? `
         <div class="text-center py-6">
           <div class="text-2xl font-bold text-gray-800">${esc(pet.weightKg)} kg${pet.weightGr ? ` ${esc(pet.weightGr)} gr` : ''}</div>
@@ -285,6 +303,52 @@ export function tabNutricion(pet) {
   </div>`;
 }
 
+// Resumen sobre el gráfico: último peso y cambio frente a la medición anterior.
+function weightSummary(pet) {
+  const rows = weightSeries(pet);
+  if (rows.length < 2) return '';
+  const cur = rows[rows.length - 1], prev = rows[rows.length - 2];
+  const diff = Math.round((cur.kg - prev.kg) * 1000) / 1000;
+  const tone = diff === 0 ? 'text-gray-500' : 'text-gray-700';
+  return `<div class="flex items-baseline gap-2 mb-3">
+    <span class="text-2xl font-bold text-gray-900 tabular-nums">${fmtKg(cur.kg)}</span>
+    <span class="text-sm ${tone}">${diff === 0 ? 'sin cambio' : `${diff > 0 ? '▲ +' : '▼ '}${fmtKg(Math.abs(diff)).replace(/^/, diff > 0 ? '' : '−')} vs ${prev.real ? 'la medición anterior' : 'el peso de la ficha'}`}</span>
+  </div>`;
+}
+
+// Lista de mediciones (la más reciente primero), con opción de eliminar.
+function weightList(pet, canEdit) {
+  const real = weightSeries(pet).filter(r => r.real);
+  if (!real.length) return '';
+  const all = weightSeries(pet);
+  return `<details class="mt-3">
+    <summary class="text-xs text-gray-500 cursor-pointer hover:text-gray-700">Ver y eliminar mediciones</summary>
+    <div class="mt-1 divide-y divide-gray-100">
+      ${[...real].reverse().map(r => {
+        const i = all.indexOf(r), prev = all[i - 1];
+        const d = prev ? Math.round((r.kg - prev.kg) * 1000) / 1000 : null;
+        return `<div class="flex items-center justify-between gap-2 py-1.5 text-xs">
+          <span class="text-gray-500">${esc(r.label)}</span>
+          <span class="text-gray-700 tabular-nums">${fmtKg(r.kg)}${d ? ` <span class="text-gray-400">(${d > 0 ? '+' : '−'}${fmtKg(Math.abs(d))})</span>` : ''}</span>
+          ${canEdit ? `<button onclick="deleteWeight('${safeId(pet.id)}','${safeId(r.id)}')" class="text-gray-300 hover:text-red-500 flex-shrink-0" title="Eliminar medición">×</button>` : '<span></span>'}
+        </div>`;
+      }).join('')}
+    </div>
+  </details>`;
+}
+
+export async function deleteWeight(petId, weightId) {
+  const pet = state.pets.find(p => p.id === petId);
+  if (!pet || blockIfReadOnly(pet)) return;
+  if (!isDemoUser()) {
+    const { error } = await sb.from('weight_history').delete().eq('id', weightId);
+    if (error) { showToast('Error al eliminar la medición', 'error'); console.error(error); return; }
+  }
+  pet.weightHistory = (pet.weightHistory || []).filter(h => h.id !== weightId);
+  render();
+  showToast('Medición eliminada', 'success');
+}
+
 export function renderWeightChart(pet) {
   setTimeout(() => {
     const canvas = document.getElementById(`weight-chart-${pet.id}`);
@@ -293,18 +357,18 @@ export function renderWeightChart(pet) {
       window._weightCharts[pet.id].destroy();
     }
     if (!window._weightCharts) window._weightCharts = {};
-    const history = (pet.weightHistory || []).slice(-12);
+    const history = weightSeries(pet).slice(-13);
     if (history.length === 0) return;
     window._weightCharts[pet.id] = new Chart(canvas, {
       type: 'line',
       data: {
-        labels: history.map(h => formatDate(h.date)),
+        labels: history.map(h => h.label),
         datasets: [{
           label: 'Peso (kg)',
-          data: history.map(h => parseFloat(h.kg) + (parseInt(h.gr||0)/1000)),
+          data: history.map(h => h.kg),
           borderColor: '#4c5fd7',
           backgroundColor: 'rgba(76,95,215,0.08)',
-          tension: 0.4, fill: true,
+          tension: 0.2, fill: true,
           pointBackgroundColor: '#4c5fd7', pointRadius: 4,
         }]
       },
@@ -818,7 +882,7 @@ export async function logActivity(petId, level) {
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     tabSeguimiento, tabNutricion, renderWeightChart, setBCS, openWeightModal,
-    saveWeight, openMoodModal, selectMood, saveMood, openSymptomsModal,
+    saveWeight, deleteWeight, weightSeries, openMoodModal, selectMood, saveMood, openSymptomsModal,
     toggleSymptomTag, saveSymptoms, openFoodItemModal, saveFoodItem,
     deleteFoodItem, openFoodPurchaseModal, saveFoodPurchase, deleteFoodPurchase, adjustFoodDuration, openFoodOffer, goFoodOffer, logActivity,
   });

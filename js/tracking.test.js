@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js';
 import '../js/app.js'; // deja canEditPet/blockIfReadOnly reales en window
-import { setBCS, saveWeight } from './tracking.js';
+import { setBCS, saveWeight, deleteWeight, weightSeries } from './tracking.js';
 
 // Regresión: setBCS() solo mutaba el estado en memoria y llamaba a
 // saveState() (que solo persiste user/isLoggedIn, no las mascotas) — el
@@ -91,5 +91,59 @@ describe('saveWeight', () => {
     await saveWeight({ preventDefault: () => {} }, 'pet-greta');
     expect(window.sb.from).not.toHaveBeenCalled();
     expect(pet.weightHistory).toHaveLength(0);
+  });
+});
+
+describe('peso: serie del gráfico y eliminar mediciones', () => {
+  const pet = (over = {}) => ({ id: 'pet-1', myRole: 'owner', weightKg: '6', weightGr: '500',
+    weightHistory: [{ id: 'w1', date: '2026-09-25', kg: 6, gr: 800 }, { id: 'w0', date: '2026-08-01', kg: 6, gr: 200 }], ...over });
+
+  beforeEach(() => {
+    window.showToast = vi.fn();
+    window.render = vi.fn();
+    window.isDemoUser = vi.fn(() => false);
+  });
+
+  it('el peso de la ficha entra como primer punto "Ficha" y las mediciones van en orden de fecha', () => {
+    const rows = weightSeries(pet());
+    expect(rows.map(r => r.label)).toEqual(['Ficha', '01-08-2026', '25-09-2026']);
+    expect(rows.map(r => r.kg)).toEqual([6.5, 6.2, 6.8]);
+    expect(rows[0].real).toBe(false);
+    expect(rows[1].real).toBe(true);
+  });
+
+  it('sin mediciones no hay serie (la pestaña muestra solo el peso de la ficha)', () => {
+    expect(weightSeries(pet({ weightHistory: [] }))).toEqual([]);
+  });
+
+  it('sin peso en la ficha, la serie son solo las mediciones', () => {
+    expect(weightSeries(pet({ weightKg: '', weightGr: '' })).every(r => r.real)).toBe(true);
+  });
+
+  it('eliminar una medición la borra en Supabase y del estado', async () => {
+    const p = pet();
+    window.state = { pets: [p] };
+    window.sb = makeMockSb({ weight_history: { data: null, error: null } });
+    await deleteWeight('pet-1', 'w1');
+    expect(p.weightHistory.map(h => h.id)).toEqual(['w0']);
+    expect(window.showToast).toHaveBeenCalledWith('Medición eliminada', 'success');
+  });
+
+  it('si Supabase falla, no la quita del estado y avisa', async () => {
+    const p = pet();
+    window.state = { pets: [p] };
+    window.sb = makeMockSb({ weight_history: { data: null, error: { message: 'boom' } } });
+    await deleteWeight('pet-1', 'w1');
+    expect(p.weightHistory).toHaveLength(2);
+    expect(window.showToast).toHaveBeenCalledWith('Error al eliminar la medición', 'error');
+  });
+
+  it('un tutor de solo lectura no puede eliminar mediciones', async () => {
+    const p = pet({ myRole: 'viewer' });
+    window.state = { pets: [p] };
+    window.sb = makeMockSb({ weight_history: { data: null, error: null } });
+    await deleteWeight('pet-1', 'w1');
+    expect(p.weightHistory).toHaveLength(2);
+    expect(window.sb.from).not.toHaveBeenCalled();
   });
 });
