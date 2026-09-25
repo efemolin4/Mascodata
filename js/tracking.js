@@ -10,15 +10,16 @@
 const weightKgOf = h => parseFloat(h.kg || 0) + (parseInt(h.gr || 0, 10) / 1000);
 const fmtKg = n => `${n.toLocaleString('es-CL', { maximumFractionDigits: 3 })} kg`;
 
-// Serie para el gráfico: el peso de la ficha (que se guarda aparte del historial, sin
-// fecha) va primero como punto "Ficha", seguido de las mediciones registradas. Sin
-// mediciones no hay serie: en ese caso la pestaña muestra solo el peso de la ficha.
+// Serie para el gráfico. Desde que la ficha siempre refleja el último peso, el peso
+// inicial se guarda como una medición más; solo las mascotas antiguas, cuyo peso de
+// ficha nunca estuvo en el historial, lo muestran como punto "Ficha" al comienzo.
+// Sin mediciones no hay serie: en ese caso la pestaña muestra solo el peso de la ficha.
 export function weightSeries(pet) {
   const history = [...(pet.weightHistory || [])].sort((a, b) => (a.date > b.date ? 1 : -1));
   if (!history.length) return [];
   const rows = history.map(h => ({ id: h.id, label: formatDate(h.date), kg: weightKgOf(h), real: true }));
   const ficha = parseFloat(pet.weightKg || 0) + (parseInt(pet.weightGr || 0, 10) / 1000);
-  if (ficha > 0) rows.unshift({ id: null, label: 'Ficha', kg: ficha, real: false });
+  if (ficha > 0 && !rows.some(r => Math.abs(r.kg - ficha) < 0.0005)) rows.unshift({ id: null, label: 'Ficha', kg: ficha, real: false });
   return rows;
 }
 
@@ -62,7 +63,7 @@ export function tabSeguimiento(pet) {
       ${hasWeight ? `
         ${weightSummary(pet)}
         <canvas id="weight-chart-${pet.id}" height="180"></canvas>
-        <div class="mt-2 text-xs text-gray-400 text-center">${history.length} medición${history.length !== 1 ? 'es' : ''}${pet.weightKg ? ' · el primer punto es el peso de la ficha' : ''}</div>
+        <div class="mt-2 text-xs text-gray-400 text-center">${history.length} medición${history.length !== 1 ? 'es' : ''}${weightSeries(pet).some(r => !r.real) ? ' · el primer punto es el peso de la ficha' : ''}</div>
         ${weightList(pet, canEdit)}
       ` : pet.weightKg ? `
         <div class="text-center py-6">
@@ -345,6 +346,7 @@ export async function deleteWeight(petId, weightId) {
     if (error) { showToast('Error al eliminar la medición', 'error'); console.error(error); return; }
   }
   pet.weightHistory = (pet.weightHistory || []).filter(h => h.id !== weightId);
+  await syncFichaWeight(pet); // sin mediciones, la ficha conserva el último peso que tenía
   render();
   showToast('Medición eliminada', 'success');
 }
@@ -436,6 +438,19 @@ export function openWeightModal(petId) {
     </div>`);
 }
 
+// La ficha muestra siempre el peso actual: el de la medición más reciente.
+async function syncFichaWeight(pet) {
+  const latest = [...(pet.weightHistory || [])].sort((a, b) => (a.date > b.date ? 1 : -1)).pop();
+  if (!latest) return;
+  const kg = parseFloat(latest.kg || 0), gr = parseInt(latest.gr || 0, 10) || 0;
+  if (String(pet.weightKg) === String(kg) && String(pet.weightGr) === String(gr)) return;
+  if (!isDemoUser()) {
+    const { error } = await sb.from('pets').update({ weight_kg: kg, weight_gr: gr }).eq('id', pet.id);
+    if (error) { console.warn('No se pudo actualizar el peso de la ficha', error); return; }
+  }
+  pet.weightKg = kg; pet.weightGr = gr;
+}
+
 export async function saveWeight(e, petId) {
   e.preventDefault();
   const pet = state.pets.find(p => p.id === petId);
@@ -446,12 +461,30 @@ export async function saveWeight(e, petId) {
   const gr = parseInt(g('wt-gr') || 0);
   const date = g('wt-date');
   pet.weightHistory = pet.weightHistory || [];
+
+  // Antes de que la ficha pase a mostrar el peso nuevo, el peso que tenía (el inicial) se
+  // guarda como una medición más, con la fecha de creación de la mascota, para no perderlo.
+  const ficha = parseFloat(pet.weightKg || 0) + (parseInt(pet.weightGr || 0, 10) / 1000);
+  const represented = pet.weightHistory.some(h => Math.abs(weightKgOf(h) - ficha) < 0.0005);
+  let baseline = null;
+  if (ficha > 0 && !represented) {
+    const earliest = [...pet.weightHistory.map(h => h.date), date].filter(Boolean).sort()[0];
+    const created = pet.createdAt ? String(pet.createdAt).slice(0, 10) : earliest;
+    baseline = { date: created < earliest ? created : earliest, kg: parseFloat(pet.weightKg || 0), gr: parseInt(pet.weightGr || 0, 10) || 0 };
+  }
+
   if (isDemoUser()) {
+    if (baseline) pet.weightHistory.push({ id: genId(), ...baseline, notes: '' });
     pet.weightHistory.push({ id: genId(), date, kg, gr, notes: '' });
   } else {
     // A diferencia de saveMood/saveSymptoms, esto nunca chequeaba
     // isDemoUser() — en modo demo intentaba escribir en Supabase real con
     // un pet_id que no existe ahí (ej. "pet-greta"), fallando siempre.
+    if (baseline) {
+      const { data: b, error: bErr } = await sb.from('weight_history').insert({ pet_id: petId, ...baseline }).select().single();
+      if (bErr) { showToast('Error al guardar peso', 'error'); return; }
+      pet.weightHistory.push({ id: b.id, date: b.date, kg: b.kg, gr: b.gr, notes: b.notes });
+    }
     const { data, error } = await sb.from('weight_history').insert({
       pet_id: petId, date, kg, gr
     }).select().single();
@@ -459,6 +492,7 @@ export async function saveWeight(e, petId) {
     pet.weightHistory.push({ id: data.id, date: data.date, kg: data.kg, gr: data.gr, notes: data.notes });
   }
   pet.weightHistory.sort((a, b) => a.date > b.date ? 1 : -1);
+  await syncFichaWeight(pet);
   closeModal(); render();
   track('record_saved', { kind: 'weight' });
   showToast('Peso registrado ✓', 'success');

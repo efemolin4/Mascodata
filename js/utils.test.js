@@ -3,7 +3,7 @@ import {
   todayStr, daysFromNowStr, addDays, daysBetween, addMonths, getAge,
   careAlertStatus, medStockStatus, foodStockStatus, esc, safeId, safeDataUrl, petCompleteness, parseCLP, fmtCompactCLP,
   foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl,
-  foodCategory, foodCostPerDay, foodCadence, foodPriceSeries,
+  foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, lastWeighedDate,
 } from './utils.js';
 
 // Fija "hoy" a una fecha conocida para que las pruebas de fecha sean
@@ -422,5 +422,18 @@ describe('petCompleteness — alimento', () => {
 
   it('el alimento cuenta también para peces, aves, hámsteres y reptiles', () => {
     expect(petCompleteness({ name: 'Nemo', species: 'Pez' }).missing.map(m => m.key)).toContain('food');
+  });
+});
+
+describe('lastWeighedDate', () => {
+  it('es la fecha de la medición más reciente', () => {
+    expect(lastWeighedDate({ weightHistory: [{ date: '2026-08-01' }, { date: '2026-09-10' }, { date: '2026-07-01' }] })).toBe('2026-09-10');
+  });
+  it('sin mediciones usa la fecha de creación de la mascota', () => {
+    expect(lastWeighedDate({ weightHistory: [], createdAt: '2026-06-15T12:00:00Z' })).toBe('2026-06-15');
+  });
+  it('sin mediciones ni fecha de creación no hay fecha', () => {
+    expect(lastWeighedDate({})).toBeNull();
+    expect(lastWeighedDate(null)).toBeNull();
   });
 });

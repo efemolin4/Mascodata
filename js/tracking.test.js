@@ -138,6 +138,55 @@ describe('peso: serie del gráfico y eliminar mediciones', () => {
     expect(window.showToast).toHaveBeenCalledWith('Error al eliminar la medición', 'error');
   });
 
+  it('el peso de la ficha solo aparece como punto "Ficha" si nunca estuvo en el historial', () => {
+    const conFicha = weightSeries(pet({ weightKg: '6', weightGr: '500' })); // 6,5 no está en el historial
+    expect(conFicha[0].label).toBe('Ficha');
+    const sincronizada = weightSeries(pet({ weightKg: 6, weightGr: 800 })); // = última medición
+    expect(sincronizada.every(r => r.real)).toBe(true);
+  });
+
+  it('al registrar un peso, la ficha pasa a mostrar el peso nuevo y el inicial queda como medición', async () => {
+    const p = pet({ weightHistory: [], createdAt: '2026-05-01T10:00:00Z' });
+    window.state = { pets: [p] };
+    window.closeModal = vi.fn();
+    window.track = vi.fn();
+    document.body.innerHTML = '<input id="wt-kg" value="7" /><input id="wt-gr" value="100" /><input id="wt-date" value="2026-09-25" />';
+    window.sb = { from: vi.fn(table => ({
+      insert: vi.fn(row => ({ select: () => ({ single: () => Promise.resolve({ data: { id: `${table}-${row.date}`, ...row }, error: null }) }) })),
+      update: vi.fn(() => ({ eq: () => Promise.resolve({ error: null }) })),
+    })) };
+    await saveWeight({ preventDefault() {} }, 'pet-1');
+    expect(p.weightHistory.map(h => `${h.date}:${h.kg}.${h.gr}`)).toEqual(['2026-05-01:6.500', '2026-09-25:7.100']);
+    expect(p.weightKg).toBe(7);
+    expect(p.weightGr).toBe(100);
+  });
+
+  it('si el peso de la ficha ya está en el historial no se duplica', async () => {
+    const p = pet({ weightKg: '6', weightGr: '800' }); // igual a la medición w1
+    window.state = { pets: [p] };
+    window.closeModal = vi.fn();
+    window.track = vi.fn();
+    document.body.innerHTML = '<input id="wt-kg" value="7" /><input id="wt-gr" value="0" /><input id="wt-date" value="2026-09-30" />';
+    window.sb = { from: vi.fn(table => ({
+      insert: vi.fn(row => ({ select: () => ({ single: () => Promise.resolve({ data: { id: `${table}-${row.date}`, ...row }, error: null }) }) })),
+      update: vi.fn(() => ({ eq: () => Promise.resolve({ error: null }) })),
+    })) };
+    await saveWeight({ preventDefault() {} }, 'pet-1');
+    expect(p.weightHistory).toHaveLength(3);
+  });
+
+  it('al eliminar la última medición, la ficha vuelve al peso de la anterior', async () => {
+    const p = pet({ weightKg: 6, weightGr: 800 });
+    window.state = { pets: [p] };
+    window.sb = { from: vi.fn(() => ({
+      delete: vi.fn(() => ({ eq: () => Promise.resolve({ error: null }) })),
+      update: vi.fn(() => ({ eq: () => Promise.resolve({ error: null }) })),
+    })) };
+    await deleteWeight('pet-1', 'w1');
+    expect(p.weightKg).toBe(6);
+    expect(p.weightGr).toBe(200);
+  });
+
   it('un tutor de solo lectura no puede eliminar mediciones', async () => {
     const p = pet({ myRole: 'viewer' });
     window.state = { pets: [p] };

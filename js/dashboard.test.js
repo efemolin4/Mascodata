@@ -216,3 +216,41 @@ describe('viewDashboard — alimento por acabarse', () => {
     expect(html).not.toContain('Compré de nuevo');
   });
 });
+
+describe('viewDashboard — recordatorio mensual de pesar', () => {
+  beforeEach(() => {
+    window.state.user = { name: 'Felipe Molina' };
+    window.state.events = [];
+    window.state.dashAttnAll = true;
+    window.getFinanceExpenses = () => [];
+    window.canEditPet = () => true;
+  });
+
+  it('avisa cuando la última medición tiene 30 días o más', () => {
+    window.state.pets = [healthyPet({ weightHistory: [{ id: 'w1', date: day(-45), kg: 6, gr: 0 }] })];
+    const html = viewDashboard();
+    expect(html).toContain('Hace 45 días que no registras el peso de Greta');
+    expect(html).toContain("openWeightModal('pet-1')");
+  });
+
+  it('no avisa si se pesó hace menos de 30 días', () => {
+    window.state.pets = [healthyPet({ weightHistory: [{ id: 'w1', date: day(-10), kg: 6, gr: 0 }] })];
+    expect(viewDashboard()).not.toContain('no registras el peso');
+  });
+
+  it('una mascota que nunca se pesó avisa a los 30 días de creada', () => {
+    window.state.pets = [healthyPet({ weightHistory: [], createdAt: `${day(-40)}T12:00:00Z` })];
+    expect(viewDashboard()).toContain('Aún no registras mediciones de peso de Greta');
+    window.state.pets = [healthyPet({ weightHistory: [], createdAt: `${day(-5)}T12:00:00Z` })];
+    expect(viewDashboard()).not.toContain('mediciones de peso');
+  });
+
+  it('no avisa a un tutor de solo lectura ni en peces', () => {
+    window.state.pets = [healthyPet({ weightHistory: [{ id: 'w1', date: day(-90), kg: 6, gr: 0 }] })];
+    window.canEditPet = () => false;
+    expect(viewDashboard()).not.toContain('no registras el peso');
+    window.canEditPet = () => true;
+    window.state.pets = [healthyPet({ species: 'Pez', weightHistory: [{ id: 'w1', date: day(-90), kg: 1, gr: 0 }] })];
+    expect(viewDashboard()).not.toContain('no registras el peso');
+  });
+});

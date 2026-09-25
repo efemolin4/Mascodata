@@ -102,6 +102,15 @@ export function viewDashboard() {
     const rec = (title, actionLabel, action) => attention.push({ petId: p.id, level: 2, date: '', title, sub: '', actionLabel, action });
     // Si ya hay una vacuna vencida/por vencer para esta mascota, esa alerta ya dice lo mismo.
     if (vaccineAge >= 12 && !hasVaccineAlert) rec(`${name} lleva más de un año sin registrar vacunas`, 'Registrar vacuna', `openVaccineModal('${p.id}')`);
+    // Recordatorio mensual de pesar (peces excluidos: no se pesan). Solo quien puede editar la ficha.
+    if (canEditPet(p) && p.species !== 'Pez') {
+      const last = lastWeighedDate(p);
+      const days = last ? daysBetween(last, today) : 0;
+      if (last && days >= 30) {
+        const measured = (p.weightHistory || []).length > 0;
+        rec(measured ? `Hace ${days} días que no registras el peso de ${name}` : `Aún no registras mediciones de peso de ${name}`, 'Registrar peso', `openWeightModal('${safeId(p.id)}')`);
+      }
+    }
     if (!p.vet?.name) rec(`${name} no tiene veterinario registrado. Agrégalo para tenerlo a mano en emergencias`, 'Agregar', `openEditPetModal('${p.id}')`);
     if (p.species === 'Perro' && ageYears >= 7) rec(`${name} tiene ${ageYears} años. Considera análisis de sangre anual para detección temprana`, 'Ver ficha', `openPet('${p.id}')`);
     if (p.species === 'Perro' && (p.breed || '').match(/Golden Retriever|Labrador/i)) rec(`Los ${esc(p.breed)}s son propensos a displasia de cadera. Consulta con tu vet sobre control radiológico`, 'Ver ficha', `openPet('${p.id}')`);

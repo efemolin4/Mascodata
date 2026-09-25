@@ -409,6 +409,14 @@ export function foodOfferUrl(f, store = 'google') {
     : `https://www.google.com/search?tbm=shop&q=${q}`;
 }
 
+// Fecha (YYYY-MM-DD) de la última medición de peso, o la de creación de la mascota si
+// nunca se pesó. Sirve para el recordatorio mensual de pesar.
+export function lastWeighedDate(pet) {
+  const dates = (pet?.weightHistory || []).map(h => h.date).filter(Boolean).sort();
+  if (dates.length) return dates[dates.length - 1];
+  return pet?.createdAt ? String(pet.createdAt).slice(0, 10) : null;
+}
+
 // Racha de días consecutivos (incluyendo hoy) con actividad registrada.
 export function activityStreak(activities) {
   const dates = new Set((activities||[]).map(a => a.date));
@@ -422,6 +430,6 @@ if (typeof window !== 'undefined') {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
     getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, shrinkImage, slugify, petCompleteness, COMPLETENESS_FIELDS, eventIcon, botiquinStatus,
     medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
-    foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
+    lastWeighedDate, foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
   });
 }

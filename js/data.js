@@ -85,6 +85,7 @@ async function loadDataFromSupabase() {
         avatar: pet.avatar_emoji || '', photo: pet.photo || null,
         vet: { name: pet.vet_name||'', clinic: pet.vet_clinic||'', phone: pet.vet_phone||'', email: pet.vet_email||'' },
         weightKg: pet.weight_kg ?? '', weightGr: pet.weight_gr ?? '',
+        createdAt: pet.created_at || null,
         sizeRange: pet.size_range || '', activityLevel: pet.activity_level || 2,
         allergies: pet.allergies || [], chronicConditions: pet.chronic_conditions || [],
         bcs: pet.bcs ?? null,

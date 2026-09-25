@@ -36,7 +36,10 @@ Mascodata es una aplicación web de página única (SPA) para tutores de mascota
 - **Vacunas y desparasitaciones:** catálogo por especie, periodicidades configurables, fecha de próxima dosis calculada y alertas (vencida / por vencer).
 - **Medicamentos y tratamientos:** dosis, frecuencia, horarios del día, duración, stock y confirmación de dosis; rachas de cumplimiento.
 - **Historial clínico:** consultas, cirugías, análisis, emergencias; costo y adjuntos (imágenes reducidas a 1.600 px; PDF y Word hasta 5 MB). Plan Free: 1 adjunto por evento.
-- **Seguimiento:** peso con gráfico, estado de ánimo y energía, diario de síntomas con severidad.
+- **Seguimiento:** estado de ánimo y energía, diario de síntomas con severidad y **peso histórico**:
+  - La **ficha siempre muestra el peso actual** (el de la última medición). Al registrar el primer peso, el que tenía la ficha se guarda como medición con la fecha de creación de la mascota, para no perderlo.
+  - Gráfico con resumen del último peso y su cambio frente a la medición anterior, y lista de mediciones que se pueden **eliminar** (la ficha vuelve al peso de la anterior).
+  - **Recordatorio mensual de pesar** en el panel: aparece a los 30 días de la última medición (o de la creación, si nunca se pesó), solo para quien puede editar y no en peces. Por ahora no hay correo.
 
 ### 2.4 Nutrición (nuevo)
 - **Alimentos** con producto, categoría (**alimento diario** o **snack/premio**), tipo (seco, húmedo, BARF, casero), tamaño y unidad del paquete, precio pagado y fecha de compra.
@@ -63,7 +66,7 @@ Calendario mensual con eventos manuales (veterinario, baño, peluquería, otros)
 Inventario de medicamentos e insumos del hogar con stock y caducidad, y alertas.
 
 ### 2.8 Panel de inicio
-Lista única **Necesita atención** ordenada por urgencia (vencidas, por vencer, recomendaciones, alimento por acabarse), tarjeta de completar el perfil, franja de hoy, rachas y cumpleaños.
+Lista única **Necesita atención** ordenada por urgencia (vencidas, por vencer, recomendaciones, alimento por acabarse, recordatorio de pesar), tarjeta de completar el perfil, franja de hoy, rachas y cumpleaños.
 
 ### 2.9 Correos automáticos
 Ambos son avisos de servicio (no promociones), solo al **dueño**, con enlace de baja firmado y un interruptor único en Mi perfil.
@@ -199,6 +202,8 @@ Vitest con jsdom: **262 pruebas en 15 archivos**, más `check-exports`. Las vist
 - Eliminar la tabla `meals`.
 - Los gastos manuales de *Alimentación* anteriores al flujo nuevo pueden duplicar compras registradas en la ficha; se revisan a mano.
 - Correo de reposición: evaluar un interruptor propio, separado del de recordatorios de perfil.
+- Recordatorio de pesar por correo (hoy solo en la plataforma): requeriría rebajar los topes de los otros correos para respetar los 100 diarios de Resend.
+- Ideas de Seguimiento pendientes: rango de peso saludable por raza y tamaño, alerta de cambio de peso mensual, cambios de alimento sobre el gráfico de peso.
 
 ---
 
