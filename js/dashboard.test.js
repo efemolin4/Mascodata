@@ -254,3 +254,42 @@ describe('viewDashboard — recordatorio mensual de pesar', () => {
     expect(viewDashboard()).not.toContain('no registras el peso');
   });
 });
+
+describe('viewDashboard — dónde está hoy (tutores separados)', () => {
+  beforeEach(() => {
+    window.state.user = { id: 'u1', name: 'Felipe Molina' };
+    window.state.dashAttnAll = true;
+    window.getFinanceExpenses = () => [];
+    window.canEditPet = () => true;
+  });
+  const sep = (over = {}) => healthyPet({ myRole: 'owner', careMode: 'separated', tutor2: { name: 'Pedro' }, ...over });
+  const stay = (over = {}) => ({ id: 's', type: 'Estadía', petId: 'pet-1', date: day(-1), endDate: day(2), holder: 'guest', ...over });
+
+  it('muestra con quién está la mascota hoy y hasta cuándo', () => {
+    window.state.pets = [sep()];
+    window.state.events = [stay()];
+    const html = viewDashboard();
+    expect(html).toContain('Hoy Greta está con Pedro');
+    expect(html).toContain('hasta el');
+  });
+
+  it('dice "contigo" cuando la estadía es mía', () => {
+    window.state.pets = [sep()];
+    window.state.events = [stay({ holder: 'owner' })];
+    expect(viewDashboard()).toContain('Hoy Greta está contigo');
+  });
+
+  it('sin estadía que cubra hoy avisa que no hay ninguna registrada', () => {
+    window.state.pets = [sep()];
+    window.state.events = [stay({ date: day(-10), endDate: day(-5) })];
+    expect(viewDashboard()).toContain('Sin estadía registrada hoy para Greta');
+  });
+
+  it('no aparece para quienes viven juntos ni para mascotas sin otro tutor', () => {
+    window.state.events = [stay()];
+    window.state.pets = [sep({ careMode: 'together' })];
+    expect(viewDashboard()).not.toContain('está con Pedro');
+    window.state.pets = [sep({ tutor2: null })];
+    expect(viewDashboard()).not.toContain('está con');
+  });
+});

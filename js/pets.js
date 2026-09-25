@@ -434,8 +434,21 @@ export function completionAction(petId, key) {
   else openEditPetModal(petId);
 }
 
+// "Hoy está con…" para mascotas con tutores separados: la estadía que cubre hoy, o un aviso si no hay.
+export function petWhereToday(pet, opts = {}) {
+  if (pet.careMode !== 'separated' || !hasOtherTutor(pet)) return '';
+  const stay = petStayOn(pet, state.events, todayStr());
+  const who = stay ? stayWho(pet, stay.holder) : null;
+  const text = stay
+    ? `Hoy ${esc(pet.name)} está ${who.mine ? 'contigo' : `con ${esc(who.label)}`}${stay.endDate ? ` · hasta el ${formatDate(stay.endDate)}` : ''}`
+    : `Sin estadía registrada hoy para ${esc(pet.name)}`;
+  const tone = !stay ? 'bg-gray-50 text-gray-500' : who.mine ? 'bg-green-50 text-green-700' : 'bg-teal-50 text-teal-700';
+  return `<div class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${tone} ${opts.className || ''}">${icon('home', 'w-4 h-4 flex-shrink-0')}<span class="min-w-0">${text}</span></div>`;
+}
+
 export function tabGeneral(pet) {
   return `
+    ${petWhereToday(pet, { className: 'mb-4' })}
     ${petCompletenessCard(pet)}
     <div class="grid md:grid-cols-2 gap-4">
       <div class="bg-white rounded-2xl shadow-sm p-5">
@@ -550,6 +563,14 @@ export function openEditPetModal(petId) {
             <select id="ep-repro" class="input-field">${['Entero/a','Esterilizado/a','Castrado/a'].map(s=>`<option ${p.reproductiveStatus===s?'selected':''}>${s}</option>`).join('')}</select>
           </div>
           <div class="col-span-2"><label class="form-label">Nro. de chip</label><input id="ep-chip" value="${esc(p.chipNumber||'')}" class="input-field" /></div>
+          ${hasOtherTutor(p) && (!p.myRole || p.myRole !== 'viewer') ? `
+          <div class="col-span-2"><label class="form-label">¿Cómo se turnan el cuidado?</label>
+            <select id="ep-care" class="input-field">
+              <option value="together" ${p.careMode !== 'separated' ? 'selected' : ''}>Vivimos juntos</option>
+              <option value="separated" ${p.careMode === 'separated' ? 'selected' : ''}>Tutores separados (se turnan)</option>
+            </select>
+            <p class="text-xs text-gray-400 mt-1">Con tutores separados aparecen las estadías en la agenda y "dónde está hoy".</p>
+          </div>` : ''}
         </div>
         <div>
           <label class="form-label">Nivel de actividad</label>
@@ -906,6 +927,7 @@ export async function saveEditPet(petId) {
   const dateOfBirth = g('ep-dob');
   const reproductiveStatus = g('ep-repro');
   const chipNumber = g('ep-chip');
+  const careMode = g('ep-care') === 'separated' ? 'separated' : g('ep-care') === 'together' ? 'together' : (p.careMode || 'together');
   const vet = { name: g('ep-vet-name')||'', clinic: g('ep-vet-clinic')||'', phone: g('ep-vet-phone')||'', email: g('ep-vet-email')||'' };
   const sizeRange = g('ep-size');
   const allergies = state.editPetData?.allergies || p.allergies || [];
@@ -913,15 +935,25 @@ export async function saveEditPet(petId) {
   const personalityTags = state.editPetData?.personalityTags || p.personalityTags || [];
   const activityLevel = state.editPetData?.activityLevel || p.activityLevel || 2;
   const photo = state.editPetData?.photo ?? p.photo ?? null;
+  let careModeSaved = true;
   if (!isDemoUser()) {
-    const { error } = await sb.from('pets').update({
+    const payload = {
       name, species, breed, date_of_birth: dateOfBirth || null, sex, color,
       reproductive_status: reproductiveStatus, microchip: chipNumber,
       weight_kg: weightKg, weight_gr: weightGr, size_range: sizeRange || null,
       activity_level: activityLevel, personality_tags: personalityTags,
       allergies, chronic_conditions: chronicConditions, photo,
       vet_name: vet.name, vet_clinic: vet.clinic, vet_phone: vet.phone, vet_email: vet.email,
-    }).eq('id', petId);
+    };
+    // care_mode solo se envía si cambió: así guardar la mascota no falla si la columna aún no existe.
+    if (careMode !== (p.careMode || 'together')) payload.care_mode = careMode;
+    let { error } = await sb.from('pets').update(payload).eq('id', petId);
+    if (error && payload.care_mode && /care_mode/i.test(error.message || '')) {
+      console.warn('Ejecuta supabase/schema/shared_events_care_mode.sql', error);
+      const { care_mode, ...rest } = payload;
+      careModeSaved = false;
+      ({ error } = await sb.from('pets').update(rest).eq('id', petId));
+    }
     if (error) { showToast('Error al guardar', 'error'); console.error(error); return; }
   }
   // Si cambió el peso, también queda como medición de hoy (así el historial y la ficha
@@ -934,10 +966,12 @@ export async function saveEditPet(petId) {
   }
   Object.assign(p, { name, species, breed, dateOfBirth, sex, color, weightKg, weightGr,
     reproductiveStatus, chipNumber, sizeRange, activityLevel, personalityTags, photo,
-    allergies, chronicConditions, vet });
+    allergies, chronicConditions, vet, ...(careModeSaved ? { careMode } : {}) });
   state.editPetData = null;
   closeModal(); render();
-  showToast(weightNotSaved ? 'Cambios guardados, pero no se pudo registrar la medición de peso' : 'Cambios guardados', weightNotSaved ? 'error' : 'success');
+  showToast(weightNotSaved ? 'Cambios guardados, pero no se pudo registrar la medición de peso'
+    : !careModeSaved ? 'Cambios guardados, pero falta actualizar la base de datos para la modalidad de cuidado'
+    : 'Cambios guardados', weightNotSaved || !careModeSaved ? 'error' : 'success');
 }
 
 export function previewPhoto(e) {
@@ -1218,7 +1252,7 @@ export async function removeTutor2(petId) {
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     viewPets, viewAddPet, stepBasic, stepPhysical, stepHealth, stepTutors,
-    viewPetProfile, tabGeneral, infoRow, openEditPetModal, toggleEditAllergy,
+    viewPetProfile, tabGeneral, petWhereToday, infoRow, openEditPetModal, toggleEditAllergy,
     toggleEditCondition, toggleEditPersonality, setEditActivity, previewEditPhoto,
     openPet, setTab, cancelAddPet, prevStep, showFieldError, clearFieldError,
     nextStep, collectStepData, savePet, openDeletePetWithCode, sendDeleteCode,

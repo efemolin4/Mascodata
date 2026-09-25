@@ -134,3 +134,10 @@ Puesta en marcha (una sola vez):
    arriba con la URL de esta función).
 4. **Programar** con el bloque comentado al final de `schema/food_restock_reminders.sql`
    (13:30 UTC). Para pausarlo: `select cron.unschedule('food-restock-reminders');`
+
+## Agenda compartida y tutores separados
+
+Ejecutar `schema/shared_events_care_mode.sql` (idempotente): agrega `events.end_date`, `events.holder`
+y `pets.care_mode`, y reemplaza la regla de `events` para que los eventos con mascota los vean todos
+sus tutores. Después, `schema/test_shared_events.sql` comprueba las reglas con sesiones simuladas (no
+guarda nada). La app funciona antes de ejecutarlo, pero las estadías avisan que falta actualizar la base.

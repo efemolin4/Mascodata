@@ -46,7 +46,8 @@ async function loadDataFromSupabase() {
       sb.from('food_items').select('*').in('pet_id', petIds),
       sb.from('activities').select('*').in('pet_id', petIds),
       sb.from('dose_logs').select('*').in('pet_id', petIds),
-      sb.from('events').select('*').eq('user_id', state.user.id),
+      // Los eventos con mascota son de todos sus tutores; los que no tienen mascota, solo míos.
+      sb.from('events').select('*').or(`user_id.eq.${state.user.id},pet_id.in.(${petIds.join(',')})`),
       sb.from('expenses').select('*').eq('user_id', state.user.id),
       sb.from('botiquin_items').select('*').eq('user_id', state.user.id),
       sb.from('invitations').select('*').in('pet_id', petIds).order('created_at', { ascending: false }),
@@ -86,6 +87,7 @@ async function loadDataFromSupabase() {
         vet: { name: pet.vet_name||'', clinic: pet.vet_clinic||'', phone: pet.vet_phone||'', email: pet.vet_email||'' },
         weightKg: pet.weight_kg ?? '', weightGr: pet.weight_gr ?? '',
         createdAt: pet.created_at || null,
+        careMode: pet.care_mode || 'together',
         sizeRange: pet.size_range || '', activityLevel: pet.activity_level || 2,
         allergies: pet.allergies || [], chronicConditions: pet.chronic_conditions || [],
         bcs: pet.bcs ?? null,
@@ -133,7 +135,8 @@ async function loadDataFromSupabase() {
     });
 
     state.events = (evRes.data || []).map(e => ({
-      id: e.id, title: e.title, date: e.date, time: e.time,
+      id: e.id, title: e.title, date: e.date, time: e.time, userId: e.user_id,
+      endDate: e.end_date || null, holder: e.holder || null,
       type: e.type, petId: e.pet_id, pet: state.pets.find(p => p.id === e.pet_id)?.name || null, notes: e.notes }));
 
     state.expenses = (expRes.data || []).map(e => ({

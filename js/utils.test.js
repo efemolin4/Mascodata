@@ -4,6 +4,7 @@ import {
   careAlertStatus, medStockStatus, foodStockStatus, esc, safeId, safeDataUrl, petCompleteness, parseCLP, fmtCompactCLP,
   foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl,
   foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, lastWeighedDate,
+  STAY_TYPE, hasOtherTutor, stayWho, eventCoversDate, petStayOn,
 } from './utils.js';
 
 // Fija "hoy" a una fecha conocida para que las pruebas de fecha sean
@@ -435,5 +436,55 @@ describe('lastWeighedDate', () => {
   it('sin mediciones ni fecha de creación no hay fecha', () => {
     expect(lastWeighedDate({})).toBeNull();
     expect(lastWeighedDate(null)).toBeNull();
+  });
+});
+
+describe('estadías (tutores separados)', () => {
+  const owner = { id: 'p1', myRole: 'owner', tutor2: { name: 'Pedro' } };
+  const guest = { id: 'p1', myRole: 'editor', tutor2: { name: 'Yo mismo' } };
+
+  it('hasOtherTutor: solo si la mascota tiene un segundo tutor', () => {
+    expect(hasOtherTutor(owner)).toBe(true);
+    expect(hasOtherTutor({ id: 'p2' })).toBe(false);
+    expect(hasOtherTutor(null)).toBe(false);
+  });
+
+  it('el dueño ve "contigo" en sus estadías y el nombre del otro tutor en las del invitado', () => {
+    expect(stayWho(owner, 'owner')).toEqual({ mine: true, label: 'contigo' });
+    expect(stayWho(owner, 'guest')).toEqual({ mine: false, label: 'Pedro' });
+  });
+
+  it('el tutor invitado ve "contigo" en las suyas y "el otro tutor" en las del dueño (no conoce su nombre)', () => {
+    expect(stayWho(guest, 'guest')).toEqual({ mine: true, label: 'contigo' });
+    expect(stayWho(guest, 'owner')).toEqual({ mine: false, label: 'el otro tutor' });
+  });
+
+  it('sin el nombre del otro tutor usa "el otro tutor"', () => {
+    expect(stayWho({ myRole: 'owner', tutor2: { name: '  ' } }, 'guest').label).toBe('el otro tutor');
+  });
+
+  it('un evento cubre un día o todo un rango', () => {
+    expect(eventCoversDate({ date: '2026-10-10' }, '2026-10-10')).toBe(true);
+    expect(eventCoversDate({ date: '2026-10-10' }, '2026-10-11')).toBe(false);
+    const stay = { date: '2026-10-10', endDate: '2026-10-14' };
+    expect(['2026-10-09', '2026-10-10', '2026-10-12', '2026-10-14', '2026-10-15'].map(d => eventCoversDate(stay, d))).toEqual([false, true, true, true, false]);
+  });
+
+  it('petStayOn devuelve la estadía de esa mascota que cubre la fecha, ignorando otras mascotas y otros tipos', () => {
+    const events = [
+      { id: 'a', type: STAY_TYPE, petId: 'p1', date: '2026-10-01', endDate: '2026-10-10', holder: 'owner' },
+      { id: 'b', type: STAY_TYPE, petId: 'p2', date: '2026-10-01', endDate: '2026-10-10', holder: 'guest' },
+      { id: 'c', type: 'Consulta', petId: 'p1', date: '2026-10-05' },
+    ];
+    expect(petStayOn({ id: 'p1' }, events, '2026-10-05').id).toBe('a');
+    expect(petStayOn({ id: 'p1' }, events, '2026-10-20')).toBeNull();
+  });
+
+  it('con estadías solapadas gana la que empezó más tarde', () => {
+    const events = [
+      { id: 'a', type: STAY_TYPE, petId: 'p1', date: '2026-10-01', endDate: '2026-10-31' },
+      { id: 'b', type: STAY_TYPE, petId: 'p1', date: '2026-10-10', endDate: '2026-10-12' },
+    ];
+    expect(petStayOn({ id: 'p1' }, events, '2026-10-11').id).toBe('b');
   });
 });

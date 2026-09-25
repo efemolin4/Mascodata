@@ -54,8 +54,12 @@ Mascodata es una aplicación web de página única (SPA) para tutores de mascota
 - **Alertas de reposición:** en el panel, cuando quedan 7 días o menos (solo alimento diario con duración o consumo indicado); y por correo (§2.9).
 - Las compras cuentan como gastos de categoría *Alimentación* en Finanzas, sin duplicarlos.
 
-### 2.5 Agenda
-Calendario mensual con eventos manuales (veterinario, baño, peluquería, otros) y eventos derivados automáticamente de vacunas, desparasitaciones y tratamientos.
+### 2.5 Agenda y cuidado compartido
+- Calendario mensual con eventos manuales (consulta, examen, peluquería, hotel, vacuna, otros) y eventos derivados automáticamente de vacunas, desparasitaciones y tratamientos.
+- **Agenda compartida:** los eventos que tienen mascota los ven **todos sus tutores**; quien puede editar la mascota (dueño y editores) puede modificarlos y borrarlos. Los eventos sin mascota siguen siendo personales. La primera vez, la Agenda muestra un aviso descartable.
+- **Modalidad de cuidado por mascota** (Editar mascota → *¿Cómo se turnan el cuidado?*, solo si tiene otro tutor): **Vivimos juntos** (por defecto) o **Tutores separados**.
+- **Estadías** (solo con tutores separados): evento con fecha de inicio y de fin, y *¿con quién está?* (conmigo o el otro tutor). Se dibuja en cada día del rango, con "Contigo" o "Con Pedro". Se guarda con un rol (`owner`/`guest`) y no con un nombre, porque un tutor no puede ver quién es el otro; cada persona lo lee desde su propio rol.
+- **Dónde está hoy:** franja en el panel y en la ficha ("Hoy Greta está con Pedro · hasta el 28-09-2026"), calculada con las estadías.
 
 ### 2.6 Finanzas
 - Registro de gastos por categoría, mascota y fecha; filtros por mascota y período; exportación a CSV.
@@ -134,20 +138,21 @@ Convenciones de seguridad en el cliente: `esc()` para texto en HTML; `safeId()` 
 | Grupo | Tablas |
 |---|---|
 | Cuentas | `profiles` (plan, `is_admin`, opt-ins, `reminders_opt_out`), `plan_changes`, `invitations` |
-| Mascotas y acceso | `pets`, `pet_access` (`owner` / `editor` / `viewer`) |
+| Mascotas y acceso | `pets` (con `care_mode`), `pet_access` (`owner` / `editor` / `viewer`) |
 | Salud | `vaccines`, `dewormings`, `medications`, `dose_logs`, `history_records`, `weight_history`, `mood_logs`, `symptoms_logs`, `activities` |
 | Nutrición | `food_items` (con `category`), `food_purchases` |
-| Agenda y dinero | `events`, `expenses`, `botiquin_items` |
+| Agenda y dinero | `events` (compartidos por mascota; con `end_date` y `holder`), `expenses`, `botiquin_items` |
 | Correos | `pet_reminders`, `food_restock_reminders` |
 | Heredada | `meals` (sin uso; candidata a eliminar) |
 
-Migraciones nuevas, todas idempotentes y en `supabase/schema/`: `pet_reminders.sql`, `food_purchases.sql`, `food_category.sql`, `food_restock_reminders.sql`, `harden_invitations_pets.sql`, `harden_limits_and_audit.sql`. Las tablas nuevas son opcionales para la app: si faltan, la funcionalidad correspondiente se desactiva sin errores.
+Migraciones nuevas, todas idempotentes y en `supabase/schema/`: `pet_reminders.sql`, `food_purchases.sql`, `food_category.sql`, `food_restock_reminders.sql`, `harden_invitations_pets.sql`, `harden_limits_and_audit.sql`, `shared_events_care_mode.sql`. Las tablas nuevas son opcionales para la app: si faltan, la funcionalidad correspondiente se desactiva sin errores.
 
 ### 4.4 Seguridad
 - **RLS en todas las tablas.** Acceso a las mascotas mediante `pet_accessible()` y `pet_editor()`; los datos personales (`events`, `expenses`, `botiquin_items`) por `user_id`, y su `pet_id` debe ser una mascota accesible.
 - **`profiles`:** un trigger impide que un usuario cambie `is_admin`, `plan`, `plan_expires_at` o `stripe_customer_id`. Probado con simulación de sesiones.
 - **Invitaciones:** solo el dueño de la mascota puede crearlas; quien las recibe solo puede marcarlas como usadas (trigger); aceptar exige que la haya creado el dueño real.
 - **Dueño de la mascota:** un trigger impide cambiar `pets.owner_id` desde el navegador; solo el servidor (`delete-account`, clave de servicio) puede.
+- **Agenda compartida:** `events` se comparte por mascota mediante `pet_accessible()` (ver) y `pet_editor()` (crear, modificar, borrar); un trigger impide cambiar el autor de un evento. Probado con simulación de sesiones (`test_shared_events.sql`).
 - **Auditoría de planes:** `plan_changes` es de solo lectura y agregar, también para administradores.
 - **Topes de tamaño:** `pets.photo` ≤ 1 MB y `history_records.files` ≤ 20 MB (restricciones `NOT VALID`: no rechazan filas antiguas, sí escrituras nuevas).
 - **XSS:** escape de todo texto que un co-tutor puede escribir; 5 casos de `onclick` con cadenas corregidos.
@@ -204,6 +209,7 @@ Vitest con jsdom: **262 pruebas en 15 archivos**, más `check-exports`. Las vist
 - Los gastos manuales de *Alimentación* anteriores al flujo nuevo pueden duplicar compras registradas en la ficha; se revisan a mano.
 - Correo de reposición: evaluar un interruptor propio, separado del de recordatorios de perfil.
 - Recordatorio de pesar por correo (hoy solo en la plataforma): requeriría rebajar los topes de los otros correos para respetar los 100 diarios de Resend.
+- **Cuidado compartido, etapas siguientes:** quién hizo qué (dosis, comida, paseo) y actividad reciente; aviso al otro tutor; resumen de traspaso y turnos recurrentes; gastos compartidos con saldo; rol de co-dueño; cuidadores temporales con acceso limitado; ubicación del botiquín y del alimento por hogar.
 - Ideas de Seguimiento pendientes: rango de peso saludable por raza y tamaño, alerta de cambio de peso mensual, cambios de alimento sobre el gráfico de peso.
 
 ---

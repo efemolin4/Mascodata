@@ -417,6 +417,38 @@ export function lastWeighedDate(pet) {
   return pet?.createdAt ? String(pet.createdAt).slice(0, 10) : null;
 }
 
+// ---- Estadías (tutores separados) ----
+// Una estadía es un evento de tipo "Estadía" con fecha de inicio y de fin. `holder` dice quién
+// tiene la mascota: 'owner' (el dueño) o 'guest' (el otro tutor). No se guardan ids de personas
+// porque un tutor no puede ver quién es el otro: cada quien lo interpreta según su propio rol.
+export const STAY_TYPE = 'Estadía';
+
+// ¿Tiene la mascota otro tutor además de mí? (invitación enviada o aceptada)
+export function hasOtherTutor(pet) {
+  return !!pet?.tutor2;
+}
+
+// Quién tiene la mascota en una estadía, visto desde quien mira la pantalla.
+export function stayWho(pet, holder) {
+  const myGroup = !pet?.myRole || pet.myRole === 'owner' ? 'owner' : 'guest';
+  if (holder === myGroup) return { mine: true, label: 'contigo' };
+  const other = myGroup === 'owner' ? (pet?.tutor2?.name || '').trim() : '';
+  return { mine: false, label: other || 'el otro tutor' };
+}
+
+// ¿El evento cubre esta fecha? (evento de un día o rango con fecha de fin)
+export function eventCoversDate(e, dateStr) {
+  if (!e?.date) return false;
+  return e.endDate ? e.date <= dateStr && dateStr <= e.endDate : e.date === dateStr;
+}
+
+// La estadía de la mascota que cubre la fecha dada (si hay varias, la que empezó más tarde).
+export function petStayOn(pet, events, dateStr) {
+  return (events || [])
+    .filter(e => e.type === STAY_TYPE && e.petId === pet?.id && eventCoversDate(e, dateStr))
+    .sort((a, b) => (a.date < b.date ? 1 : -1))[0] || null;
+}
+
 // Racha de días consecutivos (incluyendo hoy) con actividad registrada.
 export function activityStreak(activities) {
   const dates = new Set((activities||[]).map(a => a.date));
@@ -430,6 +462,6 @@ if (typeof window !== 'undefined') {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
     getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, shrinkImage, slugify, petCompleteness, COMPLETENESS_FIELDS, eventIcon, botiquinStatus,
     medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
-    lastWeighedDate, foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
+    STAY_TYPE, hasOtherTutor, stayWho, eventCoversDate, petStayOn, lastWeighedDate, foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
   });
 }

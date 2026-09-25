@@ -242,6 +242,12 @@ export function viewDashboard() {
     </div>
 
     ${(() => {
+      // Mascotas con tutores separados: dónde están hoy (según las estadías de la agenda).
+      const rows = pets.filter(p => p.careMode === 'separated' && hasOtherTutor(p)).map(p => petWhereToday(p)).filter(Boolean);
+      return rows.length ? `<div class="space-y-2 mb-4">${rows.join('')}</div>` : '';
+    })()}
+
+    ${(() => {
       const lowest = pets.filter(p => canEditPet(p)).map(p => ({ p, c: petCompleteness(p) })).filter(x => x.c.percent < 100).sort((a, b) => a.c.percent - b.c.percent)[0];
       return lowest ? `<div class="mb-4">${petCompletenessCard(lowest.p, { compact: true })}</div>` : '';
     })()}
