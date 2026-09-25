@@ -189,6 +189,68 @@ export function isPremium() {
 // Analítica de producto (PostHog, ver index.html). No-op si el script no cargó
 // (localhost, tests, bloqueador). `demo` separa a quienes solo prueban la demo.
 // Nunca mandar nombre, email, teléfono ni datos de salud en `props`.
+// ---- Contraseñas y protección contra abuso ----
+// Largo mínimo de contraseña. Debe coincidir con Supabase (Authentication → Sign In / Providers → Email →
+// Minimum password length): si Supabase pide menos, la app igual exige 8; si pide más, Supabase rechaza.
+// Las cuentas anteriores con contraseñas más cortas siguen entrando: solo se exige al crear o cambiar una.
+export const MIN_PASSWORD_LENGTH = 8;
+
+// CAPTCHA de Cloudflare Turnstile. Apagado mientras no haya clave pública (window.MASCODATA_TURNSTILE_KEY, en
+// index.html): la app funciona igual. Se pide un token justo antes de cada llamada de Supabase que envía un correo
+// o inicia sesión (login, registro, recuperar contraseña, códigos de verificación). En modo "interaction-only" el
+// widget solo se ve si Cloudflare necesita que la persona haga algo. Cada token sirve una sola vez.
+let turnstileScript = null;
+function loadTurnstile() {
+  if (window.turnstile) return Promise.resolve();
+  if (!turnstileScript) {
+    turnstileScript = new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      el.async = true;
+      el.onload = () => resolve();
+      el.onerror = () => { turnstileScript = null; reject(new Error('turnstile')); };
+      document.head.appendChild(el);
+    });
+  }
+  return turnstileScript;
+}
+
+export async function getCaptchaToken() {
+  const siteKey = window.MASCODATA_TURNSTILE_KEY;
+  if (!siteKey) return undefined;
+  try {
+    await loadTurnstile();
+  } catch (e) { return undefined; }
+  return new Promise(resolve => {
+    const box = document.createElement('div');
+    box.id = 'captcha-floating';
+    box.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:100000';
+    document.body.appendChild(box);
+    let widgetId;
+    const done = token => {
+      try { if (widgetId !== undefined) window.turnstile.remove(widgetId); } catch (e) {}
+      box.remove();
+      resolve(token);
+    };
+    try {
+      widgetId = window.turnstile.render(box, {
+        sitekey: siteKey, appearance: 'interaction-only',
+        callback: token => done(token),
+        'error-callback': () => done(undefined),
+        'timeout-callback': () => done(undefined),
+      });
+    } catch (e) { done(undefined); }
+  });
+}
+
+// Solo agrega captchaToken si existe: sin CAPTCHA configurado las llamadas quedan exactamente como antes.
+export const withCaptcha = (options, token) => (token ? { ...options, captchaToken: token } : options);
+
+// Mensaje claro cuando Supabase rechaza la llamada por el CAPTCHA.
+export function isCaptchaError(error) {
+  return /captcha/i.test(error?.message || '');
+}
+
 export function track(event, props = {}) {
   try { window.posthog?.capture(event, { ...props, demo: isDemoUser() }); } catch (e) {}
 }
@@ -934,7 +996,7 @@ document.addEventListener('DOMContentLoaded', initApp);
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     getPage, setPage, paginate, pagerHTML, loadState, saveState, isDemoUser,
-    canEditPet, blockIfReadOnly, isPremium, blockIfNotPremium, premiumUpsell, premiumUpsellCard, track, requestPremium,
+    canEditPet, blockIfReadOnly, isPremium, blockIfNotPremium, premiumUpsell, premiumUpsellCard, track, requestPremium, MIN_PASSWORD_LENGTH, getCaptchaToken, withCaptcha, isCaptchaError,
     requestPlanUpgrade, viewPlans,
     showToast, viewToPath, pathToView,
     resolveInitialViewFromUrl, navigate, iconSVG, icon, sidebar, bottomNav, mobileTopBar,

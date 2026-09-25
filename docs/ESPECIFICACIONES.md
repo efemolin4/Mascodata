@@ -160,6 +160,7 @@ Migraciones nuevas, todas idempotentes y en `supabase/schema/`: `pet_reminders.s
 - **`profiles`:** un trigger impide que un usuario cambie `is_admin`, `plan`, `plan_expires_at` o `stripe_customer_id`. Probado con simulación de sesiones.
 - **Invitaciones:** solo el dueño de la mascota puede crearlas; quien las recibe solo puede marcarlas como usadas (trigger); aceptar exige que la haya creado el dueño real.
 - **Dueño de la mascota:** un trigger impide cambiar `pets.owner_id` desde el navegador; solo el servidor (`delete-account`, clave de servicio) puede.
+- **Contraseñas y abuso:** largo mínimo de **8** caracteres al crear o cambiar una contraseña (las cuentas antiguas más cortas siguen entrando); mensajes de error que no revelan si un correo tiene cuenta; pantalla "Revisa tu correo" al recuperar contraseña con salidas si no llega. **CAPTCHA (Cloudflare Turnstile)** integrado en login, registro, recuperar contraseña y códigos de verificación, apagado hasta configurar la clave pública en `index.html` y activarlo en Supabase (ver `supabase/README.md`, *Protección contra abuso*).
 - **Autoría:** `created_by` y `created_by_name` los fija un trigger en cada tabla de registros (no el navegador) y no se pueden modificar después. Probado con `test_activity_attribution.sql`.
 - **Gastos compartidos:** los gastos de una mascota solo los ve el otro tutor si la mascota reparte a partes iguales (`expense_split = 'equal'`); nadie puede modificar ni borrar gastos ajenos, y los pagos entre tutores llevan la firma de quien los registró (no falsificable) y solo él puede borrarlos. Probado con `test_shared_expenses.sql`.
 - **Agenda compartida:** `events` se comparte por mascota mediante `pet_accessible()` (ver) y `pet_editor()` (crear, modificar, borrar); un trigger impide cambiar el autor de un evento. Probado con simulación de sesiones (`test_shared_events.sql`).
@@ -208,6 +209,7 @@ Vitest con jsdom: **262 pruebas en 15 archivos**, más `check-exports`. Las vist
 
 **Marca y comunicación**
 - Logo nuevo en la pantalla de consentimiento de Google.
+- Activar la protección contra abuso en Supabase: mínimo de contraseña 8, límites de envío, vigencia de códigos y CAPTCHA (Turnstile).
 - Instalar las plantillas de correo de Supabase Auth (archivos listos en `supabase/email-templates/`) y configurar el remitente propio con Resend SMTP.
 
 **Técnica**

@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js';
 // isPremium()/isDemoUser() (llamadas dentro de openDeleteAccountModal y
 // verifyAccountDeleteCode) leen `state` del scope léxico de js/app.js — hay
 // que mutar ese mismo objeto, no reemplazar window.state (ver el mismo
 // patrón ya documentado en finance.test.js/app.test.js).
-import { state } from '../js/app.js';
-import { openDeleteAccountModal, sendAccountDeleteCode, verifyAccountDeleteCode, signInWithGoogle, sendForgotEmail, viewForgot, viewRegister, openForgot, goRegisterWithEmail, retryForgot } from './auth.js';
+import { state, getCaptchaToken, withCaptcha, isCaptchaError, MIN_PASSWORD_LENGTH } from '../js/app.js';
+import { openDeleteAccountModal, sendAccountDeleteCode, verifyAccountDeleteCode, signInWithGoogle, sendForgotEmail, viewForgot, viewRegister, openForgot, goRegisterWithEmail, retryForgot, login, register, handleResetPassword, viewResetPassword } from './auth.js';
 
 describe('openDeleteAccountModal', () => {
   beforeEach(() => {
@@ -300,5 +300,141 @@ describe('recuperar contraseña', () => {
     window.sb = makeMockSb();
     await sendForgotEmail();
     expect(viewForgot()).not.toContain('<img src=x');
+  });
+});
+
+// CAPTCHA (Cloudflare Turnstile) y largo mínimo de contraseña.
+describe('CAPTCHA', () => {
+  const setKey = k => { window.MASCODATA_TURNSTILE_KEY = k; };
+  afterEach(() => { setKey(''); delete window.turnstile; document.getElementById('captcha-floating')?.remove(); });
+
+  it('withCaptcha solo agrega el token si existe (sin CAPTCHA las llamadas quedan como antes)', () => {
+    expect(withCaptcha({ a: 1 }, undefined)).toEqual({ a: 1 });
+    expect(withCaptcha({ a: 1 }, 'tok')).toEqual({ a: 1, captchaToken: 'tok' });
+  });
+
+  it('isCaptchaError reconoce el rechazo de Supabase', () => {
+    expect(isCaptchaError({ message: 'captcha verification process failed' })).toBe(true);
+    expect(isCaptchaError({ message: 'Invalid login credentials' })).toBe(false);
+    expect(isCaptchaError(null)).toBe(false);
+  });
+
+  it('sin clave configurada no pide nada: el CAPTCHA está apagado', async () => {
+    setKey('');
+    expect(await getCaptchaToken()).toBeUndefined();
+  });
+
+  it('con clave, muestra el widget solo si hace falta (interaction-only), devuelve el token y limpia', async () => {
+    setKey('clave-publica');
+    let opts;
+    window.turnstile = { render: vi.fn((el, o) => { opts = o; setTimeout(() => o.callback('token-123'), 0); return 'w1'; }), remove: vi.fn() };
+    const token = await getCaptchaToken();
+    expect(token).toBe('token-123');
+    expect(opts).toMatchObject({ sitekey: 'clave-publica', appearance: 'interaction-only' });
+    expect(window.turnstile.remove).toHaveBeenCalledWith('w1');
+    expect(document.getElementById('captcha-floating')).toBeNull();
+  });
+
+  it('si Cloudflare falla o vence, devuelve undefined en vez de colgar la pantalla', async () => {
+    setKey('clave-publica');
+    window.turnstile = { render: vi.fn((el, o) => { setTimeout(() => o['error-callback'](), 0); return 'w1'; }), remove: vi.fn() };
+    expect(await getCaptchaToken()).toBeUndefined();
+    window.turnstile = { render: vi.fn(() => { throw new Error('boom'); }), remove: vi.fn() };
+    expect(await getCaptchaToken()).toBeUndefined();
+    expect(document.getElementById('captcha-floating')).toBeNull();
+  });
+});
+
+describe('login, registro y recuperación con CAPTCHA', () => {
+  beforeEach(() => {
+    window.showToast = vi.fn();
+    window.render = vi.fn();
+    window.track = vi.fn();
+    window.navigate = vi.fn();
+    window.saveState = vi.fn();
+    window.MASCODATA_TURNSTILE_KEY = 'k';
+    window.turnstile = { render: vi.fn((el, o) => { setTimeout(() => o.callback('tok-1'), 0); return 'w'; }), remove: vi.fn() };
+    document.body.innerHTML = '<input id="l-email" value="a@b.cl" /><input id="l-pass" value="secreto12" /><input id="f-email" value="a@b.cl" />'
+      + '<input id="r-name" value="Ana" /><input id="r-email" value="a@b.cl" /><input id="r-pass" value="12345678" /><input id="r-pass2" value="12345678" />';
+  });
+  afterEach(() => { window.MASCODATA_TURNSTILE_KEY = ''; delete window.turnstile; });
+
+  it('el login manda el token al iniciar sesión', async () => {
+    window.sb = makeMockSb();
+    window.sb.auth.signInWithPassword = vi.fn(async () => ({ data: { user: { id: 'u', user_metadata: {} } }, error: null }));
+    window.loadDataFromSupabase = vi.fn();
+    await login().catch(() => {});
+    expect(window.sb.auth.signInWithPassword).toHaveBeenCalledWith({ email: 'a@b.cl', password: 'secreto12', captchaToken: 'tok-1' });
+  });
+
+  it('sin CAPTCHA configurado el login llama a Supabase exactamente como antes', async () => {
+    window.MASCODATA_TURNSTILE_KEY = '';
+    window.sb = makeMockSb();
+    window.sb.auth.signInWithPassword = vi.fn(async () => ({ data: null, error: { message: 'Invalid login credentials' } }));
+    await login();
+    expect(window.sb.auth.signInWithPassword).toHaveBeenCalledWith({ email: 'a@b.cl', password: 'secreto12' });
+    expect(window.showToast).toHaveBeenCalledWith('Email o contraseña incorrectos', 'error');
+  });
+
+  it('si Supabase rechaza por el CAPTCHA, lo explica en español', async () => {
+    window.sb = makeMockSb();
+    window.sb.auth.signInWithPassword = vi.fn(async () => ({ data: null, error: { message: 'captcha verification process failed' } }));
+    await login();
+    expect(window.showToast).toHaveBeenCalledWith('No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo', 'error');
+  });
+
+  it('recuperar contraseña manda el token junto con la redirección', async () => {
+    window.sb = makeMockSb();
+    await sendForgotEmail();
+    expect(window.sb.auth.resetPasswordForEmail).toHaveBeenCalledWith('a@b.cl', { redirectTo: `${window.location.origin}?reset=true`, captchaToken: 'tok-1' });
+  });
+
+  it('el registro manda el token dentro de options, junto al nombre', async () => {
+    window.sb = makeMockSb();
+    window.sb.auth.signUp = vi.fn(async () => ({ data: null, error: { message: 'boom' } }));
+    await register();
+    expect(window.sb.auth.signUp).toHaveBeenCalledWith({ email: 'a@b.cl', password: '12345678', options: { data: { name: 'Ana' }, captchaToken: 'tok-1' } });
+  });
+});
+
+describe('largo mínimo de contraseña', () => {
+  beforeEach(() => {
+    window.showToast = vi.fn();
+    window.sb = makeMockSb();
+    window.sb.auth.signUp = vi.fn();
+    window.sb.auth.updateUser = vi.fn(async () => ({ error: null }));
+  });
+
+  it('el mínimo es 8', () => {
+    expect(MIN_PASSWORD_LENGTH).toBe(8);
+  });
+
+  it('el registro rechaza una contraseña de 7 caracteres sin llamar a Supabase', async () => {
+    document.body.innerHTML = '<input id="r-name" value="Ana" /><input id="r-email" value="a@b.cl" /><input id="r-pass" value="1234567" /><input id="r-pass2" value="1234567" />';
+    await register();
+    expect(window.showToast).toHaveBeenCalledWith('Mínimo 8 caracteres', 'error');
+    expect(window.sb.auth.signUp).not.toHaveBeenCalled();
+  });
+
+  it('cambiar la contraseña tras recuperarla también exige 8', async () => {
+    document.body.innerHTML = '<input id="rp-pass" value="1234567" /><input id="rp-pass2" value="1234567" />';
+    await handleResetPassword();
+    expect(window.showToast).toHaveBeenCalledWith('Mínimo 8 caracteres', 'error');
+    expect(window.sb.auth.updateUser).not.toHaveBeenCalled();
+  });
+
+  it('los campos del registro y de la nueva contraseña piden 8 en el propio formulario', () => {
+    expect(viewRegister()).toContain('minlength="8"');
+    expect(viewRegister()).toContain('Mínimo 8 caracteres');
+    expect(viewResetPassword()).toContain('minlength="8"');
+  });
+
+  it('el login NO valida el largo: las cuentas antiguas con contraseñas cortas siguen entrando', async () => {
+    document.body.innerHTML = '<input id="l-email" value="a@b.cl" /><input id="l-pass" value="123456" />';
+    window.showToast = vi.fn(); window.track = vi.fn(); window.navigate = vi.fn(); window.render = vi.fn();
+    window.sb.auth.signInWithPassword = vi.fn(async () => ({ data: null, error: { message: 'Invalid login credentials' } }));
+    await login();
+    expect(window.sb.auth.signInWithPassword).toHaveBeenCalled();
+    expect(window.showToast).not.toHaveBeenCalledWith('Mínimo 8 caracteres', 'error');
   });
 });

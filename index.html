@@ -8,6 +8,12 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="theme-color" content="#4c5fd7" />
   <link rel="apple-touch-icon" href="/img/logos/mascodata-app-icon.png" />
+  <script>
+    // Clave PÚBLICA de Cloudflare Turnstile (CAPTCHA). Vacía = CAPTCHA apagado. Solo se completa después de crear el
+    // sitio en Cloudflare y ANTES de activar el CAPTCHA en Supabase (ver supabase/README.md, "Protección contra abuso").
+    // La clave secreta va únicamente en Supabase, nunca aquí.
+    window.MASCODATA_TURNSTILE_KEY = '';
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     // Paleta y tipografía del Manual de marca Mascodata v2 (septiembre 2026):

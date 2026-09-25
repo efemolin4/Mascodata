@@ -900,8 +900,9 @@ export async function sendDeleteCode(petId) {
   // en Supabase → Authentication → Email Templates incluya {{ .Token }}, si no,
   // el correo solo mostrará el link y no el código (su largo lo define Supabase,
   // no asumir 6 dígitos).
-  const { error } = await sb.auth.signInWithOtp({ email: state.user.email, options: { shouldCreateUser: false } });
-  if (error) { showToast('No se pudo enviar el código', 'error'); console.error(error); return; }
+  const captchaToken = await getCaptchaToken();
+  const { error } = await sb.auth.signInWithOtp({ email: state.user.email, options: withCaptcha({ shouldCreateUser: false }, captchaToken) });
+  if (error) { showToast(isCaptchaError(error) ? 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo' : 'No se pudo enviar el código', 'error'); console.error(error); return; }
   document.getElementById('delete-step-1').classList.add('hidden');
   document.getElementById('delete-step-2').classList.remove('hidden');
   showToast(`Código enviado a ${state.user?.email}`, 'success');
@@ -1248,14 +1249,15 @@ export async function createPetInvite(pet, { name, email, role }) {
   if (inviteError) { showToast('Error al crear la invitación', 'error'); console.error(inviteError); return false; }
   // Enviado vía Supabase Auth (magic link) en vez de un tercero: requiere SMTP
   // configurado en el proyecto de Supabase (Auth → Emails → SMTP Settings).
+  const captchaToken = await getCaptchaToken();
   const { error } = await sb.auth.signInWithOtp({
     email,
-    options: {
+    options: withCaptcha({
       emailRedirectTo: link,
       data: { invited_name: name, pet_name: pet.name, inviter_name: state.user?.name || '', role },
-    },
+    }, captchaToken),
   });
-  if (error) { showToast('Error al enviar el correo de invitación', 'error'); console.error(error); return false; }
+  if (error) { showToast(isCaptchaError(error) ? 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo' : 'Error al enviar el correo de invitación', 'error'); console.error(error); return false; }
   pet.tutor2 = { name, email, role, pending: true };
   showToast(`Invitación enviada a ${email}`, 'success');
   return true;

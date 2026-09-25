@@ -155,3 +155,24 @@ Ejecutar `schema/shared_expenses.sql` (idempotente; requiere haber ejecutado ant
 `pets.expense_split`, el autor de cada gasto, una regla para que el otro tutor vea los gastos de una mascota que reparte
 a partes iguales, y la tabla `expense_settlements` (pagos entre tutores). Luego `schema/test_shared_expenses.sql` lo
 comprueba con sesiones simuladas (no guarda nada). Sin el SQL la app funciona, pero no permite repartir gastos.
+
+## Protección contra abuso (login, registro, recuperar contraseña, códigos)
+
+Todo lo que envía un correo o inicia sesión (`signInWithPassword`, `signUp`, `resetPasswordForEmail`, `signInWithOtp`)
+se puede llamar desde cualquier script con la clave pública. Se protege por capas:
+
+1. **Largo mínimo de contraseña: 8.** En la app (`MIN_PASSWORD_LENGTH` en `js/app.js`) y en Supabase
+   (*Authentication → Sign In / Providers → Email → Minimum password length* = 8). Solo se exige al crear o cambiar
+   una contraseña: las cuentas antiguas con contraseñas más cortas siguen entrando.
+2. **Límites de Supabase** (*Authentication → Rate Limits*): correos por hora en total (unos 20-30 para este tamaño) y
+   por IP. Un ataque de volumen puede agotar los 100 correos diarios de Resend y dejar sin correo a los usuarios reales.
+3. **Vigencia de códigos y enlaces** (*Authentication → Emails*, *OTP expiry*): 900 a 1800 segundos.
+4. **CAPTCHA (Cloudflare Turnstile).** La app lo pide antes de cada una de esas llamadas; está APAGADO mientras
+   `window.MASCODATA_TURNSTILE_KEY` (en `index.html`) esté vacía. Orden obligatorio:
+   1. Cloudflare → Turnstile → *Add site* (dominio `mascodata.cl`, widget "Managed") → copiar la **clave del sitio** (pública)
+      y la **clave secreta**.
+   2. Pegar la clave del sitio en `index.html` (`window.MASCODATA_TURNSTILE_KEY`) y desplegar.
+   3. Solo entonces: Supabase → *Authentication → Attack Protection → Enable CAPTCHA protection* → Cloudflare Turnstile →
+      pegar la **clave secreta**. La secreta va únicamente en Supabase: nunca en el repositorio ni en un chat.
+   Activarlo en Supabase antes del paso 2 impide iniciar sesión a todo el mundo. Para desactivarlo: apagar el interruptor en Supabase.
+5. **Alertas**: en Resend, aviso de consumo al llegar a ~70 correos diarios, y revisar de vez en cuando *Logs → Auth*.

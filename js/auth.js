@@ -116,7 +116,7 @@ export function viewRegister() {
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-            <input id="r-pass" type="password" required minlength="6" placeholder="Mínimo 6 caracteres" class="input-field" />
+            <input id="r-pass" type="password" required minlength="8" placeholder="Mínimo 8 caracteres" class="input-field" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar contraseña</label>
@@ -154,7 +154,7 @@ export function viewResetPassword() {
       <div class="bg-white rounded-2xl shadow-sm p-6 space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Nueva contraseña</label>
-          <input id="rp-pass" type="password" required minlength="6" placeholder="Mínimo 6 caracteres" class="input-field" />
+          <input id="rp-pass" type="password" required minlength="8" placeholder="Mínimo 8 caracteres" class="input-field" />
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar contraseña</label>
@@ -170,7 +170,7 @@ export function viewResetPassword() {
 export async function handleResetPassword() {
   const pass  = document.getElementById('rp-pass')?.value;
   const pass2 = document.getElementById('rp-pass2')?.value;
-  if (!pass || pass.length < 6) { showToast('Mínimo 6 caracteres', 'error'); return; }
+  if (!pass || pass.length < MIN_PASSWORD_LENGTH) { showToast(`Mínimo ${MIN_PASSWORD_LENGTH} caracteres`, 'error'); return; }
   if (pass !== pass2) { showToast('Las contraseñas no coinciden', 'error'); return; }
   showToast('Actualizando contraseña...', '');
   const { error } = await sb.auth.updateUser({ password: pass });
@@ -242,8 +242,9 @@ export async function login() {
   if (!email || !pass) { showToast('Completa todos los campos', 'error'); return; }
 
   showToast('Iniciando sesión...', '');
-  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if (error) { showToast(error.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos' : error.message, 'error'); return; }
+  const captchaToken = await getCaptchaToken();
+  const { data, error } = await sb.auth.signInWithPassword(withCaptcha({ email, password: pass }, captchaToken));
+  if (error) { showToast(isCaptchaError(error) ? 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo' : error.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos' : error.message, 'error'); return; }
 
   const userName = data.user.user_metadata?.name || email.split('@')[0];
   state.user = { name: userName, email, id: data.user.id };
@@ -276,15 +277,16 @@ export async function register() {
 
   if (!name || !email || !pass) { showToast('Completa todos los campos', 'error'); return; }
   if (pass !== pass2) { showToast('Las contraseñas no coinciden', 'error'); return; }
-  if (pass.length < 6) { showToast('Mínimo 6 caracteres', 'error'); return; }
+  if (pass.length < MIN_PASSWORD_LENGTH) { showToast(`Mínimo ${MIN_PASSWORD_LENGTH} caracteres`, 'error'); return; }
 
   showToast('Creando cuenta...', '');
+  const captchaToken = await getCaptchaToken();
   const { data, error } = await sb.auth.signUp({
     email, password: pass,
-    options: { data: { name } }
+    options: withCaptcha({ data: { name } }, captchaToken)
   });
   if (error) {
-    showToast(error.message === 'User already registered' ? 'Email ya registrado' : error.message, 'error');
+    showToast(isCaptchaError(error) ? 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo' : error.message === 'User already registered' ? 'Email ya registrado' : error.message, 'error');
     return;
   }
 
@@ -313,11 +315,12 @@ export async function sendForgotEmail() {
   const email = document.getElementById('f-email')?.value?.trim().toLowerCase();
   if (!email) { showToast('Ingresa tu email', 'error'); return; }
 
-  const { error } = await sb.auth.resetPasswordForEmail(email, {
+  const captchaToken = await getCaptchaToken();
+  const { error } = await sb.auth.resetPasswordForEmail(email, withCaptcha({
     redirectTo: window.location.origin + '?reset=true'
-  });
+  }, captchaToken));
   if (error) {
-    showToast(error.status === 429 || /rate limit|security purposes/i.test(error.message || '')
+    showToast(isCaptchaError(error) ? 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo' : error.status === 429 || /rate limit|security purposes/i.test(error.message || '')
       ? 'Espera un minuto antes de pedir otro enlace' : error.message, 'error');
     return;
   }
@@ -556,8 +559,9 @@ export async function sendAccountDeleteCode() {
     showToast(`Código enviado a ${state.user?.email} (demo: ${state.deleteAccountCode})`, 'success');
     return;
   }
-  const { error } = await sb.auth.signInWithOtp({ email: state.user.email, options: { shouldCreateUser: false } });
-  if (error) { showToast('No se pudo enviar el código', 'error'); console.error(error); return; }
+  const captchaToken = await getCaptchaToken();
+  const { error } = await sb.auth.signInWithOtp({ email: state.user.email, options: withCaptcha({ shouldCreateUser: false }, captchaToken) });
+  if (error) { showToast(isCaptchaError(error) ? 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo' : 'No se pudo enviar el código', 'error'); console.error(error); return; }
   document.getElementById('del-acc-step-1')?.classList.add('hidden');
   document.getElementById('del-acc-step-2')?.classList.remove('hidden');
   showToast(`Código enviado a ${state.user?.email}`, 'success');
