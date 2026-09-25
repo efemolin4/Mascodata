@@ -418,10 +418,9 @@ export function readFilesAsBase64(fileInput) {
   const files = Array.from(fileInput?.files || []);
   return Promise.all(files.map(f => new Promise((res, rej) => {
     if (f.size > 5 * 1024 * 1024) { showToast(`${f.name} supera 5MB`, 'error'); res(null); return; }
-    const reader = new FileReader();
-    reader.onload = e => res({ name: f.name, data: e.target.result, type: f.type });
-    reader.onerror = rej;
-    reader.readAsDataURL(f);
+    // Imágenes: se reducen a 1600 px (legibles para una receta o un examen);
+    // PDF y Word pasan tal cual.
+    shrinkImage(f, 1600, 0.8).then(data => res({ name: f.name, data, type: /^image\//i.test(f.type) && data.startsWith('data:image/jpeg') ? 'image/jpeg' : f.type }), rej);
   }))).then(results => results.filter(Boolean));
 }
 

@@ -635,13 +635,11 @@ export function setEditActivity(level) {
 
 export function previewEditPhoto(e) {
   const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    state.editPetData.photo = ev.target.result;
+  shrinkImage(file).then(dataUrl => {
+    state.editPetData.photo = dataUrl;
     const preview = document.getElementById('ep-photo-preview');
-    if (preview) preview.innerHTML = `<img src="${ev.target.result}" class="w-full h-full object-cover rounded-full" />`;
-  };
-  reader.readAsDataURL(file);
+    if (preview) preview.innerHTML = `<img src="${safeDataUrl(dataUrl)}" class="w-full h-full object-cover rounded-full" />`;
+  });
 }
 
 export function openPet(id) { navigate('petProfile', { currentPetId: id, currentTab: 'general' }); }
@@ -935,13 +933,11 @@ export async function saveEditPet(petId) {
 
 export function previewPhoto(e) {
   const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    state.newPetData.photo = ev.target.result;
+  shrinkImage(file).then(dataUrl => {
+    state.newPetData.photo = dataUrl;
     const preview = document.getElementById('photo-preview');
-    if (preview) preview.innerHTML = `<img src="${ev.target.result}" class="w-full h-full object-cover rounded-full" />`;
-  };
-  reader.readAsDataURL(file);
+    if (preview) preview.innerHTML = `<img src="${safeDataUrl(dataUrl)}" class="w-full h-full object-cover rounded-full" />`;
+  });
 }
 
 export function setActivity(level) {

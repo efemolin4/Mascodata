@@ -183,6 +183,41 @@ export function safeDataUrl(str) {
   return /^data:(image\/(png|jpe?g|gif|webp|bmp)|application\/(pdf|msword|octet-stream|vnd\.[a-z0-9.+-]+));base64,[A-Za-z0-9+/=]+$/i.test(s) ? s : '';
 }
 
+// Reduce una imagen en el navegador antes de guardarla: las fotos de celular
+// pesan 3-6 MB y se guardan como base64 dentro de la base de datos (plan Free
+// de Supabase = 500 MB). Devuelve un data URL JPEG; si el navegador no puede
+// decodificar el archivo (HEIC, corrupto) devuelve el original sin tocar.
+export function shrinkImage(file, maxSide = 512, quality = 0.82) {
+  const readRaw = () => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+  if (!file || !/^image\/(png|jpe?g|webp|bmp)$/i.test(file.type || '')) return readRaw();
+  return readRaw().then(raw => new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; // PNG con transparencia → fondo blanco, no negro
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        const out = canvas.toDataURL('image/jpeg', quality);
+        res(out.length < raw.length ? out : raw);
+      } catch (e) { res(raw); }
+    };
+    img.onerror = () => res(raw);
+    setTimeout(() => res(raw), 8000); // por si el navegador nunca decodifica
+    img.src = raw;
+  }));
+}
+
 export function esc(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -283,7 +318,7 @@ export function activityStreak(activities) {
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
-    getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, slugify, petCompleteness, COMPLETENESS_FIELDS, eventIcon, botiquinStatus,
+    getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, shrinkImage, slugify, petCompleteness, COMPLETENESS_FIELDS, eventIcon, botiquinStatus,
     medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
     foodStockStatus, activityStreak,
   });
