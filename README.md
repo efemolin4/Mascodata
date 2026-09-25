@@ -4,6 +4,8 @@ Aplicación web progresiva (PWA) de página única para tutores de mascotas. Per
 
 🔗 **Demo en vivo:** [mascodata.cl](https://mascodata.cl)
 
+📄 **Especificaciones técnicas y funcionales actualizadas:** [`docs/ESPECIFICACIONES.md`](docs/ESPECIFICACIONES.md)
+
 ---
 
 ## Características principales
@@ -56,7 +58,8 @@ Aplicación web progresiva (PWA) de página única para tutores de mascotas. Per
 - Historial de peso con gráfico de evolución
 - Registro de estado de ánimo y energía
 - Log de síntomas con severidad
-- Registro de comidas y actividad física
+- Nutrición: alimento diario y snacks, duración del paquete o consumo diario (opcional), historial de compras, precio por kg, aviso de reposición y búsqueda de ofertas (ver `docs/ESPECIFICACIONES.md`)
+- Check-in diario de actividad
 
 ### 🏠 Dashboard
 - "Necesita atención": lista única por urgencia (vencidas, por vencer, recomendaciones), con un botón de acción por fila; franja de hoy (medicamentos, eventos, gasto del mes) y estado por mascota
@@ -68,7 +71,8 @@ Aplicación web progresiva (PWA) de página única para tutores de mascotas. Per
 - Acceso exclusivo para usuarios con `is_admin = true`
 - **Dashboard:** métricas de usuarios, mascotas, distribución de planes, gráfico de registros 7 días
 - **Usuarios:** tabla completa con plan, mascotas y fecha de registro
-- **Planes:** gestión de planes Free / Basic / Pro / Clínica con cambio de plan por usuario
+- **Planes:** gestión de planes Free / Premium con cambio de plan por usuario y registro de auditoría
+- **Promociones:** contador de usuarios que aceptan promociones, filtro y exportación CSV
 
 ---
 
@@ -103,10 +107,12 @@ que necesitarían un set de íconos propio para reemplazarse.
 | Gráficos | Chart.js 4.4 |
 | Auth | Supabase Auth (email + password, recuperación) |
 | Base de datos | Supabase (PostgreSQL + RLS) |
-| Email | Supabase Auth (SMTP) |
+| Email | Supabase Auth (SMTP) para cuenta; Resend (API) para los recordatorios |
+| Tareas programadas | Supabase Edge Functions (Deno) + `pg_cron` + `pg_net` |
+| Analítica | PostHog (solo eventos explícitos, sin grabación de sesiones) |
 | Deploy | Vercel |
 
-**Sin backend propio.** Auth y datos gestionados 100% por Supabase con Row Level Security.
+**Sin servidor propio.** Auth y datos gestionados por Supabase con Row Level Security; los correos automáticos corren como Edge Functions programadas.
 
 ---
 
@@ -127,7 +133,10 @@ que necesitarían un set de íconos propio para reemplazarse.
 | `weight_history` | Historial de peso |
 | `mood_logs` | Registro de estado de ánimo |
 | `symptoms_logs` | Log de síntomas |
-| `food_items` | Alimento de cada mascota (producto, tamaño de paquete, consumo diario) — estima cuándo se acaba, reemplaza el antiguo registro de comidas |
+| `food_items` | Alimento de cada mascota (producto, categoría diario/snack, tamaño de paquete, consumo diario opcional) — estima cuándo se acaba, reemplaza el antiguo registro de comidas |
+| `food_purchases` | Historial de compras de cada alimento (fecha, precio, tamaño) — precio por kg y cadencia de reposición. Opcional: ver `supabase/schema/food_purchases.sql` |
+| `pet_reminders` | Recordatorios de completar el perfil ya enviados (uno por mascota y paso) |
+| `food_restock_reminders` | Avisos de alimento por acabarse ya enviados (uno por alimento y ciclo de compra) |
 | `activities` | Check-in diario de actividad (Poco/Normal/Mucho) |
 | `dose_logs` | Log de dosis administradas |
 | `invitations` | Invitaciones pendientes/aceptadas de segundo tutor |
@@ -161,8 +170,10 @@ Mascodata/
 │   └── mockSupabase.js         # Mock del query builder de supabase-js para los tests
 ├── supabase/
 │   ├── README.md               # Query de introspección y cómo mantener la foto al día
-│   └── schema/
-│       └── rls_policies.sql    # Foto versionada de las políticas RLS en producción
+│   ├── functions/              # Edge Functions: delete-account, pet-completion-reminders, food-restock-reminders
+│   └── schema/                 # rls_policies.sql (foto de las políticas) y migraciones/pruebas (*.sql)
+├── docs/
+│   └── ESPECIFICACIONES.md     # Especificaciones técnicas y funcionales (estado actual)
 └── js/
     ├── utils.js                    # Utilidades puras: fechas, formato, cálculo de estado
     ├── utils.test.js               # Tests de Vitest para js/utils.js
@@ -348,9 +359,15 @@ CREATE TABLE public.plan_changes (
 
 ALTER TABLE public.plan_changes ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admins manage plan_changes" ON public.plan_changes
-  FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY "Admins read plan_changes" ON public.plan_changes
+  FOR SELECT USING (is_admin());
+CREATE POLICY "Admins add plan_changes" ON public.plan_changes
+  FOR INSERT WITH CHECK (is_admin());
 ```
+
+(La tabla es solo de lectura y agregar: un registro de auditoría no se
+reescribe. `supabase/schema/harden_limits_and_audit.sql` migra la política
+`FOR ALL` original a estas dos.)
 
 Los cambios de plan hechos con la versión anterior de `applyPlanChange()`
 no quedaron registrados acá (no existía la tabla) — el historial empieza
