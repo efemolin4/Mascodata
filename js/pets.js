@@ -776,7 +776,7 @@ export function openDeletePetWithCode(petId) {
       <div id="delete-step-1">
         <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 text-sm text-amber-700 mb-4">
           ${icon('warning','w-4 h-4 inline align-text-bottom')} Para confirmar, enviaremos un código de verificación a:<br/>
-          <strong>${email}</strong>
+          <strong>${esc(email)}</strong>
         </div>
         <div class="flex gap-3">
           <button onclick="closeModal()" class="btn-secondary flex-1">Cancelar</button>
@@ -786,7 +786,7 @@ export function openDeletePetWithCode(petId) {
         </div>
       </div>
       <div id="delete-step-2" class="hidden">
-        <p class="text-sm text-gray-500 mb-3">Ingresa el código de verificación enviado a <strong>${email}</strong></p>
+        <p class="text-sm text-gray-500 mb-3">Ingresa el código de verificación enviado a <strong>${esc(email)}</strong></p>
         <input id="delete-code-input" type="text" maxlength="12" placeholder="Código"
           class="input-field text-center text-2xl tracking-[0.2em] font-bold mb-1" />
         <p id="delete-code-error" class="text-xs text-red-500 text-center mb-3 hidden">Código incorrecto. Intenta nuevamente.</p>
