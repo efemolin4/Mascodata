@@ -41,10 +41,15 @@ create table if not exists public.expense_settlements (
   amount          numeric not null check (amount > 0),
   date            date not null default current_date,
   note            text,
+  -- Relativo a quien lo registra: 'paid' = yo le pagué al otro tutor; 'received' = el otro me pagó a mí.
+  direction       text not null default 'paid' check (direction in ('paid', 'received')),
   created_by      uuid,
   created_by_name text,
   created_at      timestamptz not null default now()
 );
+alter table public.expense_settlements add column if not exists direction text not null default 'paid';
+alter table public.expense_settlements drop constraint if exists expense_settlements_direction_check;
+alter table public.expense_settlements add constraint expense_settlements_direction_check check (direction in ('paid', 'received'));
 create index if not exists expense_settlements_pet_idx on public.expense_settlements (pet_id, date desc);
 
 drop trigger if exists set_created_by_ins on public.expense_settlements;

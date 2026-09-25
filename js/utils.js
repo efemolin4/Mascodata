@@ -449,6 +449,43 @@ export function petStayOn(pet, events, dateStr) {
     .sort((a, b) => (a.date < b.date ? 1 : -1))[0] || null;
 }
 
+// ---- Gastos compartidos ----
+// Saldo entre los dos tutores de una mascota que reparte los gastos a partes iguales.
+// `items` son los gastos (con quién pagó: payerId, payerName) y `settlements` los pagos entre tutores.
+// net > 0: el otro tutor me debe; net < 0: yo le debo; 0: están al día.
+//  - Un gasto pagado por mí: el otro debe la mitad. Pagado por el otro: yo debo la mitad.
+//  - Un pago se guarda relativo a quien lo registra ('paid' = él le pagó al otro; 'received' = el otro le pagó a él),
+//    así que se invierte cuando lo registró la otra persona.
+//  - Los gastos sin pagador conocido (registros antiguos) no entran al saldo: se cuentan en `unassigned`.
+//  - El botiquín es personal y nunca se reparte.
+export function splitBalance(petId, items, settlements, myId) {
+  let net = 0, paidByMe = 0, paidByOther = 0, unassigned = 0, otherName = null;
+  const rows = [];
+  (items || []).forEach(e => {
+    if (e.petId !== petId || e.source === 'botiquin') return;
+    const amount = Number(e.amount) || 0;
+    if (amount <= 0) return;
+    if (!e.payerId) { unassigned++; return; }
+    const mine = e.payerId === myId;
+    if (mine) { paidByMe += amount; net += amount / 2; }
+    else { paidByOther += amount; net -= amount / 2; if (!otherName) otherName = (e.payerName || '').trim() || null; }
+    rows.push({ kind: 'expense', id: e.id, date: e.date, text: e.description, amount, mine, by: mine ? 'Tú' : ((e.payerName || '').trim() || null) });
+  });
+  (settlements || []).forEach(x => {
+    if (x.petId !== petId) return;
+    const amount = Number(x.amount) || 0;
+    if (amount <= 0) return;
+    const recorderEffect = x.direction === 'received' ? -amount : amount;
+    const mine = x.createdBy === myId;
+    net += mine ? recorderEffect : -recorderEffect;
+    if (!mine && !otherName) otherName = (x.createdByName || '').trim() || null;
+    const iPaid = mine ? x.direction !== 'received' : x.direction === 'received';
+    rows.push({ kind: 'settlement', id: x.id, date: x.date, text: iPaid ? 'Pago tuyo' : 'Pago recibido', amount, mine, iPaid, own: mine, note: x.note || '' });
+  });
+  rows.sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? 1 : -1));
+  return { net: Math.round(net), paidByMe, paidByOther, unassigned, otherName, rows };
+}
+
 // ---- Turnos recurrentes ----
 export const MAX_STAYS_PER_SERIES = 80;
 
@@ -601,6 +638,6 @@ if (typeof window !== 'undefined') {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
     getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, shrinkImage, slugify, petCompleteness, COMPLETENESS_FIELDS, eventIcon, botiquinStatus,
     medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
-    MAX_STAYS_PER_SERIES, stayTurns, rangesOverlap, handoffSummary, actorLabel, timeOf, recentActivity, STAY_TYPE, hasOtherTutor, stayWho, eventCoversDate, petStayOn, lastWeighedDate, foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
+    splitBalance, MAX_STAYS_PER_SERIES, stayTurns, rangesOverlap, handoffSummary, actorLabel, timeOf, recentActivity, STAY_TYPE, hasOtherTutor, stayWho, eventCoversDate, petStayOn, lastWeighedDate, foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
   });
 }

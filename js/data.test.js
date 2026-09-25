@@ -90,3 +90,36 @@ describe('refreshSharedData', () => {
     expect(called()).toBe(false);
   });
 });
+
+describe('getFinanceExpenses — quién pagó', () => {
+  beforeEach(() => {
+    window.state = {
+      user: { id: 'yo', name: 'Ana' },
+      expenses: [{ id: 'm1', petId: 'p1', amount: 5000, date: '2026-10-01', category: 'Otro', description: 'a', userId: 'otro', createdByName: 'Pedro' }],
+      botiquin: [{ id: 'b1', petId: 'p1', cost: 800, name: 'Gasas', purchaseDate: '2026-10-01' }],
+      pets: [{ id: 'p1', name: 'Greta', expenseSplit: 'equal', vaccines: [{ id: 'v1', name: 'X', date: '2026-10-02', cost: 12000, createdBy: 'yo', createdByName: 'Ana' }, { id: 'v2', name: 'Y', date: '2026-10-03', cost: 9000 }], deworming: [], medications: [], clinicalHistory: [], foodItems: [] }],
+    };
+  });
+  const byId = id => getFinanceExpenses().find(e => e.id === id);
+
+  it('cada gasto lleva quién lo pagó: el autor del registro o del gasto', () => {
+    expect(byId('m1')).toMatchObject({ payerId: 'otro', payerName: 'Pedro' });
+    expect(byId('vac-v1')).toMatchObject({ payerId: 'yo', payerName: 'Ana' });
+    expect(byId('vac-v2').payerId).toBeNull(); // registro anterior a que se guardara el autor
+  });
+
+  it('el botiquín siempre es mío', () => {
+    expect(byId('bot-b1')).toMatchObject({ payerId: 'yo' });
+  });
+
+  it('en una mascota que reparte gastos, lo que pagó el otro se marca aparte de mis totales', () => {
+    expect(byId('m1').paidByOther).toBe(true);
+    expect(byId('vac-v1').paidByOther).toBe(false);
+    expect(byId('vac-v2').paidByOther).toBe(false); // sin pagador conocido: no se atribuye al otro
+  });
+
+  it('sin reparto, nada se marca como pagado por el otro', () => {
+    window.state.pets[0].expenseSplit = 'none';
+    expect(byId('m1').paidByOther).toBe(false);
+  });
+});

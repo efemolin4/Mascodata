@@ -5,6 +5,114 @@
    convención export + window.assign). Vista de finanzas y registro
    manual de gastos. */
 
+// Tarjeta de saldo entre tutores, una por mascota que reparte los gastos a partes iguales.
+function sharedExpensesCard(fullExpenses, petFilter) {
+  const pets = state.pets.filter(p => p.expenseSplit === 'equal' && hasOtherTutor(p) && (!petFilter || p.name === petFilter));
+  if (!pets.length) return '';
+  const me = state.user?.id;
+  return pets.map(pet => {
+    const bal = splitBalance(pet.id, fullExpenses, state.settlements, me);
+    const other = bal.otherName || (pet.myRole === 'owner' && pet.tutor2?.name) || 'el otro tutor';
+    const headline = bal.net > 0 ? `${esc(other)} te debe ${fmtCLP(bal.net)}` : bal.net < 0 ? `Le debes ${fmtCLP(-bal.net)} a ${esc(other)}` : 'Están al día';
+    const tone = bal.net > 0 ? 'text-green-700' : bal.net < 0 ? 'text-amber-700' : 'text-gray-700';
+    const canPay = canEditPet(pet);
+    return `
+    <div class="bg-white rounded-2xl shadow-sm p-4 md:p-5 mb-6">
+      <div class="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h3 class="font-semibold text-gray-800 flex items-center gap-1.5">${icon('money','w-4 h-4')} Gastos compartidos · ${esc(pet.name)}</h3>
+          <div class="text-2xl font-bold ${tone} tabular-nums mt-2">${headline}</div>
+          <div class="text-xs text-gray-500 mt-1">A partes iguales · Tú pagaste ${fmtCLP(bal.paidByMe)} · ${esc(other)} pagó ${fmtCLP(bal.paidByOther)}</div>
+        </div>
+        ${canPay ? `<button onclick="openSettlementModal('${safeId(pet.id)}')" class="btn-secondary text-sm">Registrar un pago</button>` : ''}
+      </div>
+      ${bal.unassigned ? `<p class="text-xs text-gray-400 mt-2">${bal.unassigned} gasto${bal.unassigned !== 1 ? 's' : ''} antiguo${bal.unassigned !== 1 ? 's' : ''} sin pagador registrado no entra${bal.unassigned !== 1 ? 'n' : ''} al saldo.</p>` : ''}
+      ${bal.rows.length ? `
+      <details class="mt-3">
+        <summary class="text-xs text-gray-500 cursor-pointer hover:text-gray-700">Ver detalle (${bal.rows.length})</summary>
+        <div class="mt-1 divide-y divide-gray-100">
+          ${bal.rows.slice(0, 15).map(r => `
+            <div class="flex items-center justify-between gap-2 py-1.5 text-xs">
+              <span class="text-gray-500 flex-shrink-0">${formatDate(r.date)}</span>
+              <span class="flex-1 min-w-0 truncate text-gray-700">${r.kind === 'settlement' ? `<span class="badge bg-green-100 text-green-700 mr-1">${r.iPaid ? 'Pagaste' : 'Te pagaron'}</span>${esc(r.note)}` : `${esc(r.text)}${r.by ? ` · <span class="text-gray-400">pagó ${esc(r.by === 'Tú' ? 'tú' : r.by)}</span>` : ''}`}</span>
+              <span class="text-gray-800 tabular-nums flex-shrink-0">${fmtCLP(r.amount)}</span>
+              ${r.kind === 'settlement' && r.own ? `<button onclick="deleteSettlement('${safeId(r.id)}')" class="text-gray-300 hover:text-red-500 flex-shrink-0" title="Eliminar pago">×</button>` : '<span class="w-2"></span>'}
+            </div>`).join('')}
+        </div>
+      </details>` : ''}
+    </div>`;
+  }).join('');
+}
+
+export function openSettlementModal(petId) {
+  const pet = state.pets.find(p => p.id === petId);
+  if (!pet) return;
+  const bal = splitBalance(pet.id, getFinanceExpenses(), state.settlements, state.user?.id);
+  const other = bal.otherName || (pet.myRole === 'owner' && pet.tutor2?.name) || 'el otro tutor';
+  openModal(`
+    <div class="modal-box p-4 sm:p-6">
+      <h3 class="text-lg font-bold text-gray-900 mb-1">Registrar un pago</h3>
+      <p class="text-sm text-gray-500 mb-4">Entre tú y ${esc(other)} · ${esc(pet.name)}</p>
+      <form onsubmit="saveSettlement(event,'${safeId(petId)}')" class="space-y-3">
+        <div><label class="form-label">¿Quién pagó?</label>
+          <select id="st-dir" class="input-field">
+            <option value="paid" ${bal.net <= 0 ? 'selected' : ''}>Yo le pagué a ${esc(other)}</option>
+            <option value="received" ${bal.net > 0 ? 'selected' : ''}>${esc(other)} me pagó</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="form-label">Monto (CLP) *</label><input id="st-amount" type="text" inputmode="numeric" required value="${bal.net !== 0 ? Math.abs(bal.net) : ''}" placeholder="0" class="input-field" /></div>
+          <div><label class="form-label">Fecha *</label><input id="st-date" type="date" required value="${todayStr()}" class="input-field" /></div>
+        </div>
+        <div><label class="form-label">Nota (opcional)</label><input id="st-note" placeholder="Ej: transferencia" class="input-field" /></div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="closeModal()" class="btn-secondary flex-1">Cancelar</button>
+          <button type="submit" class="btn-primary flex-1">Guardar</button>
+        </div>
+      </form>
+    </div>`);
+}
+
+export async function saveSettlement(e, petId) {
+  e.preventDefault();
+  const pet = state.pets.find(p => p.id === petId);
+  if (!pet || blockIfReadOnly(pet)) return;
+  const g = id => document.getElementById(id)?.value;
+  const amount = parseCLP(g('st-amount'));
+  if (!(amount > 0)) { showToast('Ingresa un monto mayor que cero', 'error'); return; }
+  const row = { pet_id: petId, amount, date: g('st-date'), note: g('st-note') || null, direction: g('st-dir') === 'received' ? 'received' : 'paid' };
+  let data;
+  if (isDemoUser()) {
+    data = { id: genId(), ...row, created_by: state.user.id, created_by_name: state.user.name };
+  } else {
+    const res = await sb.from('expense_settlements').insert(row).select().single();
+    if (res.error) {
+      const missing = /expense_settlements|direction/i.test(res.error.message || '');
+      showToast(missing ? 'Falta actualizar la base de datos para registrar pagos' : 'Error al guardar el pago', 'error');
+      if (missing) console.warn('Ejecuta supabase/schema/shared_expenses.sql', res.error);
+      return;
+    }
+    data = res.data;
+  }
+  state.settlements = state.settlements || [];
+  state.settlements.push({ id: data.id, petId: data.pet_id, amount: Number(data.amount), date: data.date, note: data.note || '',
+    direction: data.direction || row.direction, createdBy: data.created_by || state.user.id, createdByName: data.created_by_name || state.user.name || null });
+  track('settlement_saved');
+  closeModal(); render();
+  showToast('Pago registrado', 'success');
+}
+
+export async function deleteSettlement(id) {
+  const x = (state.settlements || []).find(s => s.id === id);
+  if (!x || x.createdBy !== state.user?.id) { showToast('Solo quien registró un pago puede eliminarlo', 'error'); return; }
+  if (!isDemoUser()) {
+    const { error } = await sb.from('expense_settlements').delete().eq('id', id);
+    if (error) { showToast('Error al eliminar el pago', 'error'); console.error(error); return; }
+  }
+  state.settlements = state.settlements.filter(s => s.id !== id);
+  render();
+}
+
 // Bloque de alimentación: lo monetario (cuánto se gasta y qué parte del total es).
 // Lo operativo (cuándo se acaba, precio por kilo, cada cuánto repone) está en la
 // pestaña Nutrición de cada mascota. Se calcula con las compras registradas, que
@@ -44,7 +152,10 @@ export function viewFinance() {
   if (state.pets.length === 0) {
     return noPetsOnboarding('money', 'Aún no hay gastos que mostrar', 'Registra una mascota primero para empezar a llevar el control de sus gastos veterinarios, alimentación y más.');
   }
-  const allExpenses = getFinanceExpenses();
+  // Lo que pagó el otro tutor en una mascota que reparte gastos no entra a mis totales ni a mis gráficos:
+  // aparece en la tarjeta "Gastos compartidos", que lleva el saldo entre los dos.
+  const fullExpenses = getFinanceExpenses();
+  const allExpenses = fullExpenses.filter(e => !e.paidByOther);
   const pets = state.pets;
   const today = new Date();
   const thisMonth = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
@@ -189,6 +300,8 @@ export function viewFinance() {
       ${statCard(icon('receipt','w-5 h-5 md:w-6 md:h-6'),'Registros', expenses.length, 'amber')}
       ${statCard(icon('paw','w-5 h-5 md:w-6 md:h-6'),'Mascotas', pets.length, 'brand')}
     </div>
+
+    ${sharedExpensesCard(fullExpenses, petFilter)}
 
     ${foodFinanceCard(expenses, petFilter, thisMonth, monthTotal)}
 
@@ -387,12 +500,13 @@ export function openExpenseModal() {
             </select>
           </div>
           <div id="ex-pet-wrap"><label class="form-label">Mascota</label>
-            <select id="ex-pet" class="input-field">
+            <select id="ex-pet" class="input-field" onchange="onExpensePetChange()">
               <option value="">General</option>
               ${pets.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}
             </select>
           </div>
         </div>
+        <p id="ex-split-note" class="hidden text-xs text-gray-600 bg-brand-50 rounded-xl p-3 leading-relaxed"></p>
         <!-- Alimentación: las compras se registran en la ficha (un solo lugar para el dato) -->
         <div id="ex-food-panel" class="hidden space-y-3">
           <p class="text-xs text-gray-500 bg-brand-50 rounded-xl p-3 leading-relaxed">Las compras de alimento se registran en la ficha de la mascota: así también calculamos el precio por kilo y cuándo se acaba, y el gasto aparece aquí solo.</p>
@@ -431,6 +545,19 @@ export function onExpenseCategoryChange() {
   document.getElementById('ex-pet-wrap')?.classList.toggle('hidden', showFood);
   document.getElementById('ex-actions')?.classList.toggle('hidden', showFood);
   if (showFood) onExpenseFoodPetChange();
+}
+
+// Si la mascota reparte los gastos a partes iguales, se avisa antes de guardar: el gasto lo verá el otro tutor.
+export function onExpensePetChange() {
+  const note = document.getElementById('ex-split-note');
+  if (!note) return;
+  const pet = state.pets.find(p => p.id === document.getElementById('ex-pet')?.value);
+  const shared = pet && pet.expenseSplit === 'equal' && hasOtherTutor(pet);
+  note.classList.toggle('hidden', !shared);
+  if (shared) {
+    const other = (pet.myRole === 'owner' && pet.tutor2?.name) || 'el otro tutor';
+    note.textContent = `${pet.name} reparte los gastos a partes iguales: este gasto lo verá ${other} y le corresponderá la mitad.`;
+  }
 }
 
 export function onExpenseFoodPetChange() {
@@ -483,5 +610,5 @@ export async function deleteExpense(id) {
 }
 
 if (typeof window !== 'undefined') {
-  Object.assign(window, { viewFinance, openExpenseModal, onExpenseCategoryChange, onExpenseFoodPetChange, showManualExpense, continueFoodExpense, saveExpense, deleteExpense });
+  Object.assign(window, { viewFinance, openExpenseModal, openSettlementModal, saveSettlement, deleteSettlement, onExpensePetChange, onExpenseCategoryChange, onExpenseFoodPetChange, showManualExpense, continueFoodExpense, saveExpense, deleteExpense });
 }

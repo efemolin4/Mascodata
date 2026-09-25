@@ -35,7 +35,7 @@ async function loadDataFromSupabase() {
 
     const petIds = accessRows.map(r => r.pet_id);
 
-    const [vaccRes, dewRes, medRes, histRes, wRes, moodRes, symRes, foodRes, actRes, doseRes, evRes, expRes, botRes, invRes, purRes] = await Promise.all([
+    const [vaccRes, dewRes, medRes, histRes, wRes, moodRes, symRes, foodRes, actRes, doseRes, evRes, expRes, botRes, invRes, purRes, setRes] = await Promise.all([
       sb.from('vaccines').select('*').in('pet_id', petIds),
       sb.from('dewormings').select('*').in('pet_id', petIds),
       sb.from('medications').select('*').in('pet_id', petIds),
@@ -48,12 +48,15 @@ async function loadDataFromSupabase() {
       sb.from('dose_logs').select('*').in('pet_id', petIds),
       // Los eventos con mascota son de todos sus tutores; los que no tienen mascota, solo míos.
       sb.from('events').select('*').or(`user_id.eq.${state.user.id},pet_id.in.(${petIds.join(',')})`),
-      sb.from('expenses').select('*').eq('user_id', state.user.id),
+      // Mis gastos, y los de las mascotas que reparten gastos con otro tutor (la base solo entrega estos últimos si corresponde).
+      sb.from('expenses').select('*').or(`user_id.eq.${state.user.id},pet_id.in.(${petIds.join(',')})`),
       sb.from('botiquin_items').select('*').eq('user_id', state.user.id),
       sb.from('invitations').select('*').in('pet_id', petIds).order('created_at', { ascending: false }),
       // Historial de compras de alimento: tabla opcional (supabase/schema/food_purchases.sql).
       // No entra en allResults: si aún no se creó, la app sigue sin historial y sin avisos de error.
       sb.from('food_purchases').select('*').in('pet_id', petIds),
+      // Pagos entre tutores (supabase/schema/shared_expenses.sql): opcional, igual que las compras de alimento.
+      sb.from('expense_settlements').select('*').in('pet_id', petIds),
     ]);
 
     // Ninguna de estas 14 queries revisaba `.error` — un fallo puntual
@@ -88,6 +91,7 @@ async function loadDataFromSupabase() {
         weightKg: pet.weight_kg ?? '', weightGr: pet.weight_gr ?? '',
         createdAt: pet.created_at || null,
         careMode: pet.care_mode || 'together',
+        expenseSplit: pet.expense_split || 'none',
         sizeRange: pet.size_range || '', activityLevel: pet.activity_level || 2,
         allergies: pet.allergies || [], chronicConditions: pet.chronic_conditions || [],
         bcs: pet.bcs ?? null,
@@ -148,7 +152,11 @@ async function loadDataFromSupabase() {
 
     state.expenses = (expRes.data || []).map(e => ({
       id: e.id, petId: e.pet_id, pet: state.pets.find(p => p.id === e.pet_id)?.name || null,
-      date: e.date, category: e.category, amount: e.amount, description: e.description }));
+      date: e.date, category: e.category, amount: e.amount, description: e.description,
+      userId: e.user_id, createdByName: e.created_by_name || null }));
+    state.settlements = (setRes?.error ? [] : (setRes?.data || [])).map(x => ({
+      id: x.id, petId: x.pet_id, amount: Number(x.amount), date: x.date, note: x.note || '', direction: x.direction || 'paid',
+      createdBy: x.created_by || null, createdByName: x.created_by_name || null }));
 
     state.lastDataLoadAt = Date.now();
 
@@ -221,37 +229,43 @@ function getAgendaEvents() {
 // el botiquín o el alimento también cuente en el total y aparezca en el
 // listado.
 function getFinanceExpenses() {
-  const manual = (state.expenses || []).map(e => ({ ...e, source: 'manual' }));
+  const me = state.user?.id || null;
+  const manual = (state.expenses || []).map(e => ({ ...e, source: 'manual', payerId: e.userId || null, payerName: e.createdByName || null }));
   const synth = [];
+  // Quien registró el gasto es quien lo pagó (payerId); los registros anteriores a que se guardara el autor no lo tienen.
+  const push = (pet, rec, row) => synth.push({ petId: pet.id, pet: pet.name, payerId: rec?.createdBy || null, payerName: rec?.createdByName || null, ...row });
   (state.pets || []).forEach(pet => {
-    (pet.vaccines || []).forEach(v => { if (Number(v.cost) > 0) synth.push({
-      id: 'vac-'+v.id, petId: pet.id, pet: pet.name, date: v.date, category: 'Veterinaria',
+    (pet.vaccines || []).forEach(v => { if (Number(v.cost) > 0) push(pet, v, {
+      id: 'vac-'+v.id, date: v.date, category: 'Veterinaria',
       amount: v.cost, description: `Vacuna: ${v.name}`, source: 'vaccine' }); });
-    (pet.deworming || []).forEach(d => { if (Number(d.cost) > 0) synth.push({
-      id: 'dew-'+d.id, petId: pet.id, pet: pet.name, date: d.date, category: 'Veterinaria',
+    (pet.deworming || []).forEach(d => { if (Number(d.cost) > 0) push(pet, d, {
+      id: 'dew-'+d.id, date: d.date, category: 'Veterinaria',
       amount: d.cost, description: `Desparasitación: ${d.product}`, source: 'deworming' }); });
-    (pet.medications || []).forEach(m => { if (Number(m.cost) > 0) synth.push({
-      id: 'med-'+m.id, petId: pet.id, pet: pet.name, date: m.startDate, category: 'Medicamentos',
+    (pet.medications || []).forEach(m => { if (Number(m.cost) > 0) push(pet, m, {
+      id: 'med-'+m.id, date: m.startDate, category: 'Medicamentos',
       amount: m.cost, description: `Tratamiento: ${m.name}`, source: 'medication' }); });
-    (pet.clinicalHistory || []).forEach(h => { if (Number(h.cost) > 0) synth.push({
-      id: 'his-'+h.id, petId: pet.id, pet: pet.name, date: h.date, category: 'Veterinaria',
+    (pet.clinicalHistory || []).forEach(h => { if (Number(h.cost) > 0) push(pet, h, {
+      id: 'his-'+h.id, date: h.date, category: 'Veterinaria',
       amount: h.cost, description: h.title, source: 'history' }); });
     // Cada compra registrada es un gasto; un alimento sin historial usa su propio precio.
     (pet.foodItems || []).forEach(f => {
       if (f.purchases?.length) {
-        f.purchases.forEach(pu => { if (Number(pu.price) > 0) synth.push({
-          id: 'food-'+pu.id, petId: pet.id, pet: pet.name, date: pu.date || todayStr(), category: 'Alimentación',
+        f.purchases.forEach(pu => { if (Number(pu.price) > 0) push(pet, pu, {
+          id: 'food-'+pu.id, date: pu.date || todayStr(), category: 'Alimentación',
           amount: pu.price, description: `Alimento: ${f.product}`, source: 'food' }); });
-      } else if (Number(f.price) > 0) synth.push({
-        id: 'food-'+f.id, petId: pet.id, pet: pet.name, date: f.purchaseDate || todayStr(), category: 'Alimentación',
+      } else if (Number(f.price) > 0) push(pet, f, {
+        id: 'food-'+f.id, date: f.purchaseDate || todayStr(), category: 'Alimentación',
         amount: f.price, description: `Alimento: ${f.product}`, source: 'food' });
     });
   });
+  // El botiquín es personal (no se reparte): siempre lo pagó quien lo ve.
   (state.botiquin || []).forEach(item => { if (Number(item.cost) > 0) synth.push({
     id: 'bot-'+item.id, petId: item.petId, pet: (state.pets||[]).find(p => p.id === item.petId)?.name || null,
     date: item.purchaseDate || todayStr(), category: 'Medicamentos',
-    amount: item.cost, description: `Botiquín: ${item.name}`, source: 'botiquin' }); });
-  return [...manual, ...synth];
+    amount: item.cost, description: `Botiquín: ${item.name}`, source: 'botiquin', payerId: me, payerName: state.user?.name || null }); });
+  // En las mascotas que reparten gastos, lo que pagó el otro tutor no entra a mis totales: va al saldo.
+  const split = new Set((state.pets || []).filter(p => p.expenseSplit === 'equal').map(p => p.id));
+  return [...manual, ...synth].map(e => ({ ...e, paidByOther: !!(e.petId && split.has(e.petId) && e.payerId && me && e.payerId !== me) }));
 }
 
 // Con dos tutores, lo que uno registra no llega solo a la pantalla del otro. Al volver a la

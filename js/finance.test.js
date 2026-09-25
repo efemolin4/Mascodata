@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js';   // deja parseCLP real en window
 import { state } from '../js/app.js'; // isPremium() (llamada dentro de viewFinance) lee `state` del scope de app.js — hay que mutar el mismo objeto, no reemplazar window.state
-import { saveExpense, deleteExpense, viewFinance, openExpenseModal, onExpenseCategoryChange, onExpenseFoodPetChange, showManualExpense, continueFoodExpense } from './finance.js';
+import { saveExpense, deleteExpense, viewFinance, openExpenseModal, onExpenseCategoryChange, onExpenseFoodPetChange, showManualExpense, continueFoodExpense, openSettlementModal, saveSettlement, deleteSettlement, onExpensePetChange } from './finance.js';
 
 describe('saveExpense', () => {
   beforeEach(() => {
@@ -295,5 +295,124 @@ describe('registrar gasto — categoría Alimentación', () => {
     window.openModal = html => { document.getElementById('modal-root').innerHTML = html; };
     openExpenseModal();
     expect(document.getElementById('ex-food-pet').value).toBe('p2');
+  });
+});
+
+describe('gastos compartidos — saldo entre tutores', () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const pet = (over = {}) => ({ id: 'pet-1', name: 'Greta', species: 'Perro', myRole: 'owner', tutor2: { name: 'Pedro' }, expenseSplit: 'equal', ...over });
+  const gasto = (over = {}) => ({ id: 'g1', petId: 'pet-1', pet: 'Greta', amount: 30000, date: today, category: 'Veterinaria', description: 'Control', source: 'manual', payerId: 'yo', payerName: 'Ana', paidByOther: false, ...over });
+
+  beforeEach(() => {
+    window.state = state;
+    state.user = { id: 'yo', name: 'Ana', plan: 'free' };
+    state.pets = [pet()];
+    state.settlements = [];
+    state.finView = 'listado'; state.finPet = ''; state.finPeriod = 'mensual';
+    window.showToast = vi.fn();
+    window.render = vi.fn();
+    window.closeModal = vi.fn();
+    window.track = vi.fn();
+    window.isDemoUser = vi.fn(() => false);
+    document.body.innerHTML = '<div id="modal-root"></div>';
+    window.openModal = html => { document.getElementById('modal-root').innerHTML = html; };
+  });
+
+  it('muestra quién le debe a quién, con lo que pagó cada uno', () => {
+    window.getFinanceExpenses = () => [gasto(), gasto({ id: 'g2', amount: 10000, payerId: 'otro', payerName: 'Pedro', paidByOther: true })];
+    const html = viewFinance();
+    expect(html).toContain('Gastos compartidos · Greta');
+    expect(html).toContain('Pedro te debe $10.000'); // 15.000 a favor - 5.000 en contra
+    expect(html).toContain('Tú pagaste $30.000');
+    expect(html).toContain('Registrar un pago');
+  });
+
+  it('lo que pagó el otro tutor no entra a mis totales', () => {
+    window.getFinanceExpenses = () => [gasto(), gasto({ id: 'g2', amount: 10000, payerId: 'otro', payerName: 'Pedro', paidByOther: true })];
+    const html = viewFinance();
+    expect(html).toContain('$30.000'); // Total: solo lo que pagué yo
+    expect(html).not.toMatch(/Total todas<[^]*?\$40\.000/);
+  });
+
+  it('dice "Están al día" cuando los pagos cubren la deuda y "Le debes" cuando debo yo', () => {
+    window.getFinanceExpenses = () => [gasto({ payerId: 'otro', payerName: 'Pedro', paidByOther: true })];
+    expect(viewFinance()).toContain('Le debes $15.000 a Pedro');
+    state.settlements = [{ id: 's1', petId: 'pet-1', amount: 15000, direction: 'paid', createdBy: 'yo', createdByName: 'Ana', date: today, note: '' }];
+    expect(viewFinance()).toContain('Están al día');
+  });
+
+  it('no aparece si la mascota no reparte gastos, no tiene otro tutor o el filtro es otra mascota', () => {
+    window.getFinanceExpenses = () => [gasto()];
+    state.pets = [pet({ expenseSplit: 'none' })];
+    expect(viewFinance()).not.toContain('Gastos compartidos');
+    state.pets = [pet({ tutor2: null })];
+    expect(viewFinance()).not.toContain('Gastos compartidos');
+    state.pets = [pet(), { id: 'pet-2', name: 'Luna' }];
+    state.finPet = 'Luna';
+    expect(viewFinance()).not.toContain('Gastos compartidos');
+  });
+
+  it('el tutor de solo lectura ve el saldo pero no puede registrar pagos', () => {
+    window.getFinanceExpenses = () => [gasto()];
+    state.pets = [pet({ myRole: 'viewer' })];
+    expect(viewFinance()).not.toContain('Registrar un pago');
+  });
+
+  it('el modal de pago propone la dirección y el monto según el saldo', () => {
+    window.getFinanceExpenses = () => [gasto()]; // me deben 15.000
+    openSettlementModal('pet-1');
+    expect(document.getElementById('st-dir').value).toBe('received');
+    expect(document.getElementById('st-amount').value).toBe('15000');
+    window.getFinanceExpenses = () => [gasto({ payerId: 'otro', payerName: 'Pedro', paidByOther: true })]; // debo 15.000
+    openSettlementModal('pet-1');
+    expect(document.getElementById('st-dir').value).toBe('paid');
+  });
+
+  it('guardar un pago lo registra con su dirección y lo suma al estado', async () => {
+    window.getFinanceExpenses = () => [gasto()];
+    openSettlementModal('pet-1');
+    document.getElementById('st-amount').value = '15.000';
+    let payload;
+    window.sb = { from: vi.fn(() => ({ insert: vi.fn(row => { payload = row; return { select: () => ({ single: () => Promise.resolve({ data: { id: 's9', ...row, created_by: 'yo', created_by_name: 'Ana' }, error: null }) }) }; }) })) };
+    await saveSettlement({ preventDefault() {} }, 'pet-1');
+    expect(payload).toMatchObject({ pet_id: 'pet-1', amount: 15000, direction: 'received' });
+    expect(state.settlements).toHaveLength(1);
+    expect(state.settlements[0]).toMatchObject({ amount: 15000, createdBy: 'yo' });
+  });
+
+  it('rechaza un monto vacío o cero y avisa si la base aún no tiene la tabla', async () => {
+    window.getFinanceExpenses = () => [];
+    openSettlementModal('pet-1');
+    document.getElementById('st-amount').value = '0';
+    window.sb = { from: vi.fn() };
+    await saveSettlement({ preventDefault() {} }, 'pet-1');
+    expect(window.showToast).toHaveBeenCalledWith('Ingresa un monto mayor que cero', 'error');
+    document.getElementById('st-amount').value = '5000';
+    window.sb = { from: () => ({ insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: { message: 'relation "expense_settlements" does not exist' } }) }) }) }) };
+    await saveSettlement({ preventDefault() {} }, 'pet-1');
+    expect(window.showToast).toHaveBeenCalledWith('Falta actualizar la base de datos para registrar pagos', 'error');
+    expect(state.settlements).toHaveLength(0);
+  });
+
+  it('solo quien registró un pago puede eliminarlo', async () => {
+    state.settlements = [{ id: 's1', petId: 'pet-1', amount: 1000, createdBy: 'otro' }, { id: 's2', petId: 'pet-1', amount: 1000, createdBy: 'yo' }];
+    window.sb = { from: () => ({ delete: () => ({ eq: () => Promise.resolve({ error: null }) }) }) };
+    await deleteSettlement('s1');
+    expect(state.settlements).toHaveLength(2);
+    expect(window.showToast).toHaveBeenCalledWith('Solo quien registró un pago puede eliminarlo', 'error');
+    await deleteSettlement('s2');
+    expect(state.settlements.map(s => s.id)).toEqual(['s1']);
+  });
+
+  it('al elegir una mascota que reparte gastos, el modal avisa que el otro tutor lo verá', () => {
+    openExpenseModal();
+    document.getElementById('ex-pet').value = 'pet-1';
+    onExpensePetChange();
+    const note = document.getElementById('ex-split-note');
+    expect(note.classList.contains('hidden')).toBe(false);
+    expect(note.textContent).toContain('Pedro');
+    document.getElementById('ex-pet').value = '';
+    onExpensePetChange();
+    expect(note.classList.contains('hidden')).toBe(true);
   });
 });

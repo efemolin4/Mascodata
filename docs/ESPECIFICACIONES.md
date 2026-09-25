@@ -70,6 +70,7 @@ Mascodata es una aplicación web de página única (SPA) para tutores de mascota
 ### 2.6 Finanzas
 - Registro de gastos por categoría, mascota y fecha; filtros por mascota y período; exportación a CSV.
 - Gráficos por período, variación y predicción del próximo mes (**Premium**); desglose por categoría y por mascota (libre).
+- **Gastos compartidos con saldo** (Editar mascota → *¿Cómo se reparten los gastos?*, solo si tiene otro tutor): **Cada uno lleva los suyos** (por defecto) o **A partes iguales**. Con reparto, quien registró un gasto es quien lo pagó, y el otro tutor lo ve y debe la mitad. La tarjeta *Gastos compartidos* muestra "Pedro te debe $114.000" / "Le debes $X a Pedro" / "Están al día", lo que pagó cada uno y el detalle. **Registrar un pago** (yo le pagué / me pagó) reduce el saldo; solo quien lo registró puede borrarlo. Los totales y gráficos de cada tutor muestran **lo que pagó él**; lo que pagó el otro va al saldo. Los gastos anteriores a que se guardara el autor no entran al saldo (se avisa cuántos), y el botiquín nunca se reparte. Al crear un gasto de una mascota que reparte, el modal avisa que el otro tutor lo verá.
 - **Tarjeta *Alimentación***: gasto del mes frente al anterior, porcentaje del gasto total y costo por día.
 - Al elegir la categoría *Alimentación* en **Registrar gasto**, el modal lleva al formulario de compra de la ficha (un solo lugar para el dato); *Registrar solo como gasto* mantiene el formulario manual.
 
@@ -144,14 +145,14 @@ Convenciones de seguridad en el cliente: `esc()` para texto en HTML; `safeId()` 
 | Grupo | Tablas |
 |---|---|
 | Cuentas | `profiles` (plan, `is_admin`, opt-ins, `reminders_opt_out`), `plan_changes`, `invitations` |
-| Mascotas y acceso | `pets` (con `care_mode`), `pet_access` (`owner` / `editor` / `viewer`) |
+| Mascotas y acceso | `pets` (con `care_mode` y `expense_split`), `pet_access` (`owner` / `editor` / `viewer`) |
 | Salud | `vaccines`, `dewormings`, `medications`, `dose_logs`, `history_records`, `weight_history`, `mood_logs`, `symptoms_logs`, `activities` |
 | Nutrición | `food_items` (con `category`), `food_purchases` |
-| Agenda y dinero | `events` (compartidos por mascota; con `end_date` y `holder`), `expenses`, `botiquin_items` |
+| Agenda y dinero | `events` (compartidos por mascota; con `end_date` y `holder`), `expenses` (con autor; visibles al otro tutor si la mascota reparte), `expense_settlements` (pagos entre tutores), `botiquin_items` |
 | Correos | `pet_reminders`, `food_restock_reminders` |
 | Heredada | `meals` (sin uso; candidata a eliminar) |
 
-Migraciones nuevas, todas idempotentes y en `supabase/schema/`: `pet_reminders.sql`, `food_purchases.sql`, `food_category.sql`, `food_restock_reminders.sql`, `harden_invitations_pets.sql`, `harden_limits_and_audit.sql`, `shared_events_care_mode.sql`, `activity_attribution.sql`. Las tablas nuevas son opcionales para la app: si faltan, la funcionalidad correspondiente se desactiva sin errores.
+Migraciones nuevas, todas idempotentes y en `supabase/schema/`: `pet_reminders.sql`, `food_purchases.sql`, `food_category.sql`, `food_restock_reminders.sql`, `harden_invitations_pets.sql`, `harden_limits_and_audit.sql`, `shared_events_care_mode.sql`, `activity_attribution.sql`, `shared_expenses.sql`. Las tablas nuevas son opcionales para la app: si faltan, la funcionalidad correspondiente se desactiva sin errores.
 
 ### 4.4 Seguridad
 - **RLS en todas las tablas.** Acceso a las mascotas mediante `pet_accessible()` y `pet_editor()`; los datos personales (`events`, `expenses`, `botiquin_items`) por `user_id`, y su `pet_id` debe ser una mascota accesible.
@@ -159,6 +160,7 @@ Migraciones nuevas, todas idempotentes y en `supabase/schema/`: `pet_reminders.s
 - **Invitaciones:** solo el dueño de la mascota puede crearlas; quien las recibe solo puede marcarlas como usadas (trigger); aceptar exige que la haya creado el dueño real.
 - **Dueño de la mascota:** un trigger impide cambiar `pets.owner_id` desde el navegador; solo el servidor (`delete-account`, clave de servicio) puede.
 - **Autoría:** `created_by` y `created_by_name` los fija un trigger en cada tabla de registros (no el navegador) y no se pueden modificar después. Probado con `test_activity_attribution.sql`.
+- **Gastos compartidos:** los gastos de una mascota solo los ve el otro tutor si la mascota reparte a partes iguales (`expense_split = 'equal'`); nadie puede modificar ni borrar gastos ajenos, y los pagos entre tutores llevan la firma de quien los registró (no falsificable) y solo él puede borrarlos. Probado con `test_shared_expenses.sql`.
 - **Agenda compartida:** `events` se comparte por mascota mediante `pet_accessible()` (ver) y `pet_editor()` (crear, modificar, borrar); un trigger impide cambiar el autor de un evento. Probado con simulación de sesiones (`test_shared_events.sql`).
 - **Auditoría de planes:** `plan_changes` es de solo lectura y agregar, también para administradores.
 - **Topes de tamaño:** `pets.photo` ≤ 1 MB y `history_records.files` ≤ 20 MB (restricciones `NOT VALID`: no rechazan filas antiguas, sí escrituras nuevas).

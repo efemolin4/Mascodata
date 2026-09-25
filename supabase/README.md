@@ -148,3 +148,10 @@ Ejecutar `schema/activity_attribution.sql` (idempotente): agrega `created_by`, `
 a las tablas de registros y un trigger que los completa con la sesión y el nombre del perfil. Luego
 `schema/test_activity_attribution.sql` lo comprueba con sesiones simuladas (no guarda nada). Sin el SQL la app
 funciona, pero no muestra autores.
+
+## Gastos compartidos con saldo
+
+Ejecutar `schema/shared_expenses.sql` (idempotente; requiere haber ejecutado antes `activity_attribution.sql`): agrega
+`pets.expense_split`, el autor de cada gasto, una regla para que el otro tutor vea los gastos de una mascota que reparte
+a partes iguales, y la tabla `expense_settlements` (pagos entre tutores). Luego `schema/test_shared_expenses.sql` lo
+comprueba con sesiones simuladas (no guarda nada). Sin el SQL la app funciona, pero no permite repartir gastos.

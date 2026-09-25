@@ -626,6 +626,13 @@ export function openEditPetModal(petId) {
               <option value="separated" ${p.careMode === 'separated' ? 'selected' : ''}>Tutores separados (se turnan)</option>
             </select>
             <p class="text-xs text-gray-400 mt-1">Con tutores separados aparecen las estadías en la agenda y "dónde está hoy".</p>
+          </div>
+          <div class="col-span-2"><label class="form-label">¿Cómo se reparten los gastos?</label>
+            <select id="ep-split" class="input-field">
+              <option value="none" ${p.expenseSplit !== 'equal' ? 'selected' : ''}>Cada uno lleva los suyos</option>
+              <option value="equal" ${p.expenseSplit === 'equal' ? 'selected' : ''}>A partes iguales (con saldo)</option>
+            </select>
+            <p class="text-xs text-gray-400 mt-1">A partes iguales: los gastos de esta mascota los ven ambos tutores y se calcula quién le debe a quién.</p>
           </div>` : ''}
         </div>
         <div>
@@ -984,6 +991,8 @@ export async function saveEditPet(petId) {
   const reproductiveStatus = g('ep-repro');
   const chipNumber = g('ep-chip');
   const careMode = g('ep-care') === 'separated' ? 'separated' : g('ep-care') === 'together' ? 'together' : (p.careMode || 'together');
+  const expenseSplit = g('ep-split') === 'equal' ? 'equal' : g('ep-split') === 'none' ? 'none' : (p.expenseSplit || 'none');
+  if (expenseSplit === 'equal' && (p.expenseSplit || 'none') !== 'equal' && typeof confirm === 'function' && !confirm(`Con "A partes iguales", los gastos de ${p.name} que registre cada tutor serán visibles para ambos y se calculará un saldo entre ustedes. ¿Continuar?`)) return;
   const vet = { name: g('ep-vet-name')||'', clinic: g('ep-vet-clinic')||'', phone: g('ep-vet-phone')||'', email: g('ep-vet-email')||'' };
   const sizeRange = g('ep-size');
   const allergies = state.editPetData?.allergies || p.allergies || [];
@@ -1001,14 +1010,17 @@ export async function saveEditPet(petId) {
       allergies, chronic_conditions: chronicConditions, photo,
       vet_name: vet.name, vet_clinic: vet.clinic, vet_phone: vet.phone, vet_email: vet.email,
     };
-    // care_mode solo se envía si cambió: así guardar la mascota no falla si la columna aún no existe.
-    if (careMode !== (p.careMode || 'together')) payload.care_mode = careMode;
+    // care_mode y expense_split solo se envían si cambiaron: así guardar la mascota no falla si la columna aún no existe.
+    const optional = {};
+    if (careMode !== (p.careMode || 'together')) optional.care_mode = careMode;
+    if (expenseSplit !== (p.expenseSplit || 'none')) optional.expense_split = expenseSplit;
+    Object.assign(payload, optional);
     let { error } = await sb.from('pets').update(payload).eq('id', petId);
-    if (error && payload.care_mode && /care_mode/i.test(error.message || '')) {
-      console.warn('Ejecuta supabase/schema/shared_events_care_mode.sql', error);
-      const { care_mode, ...rest } = payload;
+    if (error && Object.keys(optional).some(k => (error.message || '').includes(k))) {
+      console.warn('Ejecuta supabase/schema/shared_events_care_mode.sql y shared_expenses.sql', error);
+      Object.keys(optional).forEach(k => delete payload[k]);
       careModeSaved = false;
-      ({ error } = await sb.from('pets').update(rest).eq('id', petId));
+      ({ error } = await sb.from('pets').update(payload).eq('id', petId));
     }
     if (error) { showToast('Error al guardar', 'error'); console.error(error); return; }
   }
@@ -1022,11 +1034,11 @@ export async function saveEditPet(petId) {
   }
   Object.assign(p, { name, species, breed, dateOfBirth, sex, color, weightKg, weightGr,
     reproductiveStatus, chipNumber, sizeRange, activityLevel, personalityTags, photo,
-    allergies, chronicConditions, vet, ...(careModeSaved ? { careMode } : {}) });
+    allergies, chronicConditions, vet, ...(careModeSaved ? { careMode, expenseSplit } : {}) });
   state.editPetData = null;
   closeModal(); render();
   showToast(weightNotSaved ? 'Cambios guardados, pero no se pudo registrar la medición de peso'
-    : !careModeSaved ? 'Cambios guardados, pero falta actualizar la base de datos para la modalidad de cuidado'
+    : !careModeSaved ? 'Cambios guardados, pero falta actualizar la base de datos para la modalidad de cuidado o el reparto de gastos'
     : 'Cambios guardados', weightNotSaved || !careModeSaved ? 'error' : 'success');
 }
 

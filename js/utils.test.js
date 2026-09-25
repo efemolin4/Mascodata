@@ -5,7 +5,7 @@ import {
   foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl,
   foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, lastWeighedDate,
   STAY_TYPE, hasOtherTutor, stayWho, eventCoversDate, petStayOn, actorLabel, timeOf, recentActivity,
-  MAX_STAYS_PER_SERIES, stayTurns, rangesOverlap, handoffSummary,
+  MAX_STAYS_PER_SERIES, stayTurns, rangesOverlap, handoffSummary, splitBalance,
 } from './utils.js';
 
 // Fija "hoy" a una fecha conocida para que las pruebas de fecha sean
@@ -632,5 +632,75 @@ describe('handoffSummary — resumen de traspaso', () => {
     expect(r.text).toContain('Traspaso de Luna');
     const full = handoffSummary(pet(), [], 'yo', today).text;
     expect(full).toContain('\nTratamientos\n- Gabapentina');
+  });
+});
+
+describe('splitBalance — saldo de gastos compartidos', () => {
+  const ex = (over = {}) => ({ id: 'e', petId: 'p1', amount: 10000, payerId: 'yo', payerName: 'Ana', date: '2026-10-01', description: 'x', source: 'manual', ...over });
+  const st = (over = {}) => ({ id: 's', petId: 'p1', amount: 1000, direction: 'paid', createdBy: 'yo', createdByName: 'Ana', date: '2026-10-05', ...over });
+
+  it('lo que pagué yo: el otro me debe la mitad', () => {
+    expect(splitBalance('p1', [ex({ amount: 30000 })], [], 'yo').net).toBe(15000);
+  });
+
+  it('lo que pagó el otro: yo le debo la mitad, y se toma su nombre', () => {
+    const r = splitBalance('p1', [ex({ amount: 30000, payerId: 'otro', payerName: ' Pedro ' })], [], 'yo');
+    expect(r.net).toBe(-15000);
+    expect(r.otherName).toBe('Pedro');
+  });
+
+  it('gastos de los dos se compensan', () => {
+    const r = splitBalance('p1', [ex({ amount: 40000 }), ex({ id: 'f', amount: 10000, payerId: 'otro', payerName: 'Pedro' })], [], 'yo');
+    expect(r.net).toBe(15000); // 20.000 a mi favor - 5.000 en contra
+    expect(r.paidByMe).toBe(40000);
+    expect(r.paidByOther).toBe(10000);
+  });
+
+  it('un pago mío al otro reduce lo que le debo', () => {
+    const r = splitBalance('p1', [ex({ amount: 30000, payerId: 'otro', payerName: 'Pedro' })], [st({ amount: 10000 })], 'yo');
+    expect(r.net).toBe(-5000);
+  });
+
+  it('un pago que me hizo el otro reduce lo que me debe, visto desde ambas cuentas', () => {
+    const gasto = ex({ amount: 30000 }); // pagué yo: me deben 15.000
+    // Yo registré "me pagaron 6.000"
+    expect(splitBalance('p1', [gasto], [st({ direction: 'received', amount: 6000 })], 'yo').net).toBe(9000);
+    // Pedro registró "yo le pagué 6.000" al otro: desde mi cuenta es lo mismo
+    expect(splitBalance('p1', [gasto], [st({ direction: 'paid', amount: 6000, createdBy: 'otro', createdByName: 'Pedro' })], 'yo').net).toBe(9000);
+  });
+
+  it('desde la cuenta del otro el saldo es el opuesto', () => {
+    const items = [ex({ amount: 30000 })];
+    const sets = [st({ direction: 'received', amount: 6000 })];
+    expect(splitBalance('p1', items, sets, 'yo').net).toBe(9000);
+    expect(splitBalance('p1', items, sets, 'otro').net).toBe(-9000);
+  });
+
+  it('están al día cuando los pagos cubren la deuda', () => {
+    expect(splitBalance('p1', [ex({ amount: 30000 })], [st({ direction: 'received', amount: 15000 })], 'yo').net).toBe(0);
+  });
+
+  it('los gastos sin pagador conocido no entran al saldo y se cuentan aparte', () => {
+    const r = splitBalance('p1', [ex({ payerId: null }), ex({ id: 'g', amount: 2000 })], [], 'yo');
+    expect(r.unassigned).toBe(1);
+    expect(r.net).toBe(1000);
+  });
+
+  it('ignora el botiquín, otras mascotas y montos no válidos', () => {
+    const r = splitBalance('p1', [ex({ source: 'botiquin' }), ex({ petId: 'p2' }), ex({ amount: 0 }), ex({ amount: 'abc' })], [st({ petId: 'p2' })], 'yo');
+    expect(r.net).toBe(0);
+    expect(r.rows).toEqual([]);
+  });
+
+  it('redondea el saldo a pesos enteros', () => {
+    expect(splitBalance('p1', [ex({ amount: 10001 })], [], 'yo').net).toBe(5001);
+  });
+
+  it('el detalle ordena gastos y pagos del más reciente al más antiguo e indica quién pagó', () => {
+    const r = splitBalance('p1', [ex({ date: '2026-10-01' }), ex({ id: 'f', date: '2026-10-09', payerId: 'otro', payerName: 'Pedro' })], [st({ date: '2026-10-05' })], 'yo');
+    expect(r.rows.map(x => `${x.kind}:${x.date}`)).toEqual(['expense:2026-10-09', 'settlement:2026-10-05', 'expense:2026-10-01']);
+    expect(r.rows[0].by).toBe('Pedro');
+    expect(r.rows[2].by).toBe('Tú');
+    expect(r.rows[1]).toMatchObject({ iPaid: true, own: true });
   });
 });
