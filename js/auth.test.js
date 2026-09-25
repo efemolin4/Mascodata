@@ -6,7 +6,7 @@ import '../js/utils.js';
 // que mutar ese mismo objeto, no reemplazar window.state (ver el mismo
 // patrón ya documentado en finance.test.js/app.test.js).
 import { state } from '../js/app.js';
-import { openDeleteAccountModal, sendAccountDeleteCode, verifyAccountDeleteCode, signInWithGoogle } from './auth.js';
+import { openDeleteAccountModal, sendAccountDeleteCode, verifyAccountDeleteCode, signInWithGoogle, sendForgotEmail, viewForgot, viewRegister, openForgot, goRegisterWithEmail, retryForgot } from './auth.js';
 
 describe('openDeleteAccountModal', () => {
   beforeEach(() => {
@@ -206,5 +206,99 @@ describe('signInWithGoogle', () => {
     window.sb.auth.signInWithOAuth = vi.fn(async () => ({ error: { message: 'boom' } }));
     await signInWithGoogle();
     expect(window.showToast).toHaveBeenCalledWith('No se pudo iniciar sesión con Google', 'error');
+  });
+});
+
+// Recuperar contraseña: Supabase responde "enviado" aunque el correo no tenga cuenta (para no revelar quién es
+// usuario), así que la pantalla no afirma nada: explica y ofrece salidas.
+describe('recuperar contraseña', () => {
+  beforeEach(() => {
+    window.showToast = vi.fn();
+    window.render = vi.fn();
+    window.track = vi.fn();
+    window.navigate = vi.fn();
+    document.body.innerHTML = '<input id="f-email" value="  Ana@Correo.CL " /><input id="l-email" value="ana@login.cl" />';
+    delete state.forgotSent; delete state.forgotEmail; delete state.registerPrefill;
+  });
+
+  it('pide el enlace con el correo normalizado y muestra "Revisa tu correo" sin afirmar que exista la cuenta', async () => {
+    window.sb = makeMockSb();
+    await sendForgotEmail();
+    expect(window.sb.auth.resetPasswordForEmail).toHaveBeenCalledWith('ana@correo.cl', { redirectTo: `${window.location.origin}?reset=true` });
+    expect(state.forgotSent).toBe(true);
+    expect(state.forgotEmail).toBe('ana@correo.cl');
+    const html = viewForgot();
+    expect(html).toContain('Revisa tu correo');
+    expect(html).toContain('Si <strong class="text-gray-700">ana@correo.cl</strong> tiene una cuenta');
+    expect(html).not.toMatch(/no está registrado|no existe/i);
+  });
+
+  it('ofrece las salidas: crear cuenta con ese correo, entrar con Google y reenviar', async () => {
+    window.sb = makeMockSb();
+    await sendForgotEmail();
+    const html = viewForgot();
+    expect(html).toContain('Crear una cuenta con este correo');
+    expect(html).toContain('signInWithGoogle()');
+    expect(html).toContain('retryForgot()');
+    expect(html).toContain('Si te registraste con Google');
+  });
+
+  it('"Crear una cuenta con este correo" abre el registro con el correo ya escrito', async () => {
+    window.sb = makeMockSb();
+    await sendForgotEmail();
+    goRegisterWithEmail();
+    expect(window.navigate).toHaveBeenCalledWith('register');
+    expect(state.forgotSent).toBe(false);
+    expect(viewRegister()).toContain('value="ana@correo.cl"');
+  });
+
+  it('no se queda con la pantalla de "Revisa tu correo" al volver a abrir el formulario desde el login', async () => {
+    window.sb = makeMockSb();
+    await sendForgotEmail();
+    document.getElementById('l-email').remove(); // ya no estamos en la pantalla de login
+    openForgot();
+    expect(state.forgotSent).toBe(false);
+    expect(window.navigate).toHaveBeenCalledWith('forgot');
+    expect(viewForgot()).toContain('Enviar enlace');
+    expect(viewForgot()).toContain('value="ana@correo.cl"');
+  });
+
+  it('desde el login se lleva el correo que ya estaba escrito', () => {
+    openForgot();
+    expect(state.forgotEmail).toBe('ana@login.cl');
+  });
+
+  it('"Usar otro correo o enviar de nuevo" vuelve al formulario', async () => {
+    window.sb = makeMockSb();
+    await sendForgotEmail();
+    retryForgot();
+    expect(state.forgotSent).toBe(false);
+    expect(window.render).toHaveBeenCalled();
+  });
+
+  it('sin correo escrito no llama a Supabase', async () => {
+    document.getElementById('f-email').value = '';
+    window.sb = makeMockSb();
+    await sendForgotEmail();
+    expect(window.sb.auth.resetPasswordForEmail).not.toHaveBeenCalled();
+    expect(window.showToast).toHaveBeenCalledWith('Ingresa tu email', 'error');
+  });
+
+  it('un error de Supabase se avisa y no cambia de pantalla; el límite de envíos se explica en español', async () => {
+    window.sb = makeMockSb();
+    window.sb.auth.resetPasswordForEmail = vi.fn(async () => ({ error: { status: 429, message: 'For security purposes, you can only request this once every 60 seconds' } }));
+    await sendForgotEmail();
+    expect(window.showToast).toHaveBeenCalledWith('Espera un minuto antes de pedir otro enlace', 'error');
+    expect(state.forgotSent).toBeFalsy();
+    window.sb.auth.resetPasswordForEmail = vi.fn(async () => ({ error: { message: 'boom' } }));
+    await sendForgotEmail();
+    expect(window.showToast).toHaveBeenCalledWith('boom', 'error');
+  });
+
+  it('escapa el correo mostrado', async () => {
+    document.getElementById('f-email').value = '"><img src=x onerror=1>@a.cl';
+    window.sb = makeMockSb();
+    await sendForgotEmail();
+    expect(viewForgot()).not.toContain('<img src=x');
   });
 });

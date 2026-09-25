@@ -72,7 +72,7 @@ export function viewLogin() {
               <label class="flex items-center gap-2 text-gray-600 cursor-pointer">
                 <input type="checkbox" class="rounded text-brand-500" /> Recordarme
               </label>
-              <button type="button" onclick="navigate('forgot')" class="text-brand-600 hover:underline text-xs font-medium">¿Olvidaste tu contraseña?</button>
+              <button type="button" onclick="openForgot()" class="text-brand-600 hover:underline text-xs font-medium">¿Olvidaste tu contraseña?</button>
             </div>
             <button type="submit" class="btn-primary w-full !py-3 text-base">Iniciar Sesión</button>
           </form>
@@ -112,7 +112,7 @@ export function viewRegister() {
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input id="r-email" type="email" required placeholder="tu@email.com" class="input-field" />
+            <input id="r-email" type="email" required placeholder="tu@email.com" value="${esc(state.registerPrefill || '')}" class="input-field" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
@@ -183,6 +183,7 @@ export async function handleResetPassword() {
 
 // ---- VISTA: FORGOT ----
 export function viewForgot() {
+  if (state.forgotSent) return viewForgotSent();
   return `
   <div class="min-h-screen flex items-center justify-center bg-gray-50 p-6">
     <div class="w-full max-w-sm animate-scale-in">
@@ -194,9 +195,35 @@ export function viewForgot() {
       <div class="bg-white rounded-2xl shadow-sm p-6 space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-          <input id="f-email" type="email" required placeholder="tu@email.com" class="input-field" />
+          <input id="f-email" type="email" required placeholder="tu@email.com" value="${esc(state.forgotEmail || '')}" class="input-field" />
         </div>
         <button onclick="handleForgot()" class="btn-primary w-full">Enviar enlace</button>
+        <button onclick="navigate('login')" class="w-full text-sm text-gray-500 hover:text-gray-700">← Volver al inicio de sesión</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Después de pedir el enlace. No dice si el correo tiene cuenta (no se puede saber sin revelarlo):
+// explica qué esperar y qué hacer si no llega.
+function viewForgotSent() {
+  return `
+  <div class="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+    <div class="w-full max-w-sm animate-scale-in">
+      <div class="text-center mb-6">
+        <div class="mb-2 flex justify-center text-brand-400">${icon('key','w-10 h-10')}</div>
+        <h2 class="text-2xl font-bold text-gray-900">Revisa tu correo</h2>
+        <p class="text-sm text-gray-500 mt-2">Si <strong class="text-gray-700">${esc(state.forgotEmail || '')}</strong> tiene una cuenta con contraseña, en unos minutos te llegará un enlace para crear una nueva. Revisa también la carpeta de spam.</p>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm p-6 space-y-3">
+        <p class="text-sm font-semibold text-gray-800">¿No te llega?</p>
+        <ul class="text-sm text-gray-600 space-y-2">
+          <li><span class="font-medium text-gray-800">Puede que no tengas cuenta con ese correo.</span> Créala en un minuto.</li>
+          <li><span class="font-medium text-gray-800">Si te registraste con Google,</span> no tienes contraseña: entra con tu cuenta de Google.</li>
+        </ul>
+        <button onclick="goRegisterWithEmail()" class="btn-primary w-full">Crear una cuenta con este correo</button>
+        <button onclick="signInWithGoogle()" class="btn-secondary w-full">Continuar con Google</button>
+        <button onclick="retryForgot()" class="w-full text-sm text-gray-500 hover:text-gray-700">Usar otro correo o enviar de nuevo</button>
         <button onclick="navigate('login')" class="w-full text-sm text-gray-500 hover:text-gray-700">← Volver al inicio de sesión</button>
       </div>
     </div>
@@ -289,9 +316,38 @@ export async function sendForgotEmail() {
   const { error } = await sb.auth.resetPasswordForEmail(email, {
     redirectTo: window.location.origin + '?reset=true'
   });
-  if (error) { showToast(error.message, 'error'); return; }
-  showToast(`Enlace enviado a ${email}`, 'success');
-  setTimeout(() => navigate('login'), 2000);
+  if (error) {
+    showToast(error.status === 429 || /rate limit|security purposes/i.test(error.message || '')
+      ? 'Espera un minuto antes de pedir otro enlace' : error.message, 'error');
+    return;
+  }
+  // Supabase responde "enviado" aunque ese correo no tenga cuenta (para no revelar quién es usuario), así que la
+  // pantalla no afirma nada: explica qué pasa y ofrece las salidas (crear cuenta, entrar con Google, reenviar).
+  track('forgot_password_sent');
+  state.forgotEmail = email;
+  state.forgotSent = true;
+  render();
+}
+
+// Desde el login: abre el formulario limpio (nunca la pantalla de "Revisa tu correo" de una vez anterior),
+// con el correo que ya había escrito en el login.
+export function openForgot() {
+  state.forgotSent = false;
+  state.forgotEmail = document.getElementById('l-email')?.value?.trim() || state.forgotEmail || '';
+  navigate('forgot');
+}
+
+// Desde "Revisa tu correo": si no llega, lo más probable es que no haya cuenta con ese correo → registrarse con él.
+export function goRegisterWithEmail() {
+  state.registerPrefill = state.forgotEmail || '';
+  state.forgotSent = false;
+  navigate('register');
+}
+
+// "Enviar de nuevo" / "Usar otro correo": vuelve al formulario con el correo escrito.
+export function retryForgot() {
+  state.forgotSent = false;
+  render();
 }
 
 export async function logout() {
@@ -855,7 +911,7 @@ export function loadDemoAndLogin(silent) {
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     viewLogin, viewRegister, viewResetPassword, handleResetPassword, viewForgot,
-    handleLogin, login, handleRegister, register, handleForgot, sendForgotEmail, signInWithGoogle,
+    handleLogin, login, handleRegister, register, handleForgot, sendForgotEmail, openForgot, goRegisterWithEmail, retryForgot, signInWithGoogle,
     logout, loadDemoAndLogin, viewProfile, saveProfile,
     openDeleteAccountModal, sendAccountDeleteCode, verifyAccountDeleteCode,
   });
