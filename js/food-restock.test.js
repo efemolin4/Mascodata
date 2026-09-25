@@ -101,7 +101,7 @@ describe('el correo', () => {
     const m = buildRestockEmail({ profile: profiles[0], items: [item({ product: '<img src=x onerror=alert(1)>' })] }, o);
     expect(m.html).not.toContain('<img src=x');
     expect(m.html).toContain('Buscar oferta');
-    expect(m.html).toContain('Ya repuse');
+    expect(m.html).toContain('Compré de nuevo');
     expect(m.html).toContain('unsub=u1');
     expect(m.text).toContain('Dejar de recibir estos recordatorios');
     expect(m.text).toContain('https://mascodata.cl/pets/p1');

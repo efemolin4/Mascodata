@@ -132,81 +132,62 @@ export function tabSeguimiento(pet) {
   </div>`;
 }
 
-// Gráfico de torta en SVG (sin librerías). `segments`: [{label, value, color}].
-const FOOD_COLORS = ['#4c5fd7', '#ff8a6b', '#9fadeb', '#303a88', '#ffc7b7', '#7686e2'];
-function foodDonut(segments, centerTop, centerBottom) {
-  const total = segments.reduce((a, s) => a + s.value, 0);
-  if (!(total > 0)) return '';
-  let acc = 0;
-  const arcs = segments.filter(s => s.value > 0).map(s => {
-    const pct = s.value / total * 100;
-    const arc = `<circle cx="21" cy="21" r="15.9155" fill="none" stroke="${s.color}" stroke-width="6" stroke-dasharray="${pct.toFixed(2)} ${(100 - pct).toFixed(2)}" stroke-dashoffset="${(25 - acc).toFixed(2)}"></circle>`;
-    acc += pct;
-    return arc;
-  }).join('');
-  return `
-    <svg viewBox="0 0 42 42" class="w-32 h-32 flex-shrink-0" role="img" aria-label="${esc(segments.map(s => `${s.label}: ${Math.round(s.value / total * 100)} %`).join(', '))}">
-      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f1f4ff" stroke-width="6"></circle>
-      ${arcs}
-      <text x="21" y="20.5" text-anchor="middle" font-size="6.2" font-weight="700" fill="#252a62">${esc(centerTop)}</text>
-      <text x="21" y="26" text-anchor="middle" font-size="3.4" fill="#626a8a">${esc(centerBottom)}</text>
-    </svg>`;
+// Lo gastado este mes en alimento (compras registradas; un alimento sin historial
+// cuenta su propia fila).
+function foodMonthSpend(items) {
+  const month = todayStr().slice(0, 7);
+  return items.reduce((sum, f) => {
+    const buys = f.purchases?.length ? f.purchases : (f.purchaseDate ? [{ date: f.purchaseDate, price: f.price }] : []);
+    return sum + buys.filter(b => (b.date || '').startsWith(month)).reduce((a, b) => a + (Number(b.price) || 0), 0);
+  }, 0);
 }
 
-const fmtGrams = g => g >= 1000 ? `${(g / 1000).toLocaleString('es-CL', { maximumFractionDigits: 2 })} kg` : `${Math.round(g)} g`;
+// Mini línea del precio por kilo entre compras (SVG sin librerías). El punto
+// resaltado es la compra más reciente; el aro, el mejor precio pagado.
+function foodSparkline(series) {
+  if (series.length < 2) return '';
+  const W = 64, H = 22, pad = 3;
+  const vals = series.map(r => r.value), min = Math.min(...vals), max = Math.max(...vals);
+  const x = i => pad + i * (W - pad * 2) / (series.length - 1);
+  const y = v => max === min ? H / 2 : H - pad - (v - min) * (H - pad * 2) / (max - min);
+  const pts = series.map((r, i) => `${x(i).toFixed(1)},${y(r.value).toFixed(1)}`).join(' ');
+  const last = series[series.length - 1], lastI = series.length - 1;
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="flex-shrink-0" role="img" aria-label="Precio por ${series[0].unit} en cada compra">
+    <polyline points="${pts}" fill="none" stroke="#9fadeb" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></polyline>
+    ${series.map((r, i) => r.best && i !== lastI ? `<circle cx="${x(i).toFixed(1)}" cy="${y(r.value).toFixed(1)}" r="2.4" fill="#fff" stroke="#237b58" stroke-width="1.4"></circle>` : '').join('')}
+    <circle cx="${x(lastI).toFixed(1)}" cy="${y(last.value).toFixed(1)}" r="2.6" fill="#4c5fd7"></circle>
+  </svg>`;
+}
 
-// Resumen de la alimentación calculado con las compras registradas: reparto por
-// tipo, alimento diario vs snacks y gasto de los últimos 90 días. No depende de
-// que el tutor anote lo que come cada día.
-function foodSummarySection(items) {
-  const sm = foodSummary(items);
-  if (!sm.total && !sm.spent90) return '';
-  const legend = rows => rows.map(r => `
-    <div class="flex items-start gap-2 text-xs">
-      <span class="w-2.5 h-2.5 rounded-sm flex-shrink-0 mt-0.5" style="background:${r.color}"></span>
-      <div class="min-w-0">
-        <div class="text-gray-700 leading-tight">${esc(r.label)}</div>
-        <div class="text-gray-400 tabular-nums">${fmtGrams(r.value)} · ${r.pct} %</div>
-      </div>
-    </div>`).join('');
-  const typeRows = sm.byType.map((t, i) => ({ label: t.label, value: t.grams, color: FOOD_COLORS[i % FOOD_COLORS.length], pct: Math.round(t.grams / sm.total * 100) }));
-  const mixRows = [
-    { label: 'Alimento diario', value: sm.daily, color: '#4c5fd7', pct: 100 - sm.snackPct },
-    { label: 'Snacks y premios', value: sm.snack, color: '#ff8a6b', pct: sm.snackPct },
-  ];
-  const mixNote = sm.snack === 0
-    ? `<p class="text-xs text-gray-500 mt-2">Aún no registras compras de snacks ni premios.</p>`
-    : sm.snackPct > 10
-      ? `<p class="text-xs mt-2 text-amber-700 bg-amber-50 rounded-lg px-2 py-1.5">Los snacks son el ${sm.snackPct} % de lo que has comprado. Como referencia, lo recomendado es que no pasen del 10 % de lo que come al día.</p>`
-      : `<p class="text-xs mt-2 text-green-700 bg-green-50 rounded-lg px-2 py-1.5">Los snacks son el ${sm.snackPct} % de lo que has comprado, dentro de la referencia recomendada (hasta 10 %).</p>`;
-  return `
-    <div class="mt-4 pt-4 border-t border-gray-100">
-      <h4 class="text-sm font-semibold text-gray-800 mb-3">Resumen de tus compras</h4>
-      ${sm.total ? `
-      <div class="grid md:grid-cols-2 gap-3">
-        <div class="p-3 bg-gray-50 rounded-xl">
-          <div class="text-xs font-semibold text-gray-600 mb-2">Por tipo de alimento</div>
-          <div class="flex items-center gap-3">
-            ${foodDonut(typeRows, fmtGrams(sm.total), 'comprado')}
-            <div class="flex-1 min-w-0 space-y-1.5">${legend(typeRows)}</div>
-          </div>
-        </div>
-        <div class="p-3 bg-gray-50 rounded-xl">
-          <div class="text-xs font-semibold text-gray-600 mb-2">Alimento diario vs snacks</div>
-          <div class="flex items-center gap-3">
-            ${foodDonut(mixRows, `${sm.snackPct} %`, 'snacks')}
-            <div class="flex-1 min-w-0 space-y-1.5">${legend(mixRows)}</div>
-          </div>
-          ${mixNote}
-        </div>
-      </div>
-      <p class="text-[11px] text-gray-400 mt-2">Según el peso de las compras que has registrado${sm.since ? ` desde ${formatDate(sm.since)}` : ''}, no de lo que come cada día.${sm.skipped ? ` ${sm.skipped} compra${sm.skipped !== 1 ? 's' : ''} en unidades no se incluye${sm.skipped !== 1 ? 'n' : ''}.` : ''}</p>` : ''}
-      ${sm.spent90 ? `
-      <div class="mt-3 flex items-center justify-between gap-3 p-3 bg-brand-50 rounded-xl">
-        <span class="text-xs text-gray-600">Gastado en alimento (últimos 90 días)</span>
-        <span class="text-sm font-bold text-gray-900">${fmtCLP(sm.spent90)}</span>
-      </div>` : ''}
+// Tres indicadores por alimento, calculados con las compras registradas:
+// cuándo se acaba, precio por kilo con su tendencia y cada cuánto repone.
+function foodIndicators(pet, f, canEdit) {
+  const status = foodStockStatus(f);
+  const insight = foodPriceInsight(f);
+  const series = foodPriceSeries(f);
+  const cadence = foodCadence(f);
+  const statusColor = { critico: 'text-red-600', bajo: 'text-amber-600', ok: 'text-gray-900' };
+  const tile = (label, value, sub) => `
+    <div class="bg-white rounded-xl p-2.5 min-w-0">
+      <div class="text-[10px] font-semibold tracking-wide uppercase text-gray-400">${label}</div>
+      ${value}${sub}
     </div>`;
+  const stockTile = status
+    ? tile('Se acaba', `<div class="text-base font-bold leading-tight mt-0.5 ${statusColor[status.level]}">${status.daysLeft < 0 ? 'Ya debería' : status.daysLeft === 0 ? 'Hoy' : `~${status.daysLeft} día${status.daysLeft !== 1 ? 's' : ''}`}</div>`, `<div class="text-[11px] text-gray-500 mt-0.5">${status.daysLeft < 0 ? 'Estimado el ' : ''}${formatDate(status.runOutDate)}</div>`)
+    : tile('Se acaba', `<div class="text-base font-bold leading-tight mt-0.5 text-gray-300">—</div>`, `<div class="text-[11px] text-gray-500 mt-0.5">Indica cuánto le dura para estimarlo</div>`);
+  const cur = series[series.length - 1];
+  const trend = insight
+    ? `<span class="${insight.pct > 0 ? 'text-amber-600' : insight.pct < 0 ? 'text-green-600' : 'text-gray-500'}">${insight.pct > 0 ? '▲' : insight.pct < 0 ? '▼' : '='} ${Math.abs(insight.pct)} % vs compra anterior</span>`
+    : '<span>1 compra registrada</span>';
+  const best = series.length > 1 ? series.find(r => r.best) : null;
+  const priceTile = cur
+    ? tile('Precio por ' + cur.unit, `<div class="flex items-center justify-between gap-2"><div class="text-base font-bold leading-tight mt-0.5 text-gray-900 tabular-nums">${fmtCLP(cur.value)}</div>${foodSparkline(series)}</div>`, `<div class="text-[11px] text-gray-500 mt-0.5">${trend}${best && best !== cur && !series[series.length - 1].best ? ` · mejor: ${fmtCLP(best.value)}` : ''}</div>`)
+    : tile('Precio por kg', `<div class="text-base font-bold leading-tight mt-0.5 text-gray-300">—</div>`, `<div class="text-[11px] text-gray-500 mt-0.5">Ingresa el precio para calcularlo</div>`);
+  const cadenceTile = cadence
+    ? tile('Repones cada', `<div class="text-base font-bold leading-tight mt-0.5 text-gray-900">~${cadence.days} días</div>`,
+        `<div class="text-[11px] text-gray-500 mt-0.5">${cadence.estimated ? `Estimabas ${cadence.estimated}` : `Según ${cadence.intervals + 1} compras`}${cadence.suggest && canEdit ? ` · <button onclick="adjustFoodDuration('${safeId(pet.id)}','${safeId(f.id)}',${cadence.suggest})" class="text-brand-600 font-semibold hover:underline">Ajustar</button>` : ''}</div>`)
+    : tile('Repones cada', `<div class="text-base font-bold leading-tight mt-0.5 text-gray-300">—</div>`, `<div class="text-[11px] text-gray-500 mt-0.5">Con 2 compras lo calculamos</div>`);
+  return `<div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">${stockTile}${priceTile}${cadenceTile}</div>`;
 }
 
 export function tabNutricion(pet) {
@@ -230,16 +211,13 @@ export function tabNutricion(pet) {
         <h3 class="font-semibold text-gray-800 flex items-center gap-1.5">${icon('food','w-4 h-4')} Alimentación</h3>
         ${canEdit ? `<button onclick="openFoodItemModal('${pet.id}')" class="btn-primary text-sm">+ Agregar alimento</button>` : ''}
       </div>
+      ${foodMonthSpend(foodItems) > 0 ? `<p class="text-xs text-gray-500 -mt-1 mb-3">Este mes llevas ${fmtCLP(foodMonthSpend(foodItems))} en alimento · <button onclick="navigate('finance')" class="text-brand-600 font-semibold hover:underline">Ver en Finanzas</button></p>` : ''}
       ${foodItems.length === 0
         ? `<div class="text-center py-6"><div class="mb-2 flex justify-center text-gray-300">${icon('food','w-10 h-10')}</div><p class="text-sm text-gray-400">Sin alimentos registrados</p></div>`
         : `<div class="space-y-3">
              ${foodItems.map(f => {
-               const status = foodStockStatus(f);
                const history = foodPurchaseHistory(f);
                const per = history[0]?.per || null;
-               const insight = foodPriceInsight(f);
-               const insightColor = !insight || insight.pct === 0 ? 'text-gray-500' : insight.pct > 0 ? 'text-amber-600' : 'text-green-600';
-               const statusColor = { critico: 'text-red-600 bg-red-50', bajo: 'text-amber-600 bg-amber-50', ok: 'text-teal-600 bg-teal-50' };
                return `
                <div class="p-3 bg-gray-50 rounded-xl">
                  <div class="flex items-start justify-between gap-3">
@@ -252,17 +230,9 @@ export function tabNutricion(pet) {
                      <button onclick="deleteFoodItem('${pet.id}','${f.id}')" class="w-7 h-7 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors">${icon('trash','w-3.5 h-3.5')}</button>
                    </div>` : ''}
                  </div>
-                 ${status ? `
-                   <div class="mt-2 flex items-center gap-2">
-                     <span class="badge text-xs ${statusColor[status.level]}">${status.label}</span>
-                     <span class="text-xs text-gray-400">Se estima que se acaba el ${formatDate(status.runOutDate)}</span>
-                   </div>
-                   <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                     <div class="h-1.5 rounded-full ${status.level==='critico'?'bg-red-500':status.level==='bajo'?'bg-amber-500':'bg-teal-500'}" style="width:${Math.max(4,Math.min(100, status.daysLeft/30*100))}%"></div>
-                   </div>` : `<p class="text-xs text-gray-400 mt-2">Indica cuánto le dura o su consumo diario y te avisamos cuándo se acaba</p>`}
-                 ${insight ? `<p class="text-xs mt-2 ${insightColor}">${esc(insight.text)}</p>` : ''}
+                 ${foodIndicators(pet, f, canEdit)}
                  <div class="mt-2 flex flex-wrap gap-2">
-                   ${canEdit ? `<button onclick="openFoodPurchaseModal('${safeId(pet.id)}','${safeId(f.id)}')" class="btn-secondary text-xs !py-1.5 !px-3">Ya repuse</button>` : ''}
+                   ${canEdit ? `<button onclick="openFoodPurchaseModal('${safeId(pet.id)}','${safeId(f.id)}')" class="btn-secondary text-xs !py-1.5 !px-3">Compré de nuevo</button>` : ''}
                    <button onclick="openFoodOffer('${safeId(pet.id)}','${safeId(f.id)}','nutricion')" class="btn-secondary text-xs !py-1.5 !px-3">Buscar oferta</button>
                  </div>
                  ${history.length ? `
@@ -279,7 +249,7 @@ export function tabNutricion(pet) {
                  </details>` : ''}
                </div>`;
              }).join('')}
-           </div>${foodSummarySection(foodItems)}`}
+           </div>`}
     </div>
 
     <!-- Actividad: check-in diario en vez de registro detallado -->
@@ -690,7 +660,7 @@ export async function saveFoodItem(e, petId, itemId) {
   showToast('Alimento guardado', 'success');
 }
 
-// "Ya repuse": guarda la compra en el historial y reinicia el conteo de stock
+// "Compré de nuevo": guarda la compra en el historial y reinicia el conteo de stock
 // (la fecha de compra del alimento pasa a ser esta).
 export function openFoodPurchaseModal(petId, itemId) {
   const pet = state.pets.find(p => p.id === petId);
@@ -698,7 +668,7 @@ export function openFoodPurchaseModal(petId, itemId) {
   if (!item) return;
   openModal(`
     <div class="modal-box p-4 sm:p-6">
-      <h3 class="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">${icon('food','w-5 h-5')} Ya repuse este alimento</h3>
+      <h3 class="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">${icon('food','w-5 h-5')} Nueva compra</h3>
       <p class="text-sm text-gray-500 mb-4">${esc(item.product)}</p>
       <form onsubmit="saveFoodPurchase(event,'${safeId(petId)}','${safeId(itemId)}')" class="space-y-3">
         <div class="grid grid-cols-2 gap-3">
@@ -766,6 +736,25 @@ export async function deleteFoodPurchase(petId, itemId, purchaseId) {
   render();
 }
 
+// Ajusta la duración del paquete a lo que el tutor realmente demora en reponer
+// (se guarda como consumo diario equivalente, igual que "¿Cuánto le dura?").
+export async function adjustFoodDuration(petId, itemId, days) {
+  const pet = state.pets.find(p => p.id === petId);
+  const item = pet?.foodItems?.find(f => f.id === itemId);
+  const n = parseInt(days, 10);
+  if (!item || !(n > 0) || !(Number(item.packageSize) > 0)) return;
+  if (blockIfReadOnly(pet)) return;
+  const dailyAmount = Math.round(Number(item.packageSize) / n * 10000) / 10000;
+  if (!isDemoUser()) {
+    const { error } = await sb.from('food_items').update({ daily_amount: dailyAmount }).eq('id', itemId);
+    if (error) { showToast('Error al guardar', 'error'); console.error(error); return; }
+  }
+  item.dailyAmount = dailyAmount;
+  track('food_duration_adjusted');
+  render();
+  showToast(`Listo: ahora estimamos que te dura ~${n} días`, 'success');
+}
+
 // "Buscar oferta": deja elegir dónde buscar. Google Shopping muestra más
 // diversidad (incluye tiendas de la propia marca); Knasta compara las grandes
 // tiendas. `source` distingue desde dónde se hizo clic, para medir interés.
@@ -831,6 +820,6 @@ if (typeof window !== 'undefined') {
     tabSeguimiento, tabNutricion, renderWeightChart, setBCS, openWeightModal,
     saveWeight, openMoodModal, selectMood, saveMood, openSymptomsModal,
     toggleSymptomTag, saveSymptoms, openFoodItemModal, saveFoodItem,
-    deleteFoodItem, openFoodPurchaseModal, saveFoodPurchase, deleteFoodPurchase, openFoodOffer, goFoodOffer, logActivity,
+    deleteFoodItem, openFoodPurchaseModal, saveFoodPurchase, deleteFoodPurchase, adjustFoodDuration, openFoodOffer, goFoodOffer, logActivity,
   });
 }

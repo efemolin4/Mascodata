@@ -5,6 +5,41 @@
    convención export + window.assign). Vista de finanzas y registro
    manual de gastos. */
 
+// Bloque de alimentación: lo monetario (cuánto se gasta y qué parte del total es).
+// Lo operativo (cuándo se acaba, precio por kilo, cada cuánto repone) está en la
+// pestaña Nutrición de cada mascota. Se calcula con las compras registradas, que
+// ya cuentan como gastos de categoría "Alimentación".
+function foodFinanceCard(expenses, petFilter, thisMonth, monthTotal) {
+  const food = expenses.filter(e => e.category === 'Alimentación');
+  if (!food.length) return '';
+  const sum = list => list.reduce((a, e) => a + Number(e.amount || 0), 0);
+  const [y, m] = thisMonth.split('-').map(Number);
+  const prev = `${m === 1 ? y - 1 : y}-${String(m === 1 ? 12 : m - 1).padStart(2, '0')}`;
+  const foodMonth = sum(food.filter(e => e.date?.startsWith(thisMonth)));
+  const foodPrev = sum(food.filter(e => e.date?.startsWith(prev)));
+  const delta = foodPrev > 0 ? Math.round((foodMonth - foodPrev) / foodPrev * 100) : null;
+  const share = monthTotal > 0 ? Math.round(foodMonth / monthTotal * 100) : null;
+  // Costo por día: solo de los alimentos diarios que tienen duración o consumo indicado.
+  const inScope = state.pets.filter(p => !petFilter || p.name === petFilter);
+  const perDay = inScope.reduce((a, p) => a + (p.foodItems || []).filter(f => foodCategory(f) === 'diario').reduce((b, f) => b + (foodCostPerDay(f) || 0), 0), 0);
+  const tile = (label, value, sub) => `
+    <div class="bg-gray-50 rounded-xl p-3 min-w-0">
+      <div class="text-[10px] font-semibold tracking-wide uppercase text-gray-400">${label}</div>
+      <div class="text-lg font-bold text-gray-900 tabular-nums leading-tight mt-0.5">${value}</div>
+      <div class="text-[11px] text-gray-500 mt-0.5">${sub}</div>
+    </div>`;
+  const deltaTxt = delta == null ? 'Sin compras el mes pasado' : `<span class="${delta > 0 ? 'text-amber-600' : delta < 0 ? 'text-green-600' : ''}">${delta > 0 ? '▲' : delta < 0 ? '▼' : '='} ${Math.abs(delta)} %</span> vs mes anterior`;
+  return `
+    <div class="bg-white rounded-2xl shadow-sm p-4 md:p-5 mb-6">
+      <h3 class="font-semibold text-gray-800 flex items-center gap-1.5 mb-3">${icon('food','w-4 h-4')} Alimentación${petFilter ? ` · ${esc(petFilter)}` : ''}</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        ${tile('Este mes', fmtCLP(foodMonth), deltaTxt)}
+        ${tile('Del gasto del mes', share == null ? '—' : `${share} %`, 'Lo que es alimento del total')}
+        ${tile('Costo por día', perDay > 0 ? `≈ ${fmtCLP(perDay)}` : '—', perDay > 0 ? 'Según lo que dura cada paquete' : 'Indica cuánto le dura el alimento')}
+      </div>
+    </div>`;
+}
+
 export function viewFinance() {
   if (state.pets.length === 0) {
     return noPetsOnboarding('money', 'Aún no hay gastos que mostrar', 'Registra una mascota primero para empezar a llevar el control de sus gastos veterinarios, alimentación y más.');
@@ -154,6 +189,8 @@ export function viewFinance() {
       ${statCard(icon('receipt','w-5 h-5 md:w-6 md:h-6'),'Registros', expenses.length, 'amber')}
       ${statCard(icon('paw','w-5 h-5 md:w-6 md:h-6'),'Mascotas', pets.length, 'brand')}
     </div>
+
+    ${foodFinanceCard(expenses, petFilter, thisMonth, monthTotal)}
 
     ${viewMode === 'grafico' ? `
     <!-- DASHBOARD: el desglose por categoría es libre; el gráfico por período y la predicción son Premium -->

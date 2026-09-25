@@ -158,8 +158,9 @@ describe('viewFinance — dashboard de gastos por período y categoría', () => 
     expect(html).toContain('3 registros');
     expect(html).toContain('$100k');
     expect(html).toContain('$70k');               // este mes: 50k + 20k
-    expect(html.indexOf('Veterinaria')).toBeLessThan(html.indexOf('Alimentación'));
-    expect(html.indexOf('Alimentación')).toBeLessThan(html.indexOf('Peluquería'));
+    const cats = html.slice(html.indexOf('Por categoría')); // la tarjeta de alimentación también nombra la categoría
+    expect(cats.indexOf('Veterinaria')).toBeLessThan(cats.indexOf('Alimentación'));
+    expect(cats.indexOf('Alimentación')).toBeLessThan(cats.indexOf('Peluquería'));
   });
 
   it('el gasto que sube vs. el período anterior se marca con ↑ y el que baja con ↓', () => {

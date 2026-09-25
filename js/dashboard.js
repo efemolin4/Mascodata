@@ -93,7 +93,7 @@ export function viewDashboard() {
       const when = st.daysLeft < 0 ? 'Se estima que ya se acabó' : st.daysLeft === 0 ? 'Se acaba hoy' : `Quedan ~${st.daysLeft} día${st.daysLeft !== 1 ? 's' : ''}`;
       attention.push({ petId: p.id, level: 1, date: st.runOutDate, title: `Alimento por acabarse · ${esc(f.product)}`, sub: `${name} · ${when}`,
         actionLabel: 'Buscar oferta', action: `openFoodOffer('${safeId(p.id)}','${safeId(f.id)}','dashboard')`,
-        actionLabel2: canEditPet(p) ? 'Ya repuse' : '', action2: `openFoodPurchaseModal('${safeId(p.id)}','${safeId(f.id)}')` });
+        actionLabel2: canEditPet(p) ? 'Compré de nuevo' : '', action2: `openFoodPurchaseModal('${safeId(p.id)}','${safeId(f.id)}')` });
     });
 
     const ageYears = p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (365.25*86400000)) : 0;

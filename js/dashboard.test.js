@@ -213,6 +213,6 @@ describe('viewDashboard — alimento por acabarse', () => {
       { id: 'f1', product: 'Bravery Pollo', packageSize: 10, packageUnit: 'kg', dailyAmount: 0.5, purchaseDate: day(-17) }] })];
     const html = viewDashboard();
     expect(html).toContain('Buscar oferta');
-    expect(html).not.toContain('Ya repuse');
+    expect(html).not.toContain('Compré de nuevo');
   });
 });

@@ -298,16 +298,6 @@ export function foodCategory(f) {
   return f?.type === 'Snack' ? 'snack' : 'diario';
 }
 
-// Peso de un envase en gramos. Solo se puede sumar lo que está en kg o g; un
-// alimento en "unidades" devuelve null porque no tiene equivalencia en peso.
-export function foodPackageGrams(size, unit) {
-  const n = parseFloat(size);
-  if (!(n > 0)) return null;
-  if (unit === 'kg') return n * 1000;
-  if (unit === 'g') return n;
-  return null;
-}
-
 // Lo que cuesta alimentar por día con este envase: precio ÷ días que dura.
 // Solo existe si el tutor ingresó el consumo diario (es opcional): sin él
 // devuelve null, no se estima.
@@ -318,34 +308,32 @@ export function foodCostPerDay(f) {
   return Math.round(price / days);
 }
 
-// Resumen para los gráficos de Nutrición, calculado SOLO con las compras que el
-// tutor registró (no con lo que come cada día, que casi nadie lleva): peso
-// comprado por tipo, alimento diario vs snacks y lo gastado en los últimos 90
-// días. Un alimento sin historial aporta su propia fila como única compra.
-export function foodSummary(items) {
-  const byType = {};
-  let daily = 0, snack = 0, skipped = 0, spent90 = 0, purchases = 0, since = null;
-  const from = addDays(todayStr(), -90);
-  (items || []).forEach(f => {
-    let list = f.purchases || [];
-    if (!list.length && f.purchaseDate) list = [{ date: f.purchaseDate, price: f.price, packageSize: f.packageSize, packageUnit: f.packageUnit }];
-    list.forEach(pu => {
-      purchases++;
-      if (pu.date && (!since || pu.date < since)) since = pu.date;
-      if (pu.date >= from && Number(pu.price) > 0) spent90 += Number(pu.price);
-      const g = foodPackageGrams(pu.packageSize, pu.packageUnit);
-      if (g == null) { skipped++; return; }
-      const type = f.type || 'Otro';
-      byType[type] = (byType[type] || 0) + g;
-      if (foodCategory(f) === 'snack') snack += g; else daily += g;
-    });
-  });
-  const total = daily + snack;
-  return {
-    byType: Object.entries(byType).map(([label, grams]) => ({ label, grams })).sort((a, b) => b.grams - a.grams),
-    daily, snack, total, skipped, spent90, purchases, since,
-    snackPct: total > 0 ? Math.round(snack / total * 100) : 0,
-  };
+// Cada cuántos días repone el alimento en la práctica: promedio de los últimos
+// intervalos entre compras registradas. Necesita al menos 2 compras. `suggest`
+// aparece solo si hay 2 o más intervalos y la duración estimada (tamaño ÷ consumo)
+// se aleja 20 % o más de la real, para ofrecer ajustarla.
+export function foodCadence(f) {
+  const dates = foodPurchaseHistory(f).map(h => h.date).filter(Boolean).sort();
+  if (dates.length < 2) return null;
+  const gaps = [];
+  for (let i = 1; i < dates.length; i++) gaps.push(daysBetween(dates[i - 1], dates[i]));
+  const recent = gaps.slice(-3).filter(g => g > 0);
+  if (!recent.length) return null;
+  const days = Math.round(recent.reduce((a, g) => a + g, 0) / recent.length);
+  const est = foodDaysTotal(f);
+  const suggest = est && recent.length >= 2 && Math.abs(est - days) / est >= 0.2 ? days : null;
+  return { days, intervals: recent.length, estimated: est || null, suggest };
+}
+
+// Precio por kilo (o unidad) de cada compra, de la más antigua a la más reciente,
+// para la mini línea de tendencia. Solo compras con la misma unidad que la última.
+export function foodPriceSeries(f) {
+  const list = foodPurchaseHistory(f).filter(h => h.per);
+  if (!list.length) return [];
+  const unit = list[0].per.unit;
+  const rows = list.filter(h => h.per.unit === unit).reverse().map(h => ({ date: h.date, value: h.per.value }));
+  const best = rows.reduce((m, r) => (m == null || r.value < m.value ? r : m), null);
+  return rows.map(r => ({ ...r, unit, best: r === best }));
 }
 
 export function foodRunOutDate(f) {
@@ -434,6 +422,6 @@ if (typeof window !== 'undefined') {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
     getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, shrinkImage, slugify, petCompleteness, COMPLETENESS_FIELDS, eventIcon, botiquinStatus,
     medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
-    foodCategory, foodPackageGrams, foodCostPerDay, foodSummary, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
+    foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
   });
 }

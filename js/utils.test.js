@@ -3,7 +3,7 @@ import {
   todayStr, daysFromNowStr, addDays, daysBetween, addMonths, getAge,
   careAlertStatus, medStockStatus, foodStockStatus, esc, safeId, safeDataUrl, petCompleteness, parseCLP, fmtCompactCLP,
   foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl,
-  foodCategory, foodPackageGrams, foodCostPerDay, foodSummary,
+  foodCategory, foodCostPerDay, foodCadence, foodPriceSeries,
 } from './utils.js';
 
 // Fija "hoy" a una fecha conocida para que las pruebas de fecha sean
@@ -366,13 +366,6 @@ describe('resumen de alimentación', () => {
     expect(foodCategory(null)).toBe('diario');
   });
 
-  it('convierte el peso del envase a gramos y descarta las unidades', () => {
-    expect(foodPackageGrams(12, 'kg')).toBe(12000);
-    expect(foodPackageGrams(500, 'g')).toBe(500);
-    expect(foodPackageGrams(10, 'unidades')).toBeNull();
-    expect(foodPackageGrams(0, 'kg')).toBeNull();
-  });
-
   it('el costo por día es el precio dividido en los días que dura el envase', () => {
     // 10 kg a 0.5 kg/día = 20 días; $40.000 → $2.000/día
     expect(foodCostPerDay({ packageSize: 10, dailyAmount: 0.5, price: 40000 })).toBe(2000);
@@ -381,33 +374,40 @@ describe('resumen de alimentación', () => {
     expect(foodCostPerDay({ packageSize: 10, dailyAmount: 0, price: 40000 })).toBeNull();
   });
 
-  it('calcula el reparto con las compras registradas, sin necesitar el consumo diario', () => {
-    const today = todayStr();
-    const sm = foodSummary([
-      { type: 'Seco', category: 'diario', purchases: [
-        { date: addDays(today, -10), price: 40000, packageSize: 10, packageUnit: 'kg' },
-        { date: addDays(today, -200), price: 30000, packageSize: 10, packageUnit: 'kg' }] },
-      { type: 'Húmedo', category: 'diario', dailyAmount: 0, purchases: [{ date: addDays(today, -5), price: 8000, packageSize: 2, packageUnit: 'kg' }] },
-      { type: 'Seco', category: 'snack', purchases: [{ date: addDays(today, -3), price: 5000, packageSize: 1000, packageUnit: 'g' }] },
-      { type: 'Seco', category: 'snack', purchases: [{ date: addDays(today, -3), price: 3000, packageSize: 10, packageUnit: 'unidades' }] },
-    ]);
-    expect(sm.daily).toBe(22000);
-    expect(sm.snack).toBe(1000);
-    expect(sm.snackPct).toBe(4);
-    expect(sm.skipped).toBe(1);
-    expect(sm.byType[0]).toEqual({ label: 'Seco', grams: 21000 });
-    expect(sm.spent90).toBe(40000 + 8000 + 5000 + 3000); // la compra de hace 200 días no cuenta
-    expect(sm.since).toBe(addDays(today, -200));
+});
+
+describe('cada cuánto repone y serie de precios', () => {
+  const buy = (date, price = 30000, size = 10) => ({ id: date, date, price, packageSize: size, packageUnit: 'kg' });
+
+  it('con menos de 2 compras no calcula la cadencia', () => {
+    expect(foodCadence({ purchases: [buy('2026-06-01')] })).toBeNull();
+    expect(foodCadence({})).toBeNull();
   });
 
-  it('un alimento sin historial aporta su propia fila como compra', () => {
-    const sm = foodSummary([{ type: 'Seco', category: 'diario', packageSize: 15, packageUnit: 'kg', price: 62000, purchaseDate: todayStr() }]);
-    expect(sm.daily).toBe(15000);
-    expect(sm.purchases).toBe(1);
+  it('promedia los intervalos entre compras y compara con la duración estimada', () => {
+    const f = { packageSize: 10, dailyAmount: 0.2, purchases: [buy('2026-06-01'), buy('2026-07-10')] }; // 39 días; estimaba 50
+    const c = foodCadence(f);
+    expect(c).toMatchObject({ days: 39, intervals: 1, estimated: 50 });
+    expect(c.suggest).toBeNull(); // con un solo intervalo no se sugiere ajustar
   });
 
-  it('sin alimentos devuelve todo en cero', () => {
-    expect(foodSummary([])).toMatchObject({ total: 0, snackPct: 0, spent90: 0 });
+  it('sugiere ajustar cuando hay 2 intervalos y la diferencia es de 20 % o más', () => {
+    const f = { packageSize: 10, dailyAmount: 0.2, purchases: [buy('2026-05-01'), buy('2026-06-10'), buy('2026-07-20')] }; // 40 y 40; estimaba 50
+    expect(foodCadence(f)).toMatchObject({ days: 40, intervals: 2, estimated: 50, suggest: 40 });
+    const cerca = { packageSize: 10, dailyAmount: 0.2, purchases: [buy('2026-05-01'), buy('2026-06-16'), buy('2026-08-01')] }; // 46 y 46 vs 50
+    expect(foodCadence(cerca).suggest).toBeNull();
+  });
+
+  it('sin consumo indicado muestra la cadencia real sin estimada ni sugerencia', () => {
+    const c = foodCadence({ packageSize: 10, dailyAmount: 0, purchases: [buy('2026-05-01'), buy('2026-06-10'), buy('2026-07-20')] });
+    expect(c).toMatchObject({ days: 40, estimated: null, suggest: null });
+  });
+
+  it('la serie de precios va de la más antigua a la más reciente y marca el mejor precio', () => {
+    const rows = foodPriceSeries({ purchases: [buy('2026-05-01', 30000), buy('2026-06-01', 27000), buy('2026-07-01', 33000)] });
+    expect(rows.map(r => r.value)).toEqual([3000, 2700, 3300]);
+    expect(rows.find(r => r.best).value).toBe(2700);
+    expect(foodPriceSeries({})).toEqual([]);
   });
 });
 

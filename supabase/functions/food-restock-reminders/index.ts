@@ -139,7 +139,7 @@ export function buildRestockEmail(p: Pick, o: { appUrl: string; unsubUrl: string
     const state = it.daysLeft < 0 ? `Se estimaba que se acababa el ${dateEs(it.runOut)}` : `Se estima que se acaba el ${dateEs(it.runOut)}`;
     return `<tr><td style="padding:14px 0;border-top:1px solid #DFE3F4"><strong style="color:#252A62;font-size:15px">${esc(it.food.product || 'Alimento')}</strong> <span style="color:#626A8A;font-size:13px">· ${esc(label(it))}</span>
 <div style="color:#626A8A;font-size:13px;margin:3px 0 10px 0">${esc(state)}</div>
-<a href="${esc(offerUrl(it.food))}" style="display:inline-block;background:#4C5FD7;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:13px;padding:9px 14px;border-radius:10px;margin-right:6px">Buscar oferta</a><a href="${esc(link)}" style="display:inline-block;color:#4C5FD7;text-decoration:none;font-weight:700;font-size:13px;padding:8px 13px;border:1px solid #C9D2F5;border-radius:10px">Ya repuse</a></td></tr>`;
+<a href="${esc(offerUrl(it.food))}" style="display:inline-block;background:#4C5FD7;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:13px;padding:9px 14px;border-radius:10px;margin-right:6px">Buscar oferta</a><a href="${esc(link)}" style="display:inline-block;color:#4C5FD7;text-decoration:none;font-weight:700;font-size:13px;padding:8px 13px;border:1px solid #C9D2F5;border-radius:10px">Compré de nuevo</a></td></tr>`;
   }).join('');
   const names = [...new Set(p.items.map(label))].join(', ');
   const html = `<!doctype html><html lang="es"><body style="margin:0;background:#F8F9FF;font-family:Arial,Helvetica,sans-serif;color:#252A62">
@@ -147,11 +147,11 @@ export function buildRestockEmail(p: Pick, o: { appUrl: string; unsubUrl: string
 <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;background:#FFFFFF;border:1px solid #DFE3F4;border-radius:20px">
 <tr><td style="padding:26px 28px 6px 28px"><img src="${esc(o.appUrl)}/img/logos/mascodata-app-icon.png" width="32" height="32" alt="" style="vertical-align:middle;border-radius:8px"> <span style="font-size:18px;font-weight:800;color:#252A62;vertical-align:middle;margin-left:6px">Mascodata</span></td></tr>
 <tr><td style="padding:14px 28px 0 28px"><h1 style="margin:0;font-size:22px;line-height:28px;color:#252A62">${esc(subject)}</h1>
-<p style="margin:10px 0 8px 0;font-size:15px;line-height:24px;color:#626A8A">Según lo que registraste, es buen momento para reponerlo. Si ya lo compraste, marca "Ya repuse" en la ficha y el conteo parte de nuevo.</p>
+<p style="margin:10px 0 8px 0;font-size:15px;line-height:24px;color:#626A8A">Según lo que registraste, es buen momento para reponerlo. Si ya lo compraste, marca "Compré de nuevo" en la ficha y el conteo parte de nuevo.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px">${rows}</table></td></tr>
 <tr><td style="padding:22px 28px 26px 28px;font-size:12px;line-height:18px;color:#626A8A">Recibes este correo porque registraste el alimento de ${esc(names)} en Mascodata. Es una estimación a partir de los datos que ingresaste.<br><a href="${esc(o.unsubUrl)}" style="color:#4C5FD7">Dejar de recibir estos recordatorios</a></td></tr>
 </table></td></tr></table></body></html>`;
-  const text = `${subject}\n\nSegún lo que registraste, es buen momento para reponerlo.\n\n${p.items.map(it => `- ${it.food.product || 'Alimento'} (${label(it)}): ${it.daysLeft < 0 ? 'se estimaba que se acababa' : 'se estima que se acaba'} el ${dateEs(it.runOut)}\n  Buscar oferta: ${offerUrl(it.food)}\n  Ya repuse: ${o.appUrl}/pets/${encodeURIComponent(it.pet.id)}`).join('\n')}\n\nRecibes este correo porque registraste el alimento de ${names} en Mascodata.\nDejar de recibir estos recordatorios: ${o.unsubUrl}\n`;
+  const text = `${subject}\n\nSegún lo que registraste, es buen momento para reponerlo.\n\n${p.items.map(it => `- ${it.food.product || 'Alimento'} (${label(it)}): ${it.daysLeft < 0 ? 'se estimaba que se acababa' : 'se estima que se acaba'} el ${dateEs(it.runOut)}\n  Buscar oferta: ${offerUrl(it.food)}\n  Compré de nuevo: ${o.appUrl}/pets/${encodeURIComponent(it.pet.id)}`).join('\n')}\n\nRecibes este correo porque registraste el alimento de ${names} en Mascodata.\nDejar de recibir estos recordatorios: ${o.unsubUrl}\n`;
   return { subject, html, text };
 }
 
