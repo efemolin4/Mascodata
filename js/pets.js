@@ -451,6 +451,43 @@ export function petActivityCard(pet) {
   </div>`;
 }
 
+// Resumen de traspaso: lo que el otro tutor necesita saber cuando la mascota cambia de casa.
+export function openHandoffModal(petId) {
+  const pet = state.pets.find(p => p.id === petId);
+  if (!pet) return;
+  const { sections } = handoffSummary(pet, state.events, state.user?.id, todayStr());
+  track('handoff_opened');
+  openModal(`
+    <div class="modal-box p-4 sm:p-6">
+      <h3 class="text-lg font-bold text-gray-900 mb-1">Resumen de traspaso</h3>
+      <p class="text-sm text-gray-500 mb-4">${esc(pet.name)} · ${formatDate(todayStr())}</p>
+      ${sections.length ? `<div class="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
+        ${sections.map(sec => `
+          <div>
+            <div class="text-[11px] font-semibold tracking-wide uppercase text-gray-400 mb-1">${esc(sec.title)}</div>
+            <ul class="space-y-1">${sec.lines.map(l => `<li class="text-sm text-gray-800 flex gap-2"><span class="text-gray-300">•</span><span>${esc(l)}</span></li>`).join('')}</ul>
+          </div>`).join('')}
+      </div>` : `<p class="text-sm text-gray-500">Todavía no hay datos para resumir. Registra tratamientos, alimento o citas y aparecerán aquí.</p>`}
+      <div class="flex gap-3 pt-4">
+        <button type="button" onclick="closeModal()" class="btn-secondary flex-1">Cerrar</button>
+        ${sections.length ? `<button type="button" onclick="copyHandoff('${safeId(petId)}')" class="btn-primary flex-1">Copiar resumen</button>` : ''}
+      </div>
+    </div>`);
+}
+
+export async function copyHandoff(petId) {
+  const pet = state.pets.find(p => p.id === petId);
+  if (!pet) return;
+  const { text } = handoffSummary(pet, state.events, state.user?.id, todayStr());
+  try {
+    await navigator.clipboard.writeText(text);
+    track('handoff_copied');
+    showToast('Resumen copiado', 'success');
+  } catch (e) {
+    showToast('No se pudo copiar; selecciona el texto y cópialo', 'error');
+  }
+}
+
 // "Hoy está con…" para mascotas con tutores separados: la estadía que cubre hoy, o un aviso si no hay.
 export function petWhereToday(pet, opts = {}) {
   if (pet.careMode !== 'separated' || !hasOtherTutor(pet)) return '';
@@ -466,6 +503,7 @@ export function petWhereToday(pet, opts = {}) {
 export function tabGeneral(pet) {
   return `
     ${petWhereToday(pet, { className: 'mb-4' })}
+    ${hasOtherTutor(pet) ? `<div class="mb-4"><button onclick="openHandoffModal('${safeId(pet.id)}')" class="btn-secondary text-sm flex items-center gap-1.5">${icon('receipt','w-4 h-4')} Resumen de traspaso</button></div>` : ''}
     ${petActivityCard(pet)}
     ${petCompletenessCard(pet)}
     <div class="grid md:grid-cols-2 gap-4">
@@ -1270,7 +1308,7 @@ export async function removeTutor2(petId) {
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     viewPets, viewAddPet, stepBasic, stepPhysical, stepHealth, stepTutors,
-    viewPetProfile, tabGeneral, petWhereToday, petActivityCard, infoRow, openEditPetModal, toggleEditAllergy,
+    viewPetProfile, tabGeneral, petWhereToday, petActivityCard, openHandoffModal, copyHandoff, infoRow, openEditPetModal, toggleEditAllergy,
     toggleEditCondition, toggleEditPersonality, setEditActivity, previewEditPhoto,
     openPet, setTab, cancelAddPet, prevStep, showFieldError, clearFieldError,
     nextStep, collectStepData, savePet, openDeletePetWithCode, sendDeleteCode,

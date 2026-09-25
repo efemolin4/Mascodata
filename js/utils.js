@@ -449,6 +449,110 @@ export function petStayOn(pet, events, dateStr) {
     .sort((a, b) => (a.date < b.date ? 1 : -1))[0] || null;
 }
 
+// ---- Turnos recurrentes ----
+export const MAX_STAYS_PER_SERIES = 80;
+
+// Genera las estadías de un patrón de turnos, en relativo ('me' / 'other' = quien crea / el otro tutor):
+//  - 'alternate': bloques de `every` días que se alternan entre los dos, desde `start` hasta `until`.
+//  - 'weekends':  cada fin de semana (viernes a domingo) con `firstHolder`, desde el primer viernes.
+// Devuelve [{ date, endDate, holder }] con tope de MAX_STAYS_PER_SERIES.
+export function stayTurns({ start, until, pattern, every = 7, firstHolder = 'me' }) {
+  if (!start || !until || until < start) return [];
+  const other = h => (h === 'me' ? 'other' : 'me');
+  const rows = [];
+  if (pattern === 'alternate') {
+    const n = Math.min(60, Math.max(1, parseInt(every, 10) || 7));
+    let cur = start, who = firstHolder;
+    while (cur <= until && rows.length < MAX_STAYS_PER_SERIES) {
+      const end = addDays(cur, n - 1) < until ? addDays(cur, n - 1) : until;
+      rows.push({ date: cur, endDate: end, holder: who });
+      cur = addDays(end, 1);
+      who = other(who);
+    }
+  } else if (pattern === 'weekends') {
+    const dow = new Date(`${start}T12:00:00`).getDay();
+    let cur = addDays(start, (5 - dow + 7) % 7); // primer viernes desde la fecha de inicio
+    while (cur <= until && rows.length < MAX_STAYS_PER_SERIES) {
+      const end = addDays(cur, 2) < until ? addDays(cur, 2) : until;
+      rows.push({ date: cur, endDate: end, holder: firstHolder });
+      cur = addDays(cur, 7);
+    }
+  }
+  return rows;
+}
+
+// ¿Dos rangos de fechas (inicio y fin inclusive) se pisan?
+export function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+  return aStart <= (bEnd || bStart) && bStart <= (aEnd || aStart);
+}
+
+// ---- Resumen de traspaso ----
+// Lo que el otro tutor necesita saber cuando la mascota cambia de casa, armado con lo ya cargado:
+// tratamientos y dosis de hoy, alimento, salud, próximas citas y lo último que se registró.
+// Devuelve { sections: [{ title, lines: [texto] }], text } (el texto plano sirve para copiar).
+export function handoffSummary(pet, events, myId, today) {
+  const sections = [];
+  const add = (title, lines) => { if (lines.length) sections.push({ title, lines }); };
+  const latestBy = (list, key) => {
+    const out = {};
+    (list || []).forEach(r => { const k = r[key]; if (!out[k] || (r.date || '') > (out[k].date || '')) out[k] = r; });
+    return Object.values(out);
+  };
+
+  // Tratamientos y dosis de hoy
+  const meds = (pet.medications || []).filter(m => m.active);
+  const medLines = meds.map(m => `${m.name}${m.dose ? ` · ${m.dose}` : ''}${m.frequency ? ` · ${m.frequency}` : ''}`);
+  if (meds.length) {
+    const dose = (pet.doseLog || []).find(d => d.date === today && d.given);
+    if (dose) {
+      const who = actorLabel(dose, myId);
+      const at = timeOf(dose.loggedAt);
+      medLines.push(`Dosis de hoy: dada${who ? ` por ${who === 'Tú' ? 'ti' : who}` : ''}${at ? ` a las ${at}` : ''}`);
+    } else medLines.push('Dosis de hoy: pendiente');
+  }
+  add('Tratamientos', medLines);
+
+  // Alimento diario
+  add('Alimento', (pet.foodItems || []).filter(f => foodCategory(f) === 'diario').map(f => {
+    const st = foodStockStatus(f);
+    return `${f.product}${st ? (st.daysLeft < 0 ? ' · se estima que ya se acabó' : ` · se acaba ~${formatDate(st.runOutDate)} (${st.daysLeft} día${st.daysLeft !== 1 ? 's' : ''})`) : ''}`;
+  }));
+
+  // Salud: último peso y próximas dosis
+  const health = [];
+  const weights = [...(pet.weightHistory || [])].sort((a, b) => (a.date > b.date ? 1 : -1));
+  const w = weights[weights.length - 1];
+  if (w) health.push(`Último peso: ${(parseFloat(w.kg || 0) + (parseInt(w.gr || 0, 10) / 1000)).toLocaleString('es-CL', { maximumFractionDigits: 3 })} kg (${formatDate(w.date)})`);
+  else if (parseFloat(pet.weightKg || 0) > 0) health.push(`Peso de la ficha: ${pet.weightKg} kg${pet.weightGr ? ` ${pet.weightGr} gr` : ''}`);
+  const soon = addDays(today, 30);
+  const due = [
+    ...latestBy(pet.vaccines, 'name').filter(v => v.nextDate && v.nextDate <= soon).map(v => ({ at: v.nextDate, text: `Vacuna ${v.name}: ${v.nextDate < today ? 'vencida el' : 'próxima el'} ${formatDate(v.nextDate)}` })),
+    ...latestBy(pet.deworming, 'product').filter(d => d.nextDate && d.nextDate <= soon).map(d => ({ at: d.nextDate, text: `Desparasitación ${d.product}: ${d.nextDate < today ? 'vencida el' : 'próxima el'} ${formatDate(d.nextDate)}` })),
+  ].sort((a, b) => (a.at > b.at ? 1 : -1));
+  // Con muchas pendientes la lista se vuelve ruido: se muestran las 6 más urgentes y cuántas faltan.
+  due.slice(0, 6).forEach(x => health.push(x.text));
+  if (due.length > 6) health.push(`…y ${due.length - 6} más en las fichas de vacunas y desparasitación`);
+  add('Salud', health);
+
+  // Próximas citas (14 días)
+  const limit = addDays(today, 14);
+  add('Próximas citas', (events || [])
+    .filter(e => e.petId === pet.id && e.type !== STAY_TYPE && e.date >= today && e.date <= limit)
+    .sort((a, b) => (a.date > b.date ? 1 : -1))
+    .map(e => `${formatDate(e.date)}${e.time ? ` ${e.time}` : ''} · ${e.title}`));
+
+  // Lo último que se registró
+  add('Lo último que se registró', recentActivity(pet, events, myId, 3)
+    .map(r => `${r.by ? `${r.by}: ` : ''}${r.text} (${formatDate(r.date)})`));
+
+  // Veterinario
+  const vet = pet.vet || {};
+  if (vet.name || vet.phone) add('Veterinario', [[vet.name, vet.clinic, vet.phone].filter(Boolean).join(' · ')]);
+
+  const text = [`Traspaso de ${pet.name} — ${formatDate(today)}`, ...sections.map(s => `\n${s.title}\n${s.lines.map(l => `- ${l}`).join('\n')}`)].join('\n');
+  return { sections, text };
+}
+
 // ---- Quién hizo qué ----
 // Quién creó un registro, visto desde quien mira: "Tú", el nombre de la otra persona o null si
 // no se sabe (registros anteriores a que se guardara el autor).
@@ -497,6 +601,6 @@ if (typeof window !== 'undefined') {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
     getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, shrinkImage, slugify, petCompleteness, COMPLETENESS_FIELDS, eventIcon, botiquinStatus,
     medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
-    actorLabel, timeOf, recentActivity, STAY_TYPE, hasOtherTutor, stayWho, eventCoversDate, petStayOn, lastWeighedDate, foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
+    MAX_STAYS_PER_SERIES, stayTurns, rangesOverlap, handoffSummary, actorLabel, timeOf, recentActivity, STAY_TYPE, hasOtherTutor, stayWho, eventCoversDate, petStayOn, lastWeighedDate, foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
   });
 }

@@ -3,7 +3,7 @@ import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js'; // deja esc/icon/fmtCLP/formatDate reales en window
 import '../js/app.js'; // deja canEditPet/blockIfReadOnly reales en window
 import '../js/tracking.js'; // deja recordWeight real en window (saveEditPet lo usa)
-import { savePet, deletePet, openInviteTutor2Modal, exportPetRecord, printPetRecord, saveEditPet, petActivityCard } from './pets.js';
+import { savePet, deletePet, openInviteTutor2Modal, exportPetRecord, printPetRecord, saveEditPet, petActivityCard, openHandoffModal, copyHandoff, tabGeneral } from './pets.js';
 
 // savePet() lee/escribe sobre `state`, `sb`, etc. como globales (ver
 // js/utils.js para el porqué de esa convención) — acá se los proveemos a
@@ -294,5 +294,57 @@ describe('petActivityCard — actividad reciente de los tutores', () => {
     const html = petActivityCard(pet({ vaccines: [{ date: '2026-09-25', name: '<b>x</b>', createdBy: 'otro', createdByName: '<img src=x onerror=1>' }] }));
     expect(html).not.toContain('<img src=x');
     expect(html).not.toContain('<b>x</b>');
+  });
+});
+
+describe('resumen de traspaso', () => {
+  const pet = () => ({ id: 'p1', name: 'Greta', myRole: 'owner', tutor2: { name: 'Pedro' }, medications: [{ name: 'Gabapentina <b>', active: true, dose: '1 comp' }],
+    doseLog: [], weightHistory: [], vet: {}, foodItems: [], vaccines: [], deworming: [] });
+  beforeEach(() => {
+    window.state = { user: { id: 'yo' }, pets: [pet()], events: [] };
+    window.track = vi.fn();
+    window.showToast = vi.fn();
+    window.closeModal = vi.fn();
+    document.body.innerHTML = '<div id="modal-root"></div>';
+    window.openModal = html => { document.getElementById('modal-root').innerHTML = html; };
+  });
+
+  it('el modal lista las secciones y escapa el texto de los registros', () => {
+    openHandoffModal('p1');
+    const html = document.getElementById('modal-root').innerHTML;
+    expect(html).toContain('Resumen de traspaso');
+    expect(html).toContain('Tratamientos');
+    expect(html).toContain('Dosis de hoy: pendiente');
+    expect(html).not.toContain('<b>');
+    expect(html).toContain('Copiar resumen');
+  });
+
+  it('sin datos que resumir avisa y no ofrece copiar', () => {
+    window.state.pets = [{ id: 'p1', name: 'Luna', myRole: 'owner', tutor2: { name: 'Pedro' } }];
+    openHandoffModal('p1');
+    const html = document.getElementById('modal-root').innerHTML;
+    expect(html).toContain('Todavía no hay datos para resumir');
+    expect(html).not.toContain('Copiar resumen');
+  });
+
+  it('copiar deja el texto plano en el portapapeles', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    await copyHandoff('p1');
+    expect(writeText.mock.calls[0][0]).toContain('Traspaso de Greta');
+    expect(window.showToast).toHaveBeenCalledWith('Resumen copiado', 'success');
+  });
+
+  it('si el navegador no deja copiar, avisa', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new Error('no')) }, configurable: true });
+    await copyHandoff('p1');
+    expect(window.showToast).toHaveBeenCalledWith('No se pudo copiar; selecciona el texto y cópialo', 'error');
+  });
+
+  it('el botón aparece en la ficha solo si hay otro tutor', () => {
+    window.state.pets = [pet()];
+    window.canEditPet = () => true;
+    expect(tabGeneral(pet())).toContain('Resumen de traspaso');
+    expect(tabGeneral({ ...pet(), tutor2: null })).not.toContain('Resumen de traspaso');
   });
 });

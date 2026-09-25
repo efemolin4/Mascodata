@@ -140,6 +140,11 @@ export function viewCalendar() {
          </button>
        </div>`)}
 
+    ${(() => {
+      const links = state.pets.filter(p => canEditPet(p) && state.events.some(x => x.type === STAY_TYPE && x.petId === p.id && (x.endDate || x.date) >= today));
+      return links.length ? `<div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 text-xs text-gray-500">${links.map(p => `<button onclick="deleteFutureStays('${safeId(p.id)}')" class="hover:text-red-600 hover:underline">Quitar las estadías futuras de ${esc(p.name)}</button>`).join('')}</div>` : '';
+    })()}
+
     ${state.pets.some(hasOtherTutor) && !sharedNoticeSeen() ? `
     <div class="flex items-start gap-3 bg-brand-50 border border-brand-100 rounded-2xl p-3.5 mb-4 text-sm text-gray-700">
       <div class="flex-1">Los eventos con mascota ahora los ven todos sus tutores. Los que no tienen mascota siguen siendo solo tuyos.</div>
@@ -171,9 +176,26 @@ export function openEventModal(dateStr = '') {
           </div>
           <div><label class="form-label">Fecha *</label><input id="ev-date" type="date" required value="${dateStr}" class="input-field" /></div>
         </div>
-        <div id="ev-stay" class="hidden grid grid-cols-2 gap-3">
-          <div><label class="form-label">Hasta *</label><input id="ev-end" type="date" class="input-field" /></div>
-          <div><label class="form-label">¿Con quién está?</label><select id="ev-holder" class="input-field"></select></div>
+        <div id="ev-stay" class="hidden space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div id="ev-end-wrap"><label class="form-label">Hasta *</label><input id="ev-end" type="date" class="input-field" /></div>
+            <div><label id="ev-holder-label" class="form-label">¿Con quién está?</label><select id="ev-holder" class="input-field"></select></div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="form-label">Repetir</label>
+              <select id="ev-repeat" class="input-field" onchange="onRepeatChange()">
+                <option value="none">No repetir</option>
+                <option value="alternate">Alternar turnos</option>
+                <option value="weekends">Todos los fines de semana</option>
+              </select>
+            </div>
+            <div id="ev-every-wrap" class="hidden"><label class="form-label">Cada turno dura</label>
+              <select id="ev-every" class="input-field">${[2, 3, 4, 5, 7, 10, 14].map(n => `<option value="${n}" ${n === 7 ? 'selected' : ''}>${n} días</option>`).join('')}</select>
+            </div>
+          </div>
+          <div id="ev-until-wrap" class="hidden"><label class="form-label">Repetir hasta *</label><input id="ev-until" type="date" class="input-field" />
+            <p id="ev-repeat-hint" class="text-xs text-gray-400 mt-1"></p>
+          </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div id="ev-time-wrap"><label class="form-label">Hora</label><input id="ev-time" type="time" class="input-field" /></div>
@@ -203,6 +225,20 @@ export function onEventPetChange() {
   sel.innerHTML = `<option value="me">Conmigo</option><option value="other">Con ${esc(otherName)}</option>`;
 }
 
+// Al elegir cómo se repite una estadía: sin repetir se pide el fin; con turnos alternados, cuánto dura
+// cada turno; y en ambos casos hasta cuándo se repite.
+export function onRepeatChange() {
+  const mode = document.getElementById('ev-repeat')?.value || 'none';
+  document.getElementById('ev-end-wrap')?.classList.toggle('hidden', mode !== 'none');
+  document.getElementById('ev-every-wrap')?.classList.toggle('hidden', mode !== 'alternate');
+  document.getElementById('ev-until-wrap')?.classList.toggle('hidden', mode === 'none');
+  const label = document.getElementById('ev-holder-label');
+  if (label) label.textContent = mode === 'alternate' ? 'Empieza con' : mode === 'weekends' ? 'Los fines de semana con' : '¿Con quién está?';
+  const hint = document.getElementById('ev-repeat-hint');
+  if (hint) hint.textContent = mode === 'alternate' ? 'Los turnos se alternan entre los dos tutores, sin días libres.'
+    : mode === 'weekends' ? 'De viernes a domingo, desde el primer viernes de la fecha de inicio.' : '';
+}
+
 // Al elegir "Estadía": el título se genera solo, aparecen "Hasta" y "¿Con quién?", la mascota se limita a
 // las que tienen otro tutor en modalidad "separados" y desaparece la hora.
 export function onEventTypeChange() {
@@ -219,7 +255,7 @@ export function onEventTypeChange() {
     petSel.innerHTML = (isStay ? '' : '<option value="">Sin mascota</option>') + list.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
     if (list.some(p => p.id === current)) petSel.value = current;
   }
-  if (isStay) onEventPetChange();
+  if (isStay) { onEventPetChange(); onRepeatChange(); }
 }
 
 export async function saveEvent(e) {
@@ -233,33 +269,70 @@ export async function saveEvent(e) {
     title: isStay ? STAY_TYPE : g('ev-title'), date: g('ev-date'), time: isStay ? null : g('ev-time'),
     type, notes: g('ev-notes'),
   };
+  let rows = [row], skipped = 0;
   if (isStay) {
     const pet = state.pets.find(p => p.id === petId);
     if (!pet) { showToast('Elige la mascota de la estadía', 'error'); return; }
-    const end = g('ev-end');
-    if (!end || end < row.date) { showToast('La fecha de fin debe ser igual o posterior al inicio', 'error'); return; }
     const myGroup = !pet.myRole || pet.myRole === 'owner' ? 'owner' : 'guest';
-    row.end_date = end;
-    row.holder = g('ev-holder') === 'other' ? (myGroup === 'owner' ? 'guest' : 'owner') : myGroup;
+    const toRole = rel => (rel === 'me' ? myGroup : (myGroup === 'owner' ? 'guest' : 'owner'));
+    const firstHolder = g('ev-holder') === 'other' ? 'other' : 'me';
+    const repeat = g('ev-repeat') || 'none';
+    if (repeat === 'none') {
+      const end = g('ev-end');
+      if (!end || end < row.date) { showToast('La fecha de fin debe ser igual o posterior al inicio', 'error'); return; }
+      row.end_date = end;
+      row.holder = toRole(firstHolder);
+    } else {
+      const until = g('ev-until');
+      if (!until || until < row.date) { showToast('Indica hasta cuándo se repite (igual o posterior al inicio)', 'error'); return; }
+      if (daysBetween(row.date, until) > 366) { showToast('Los turnos pueden repetirse hasta por un año', 'error'); return; }
+      const turns = stayTurns({ start: row.date, until, pattern: repeat, every: g('ev-every'), firstHolder });
+      // Las estadías que ya existen en esas fechas no se duplican ni se pisan.
+      const existing = state.events.filter(x => x.type === STAY_TYPE && x.petId === petId);
+      const fresh = turns.filter(t => !existing.some(x => rangesOverlap(t.date, t.endDate, x.date, x.endDate)));
+      skipped = turns.length - fresh.length;
+      if (!fresh.length) { showToast('Ya hay estadías registradas en todas esas fechas', 'error'); return; }
+      rows = fresh.map(t => ({ ...row, date: t.date, end_date: t.endDate, holder: toRole(t.holder) }));
+    }
   }
-  let data;
+  let saved;
   if (isDemoUser()) {
-    data = { id: genId(), ...row };
+    saved = rows.map(r => ({ id: genId(), ...r }));
   } else {
-    const res = await sb.from('events').insert(row).select().single();
+    const res = await sb.from('events').insert(rows.length === 1 ? rows[0] : rows).select();
     if (res.error) {
       const missingColumn = isStay && /end_date|holder/i.test(res.error.message || '');
       showToast(missingColumn ? 'Falta actualizar la base de datos para usar estadías' : 'Error al guardar evento', 'error');
       if (missingColumn) console.warn('Ejecuta supabase/schema/shared_events_care_mode.sql', res.error);
       return;
     }
-    data = res.data;
+    saved = Array.isArray(res.data) ? res.data : [res.data];
   }
-  state.events.push({ id: data.id, title: data.title, date: data.date, time: data.time, userId: data.user_id,
+  saved.forEach(data => state.events.push({ id: data.id, title: data.title, date: data.date, time: data.time, userId: data.user_id,
     endDate: data.end_date || null, holder: data.holder || null,
-    type: data.type, petId: data.pet_id, pet: state.pets.find(p => p.id === data.pet_id)?.name || null, notes: data.notes });
+    type: data.type, petId: data.pet_id, pet: state.pets.find(p => p.id === data.pet_id)?.name || null, notes: data.notes }));
   closeModal(); render();
-  showToast(isStay ? 'Estadía guardada' : 'Evento guardado', 'success');
+  showToast(!isStay ? 'Evento guardado'
+    : saved.length === 1 ? 'Estadía guardada'
+    : `Se crearon ${saved.length} estadías${skipped ? ` (${skipped} ya existían y se omitieron)` : ''}`, 'success');
+}
+
+// Quita las estadías de una mascota que todavía no terminaron (para rehacer un calendario de turnos).
+export async function deleteFutureStays(petId) {
+  const pet = state.pets.find(p => p.id === petId);
+  if (!pet || !canEditPet(pet)) return;
+  const today = todayStr();
+  const future = state.events.filter(x => x.type === STAY_TYPE && x.petId === petId && (x.endDate || x.date) >= today);
+  if (!future.length) return;
+  if (!confirm(`¿Quitar las ${future.length} estadía${future.length !== 1 ? 's' : ''} de ${pet.name} que aún no terminan? Las ya cumplidas se conservan.`)) return;
+  if (!isDemoUser()) {
+    const { error } = await sb.from('events').delete().eq('pet_id', petId).eq('type', STAY_TYPE).gte('end_date', today);
+    if (error) { showToast('Error al eliminar las estadías', 'error'); console.error(error); return; }
+  }
+  const ids = new Set(future.map(x => x.id));
+  state.events = state.events.filter(x => !ids.has(x.id));
+  render();
+  showToast('Estadías eliminadas', 'success');
 }
 
 export async function deleteEvent(id) {
@@ -288,6 +361,6 @@ export function nextMonth() {
 
 if (typeof window !== 'undefined') {
   Object.assign(window, {
-    viewCalendar, openEventModal, onEventTypeChange, onEventPetChange, saveEvent, deleteEvent, dismissSharedEventsNotice, prevMonth, nextMonth,
+    viewCalendar, openEventModal, onEventTypeChange, onEventPetChange, onRepeatChange, saveEvent, deleteEvent, deleteFutureStays, dismissSharedEventsNotice, prevMonth, nextMonth,
   });
 }

@@ -5,6 +5,7 @@ import {
   foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl,
   foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, lastWeighedDate,
   STAY_TYPE, hasOtherTutor, stayWho, eventCoversDate, petStayOn, actorLabel, timeOf, recentActivity,
+  MAX_STAYS_PER_SERIES, stayTurns, rangesOverlap, handoffSummary,
 } from './utils.js';
 
 // Fija "hoy" a una fecha conocida para que las pruebas de fecha sean
@@ -527,5 +528,109 @@ describe('quién hizo qué', () => {
     const rows = recentActivity(pet, [], 'yo', 2);
     expect(rows).toHaveLength(2);
     expect(rows[0].at > rows[1].at).toBe(true);
+  });
+});
+
+describe('turnos recurrentes', () => {
+  it('alternar cada 7 días reparte semanas entre los dos, empezando por quien se elija', () => {
+    const rows = stayTurns({ start: '2026-10-05', until: '2026-10-25', pattern: 'alternate', every: 7, firstHolder: 'me' });
+    expect(rows).toEqual([
+      { date: '2026-10-05', endDate: '2026-10-11', holder: 'me' },
+      { date: '2026-10-12', endDate: '2026-10-18', holder: 'other' },
+      { date: '2026-10-19', endDate: '2026-10-25', holder: 'me' },
+    ]);
+  });
+
+  it('el último turno se recorta al fin del período', () => {
+    const rows = stayTurns({ start: '2026-10-05', until: '2026-10-14', pattern: 'alternate', every: 7, firstHolder: 'other' });
+    expect(rows[rows.length - 1]).toEqual({ date: '2026-10-12', endDate: '2026-10-14', holder: 'me' });
+  });
+
+  it('turnos de 3 días alternados', () => {
+    const rows = stayTurns({ start: '2026-10-01', until: '2026-10-09', pattern: 'alternate', every: 3, firstHolder: 'me' });
+    expect(rows.map(r => `${r.date}→${r.endDate}:${r.holder}`)).toEqual(['2026-10-01→2026-10-03:me', '2026-10-04→2026-10-06:other', '2026-10-07→2026-10-09:me']);
+  });
+
+  it('los fines de semana van de viernes a domingo, desde el primer viernes', () => {
+    const rows = stayTurns({ start: '2026-10-05', until: '2026-10-31', pattern: 'weekends', firstHolder: 'other' }); // 5-oct es lunes
+    expect(rows.map(r => `${r.date}→${r.endDate}`)).toEqual(['2026-10-09→2026-10-11', '2026-10-16→2026-10-18', '2026-10-23→2026-10-25', '2026-10-30→2026-10-31']); // el último se recorta al fin
+    expect(rows.every(r => r.holder === 'other')).toBe(true);
+  });
+
+  it('si el inicio ya es viernes, ese fin de semana cuenta', () => {
+    expect(stayTurns({ start: '2026-10-09', until: '2026-10-11', pattern: 'weekends' })[0].date).toBe('2026-10-09');
+  });
+
+  it('rangos inválidos o un patrón desconocido no generan nada', () => {
+    expect(stayTurns({ start: '2026-10-10', until: '2026-10-01', pattern: 'alternate' })).toEqual([]);
+    expect(stayTurns({ start: '', until: '2026-10-01', pattern: 'alternate' })).toEqual([]);
+    expect(stayTurns({ start: '2026-10-01', until: '2026-12-01', pattern: 'otro' })).toEqual([]);
+  });
+
+  it('nunca genera más del tope por serie', () => {
+    expect(stayTurns({ start: '2026-01-01', until: '2036-01-01', pattern: 'alternate', every: 1 })).toHaveLength(MAX_STAYS_PER_SERIES);
+  });
+
+  it('rangesOverlap detecta los rangos que se pisan, incluidos los de un solo día', () => {
+    expect(rangesOverlap('2026-10-01', '2026-10-05', '2026-10-05', '2026-10-08')).toBe(true);
+    expect(rangesOverlap('2026-10-01', '2026-10-05', '2026-10-06', '2026-10-08')).toBe(false);
+    expect(rangesOverlap('2026-10-03', null, '2026-10-01', '2026-10-05')).toBe(true);
+  });
+});
+
+describe('handoffSummary — resumen de traspaso', () => {
+  const today = '2026-10-10';
+  const pet = () => ({
+    id: 'p1', name: 'Greta', vet: { name: 'Dra. Rojas', clinic: 'Las Condes', phone: '+56912345678' },
+    medications: [{ name: 'Gabapentina', active: true, dose: '1 comp', frequency: 'Cada 12 horas' }, { name: 'Antiguo', active: false }],
+    doseLog: [], weightHistory: [{ date: '2026-10-01', kg: 12, gr: 500 }],
+    foodItems: [{ product: 'Barfood', category: 'diario', packageSize: 10, packageUnit: 'kg', dailyAmount: 0.5, purchaseDate: '2026-09-28' }, { product: 'Galletas', category: 'snack' }],
+    vaccines: [{ name: 'Antirrábica', date: '2025-10-05', nextDate: '2026-10-20' }, { name: 'Antirrábica', date: '2024-10-05', nextDate: '2025-10-05' }, { name: 'Lejana', date: '2026-06-01', nextDate: '2027-06-01' }],
+    deworming: [{ product: 'Frontline', date: '2026-07-01', nextDate: '2026-10-01' }],
+  });
+  const titles = r => r.sections.map(s => s.title);
+
+  it('junta tratamientos, alimento diario, salud, citas próximas, lo último y veterinario', () => {
+    const events = [{ petId: 'p1', date: '2026-10-12', time: '10:00', title: 'Control', type: 'Consulta' }, { petId: 'p1', date: '2026-11-30', title: 'Lejos', type: 'Consulta' }, { petId: 'p1', date: '2026-10-11', title: 'Estadía', type: STAY_TYPE }];
+    const r = handoffSummary(pet(), events, 'yo', today);
+    expect(titles(r)).toEqual(['Tratamientos', 'Alimento', 'Salud', 'Próximas citas', 'Lo último que se registró', 'Veterinario']);
+    const by = t => r.sections.find(s => s.title === t).lines;
+    expect(by('Tratamientos')[0]).toBe('Gabapentina · 1 comp · Cada 12 horas');
+    expect(by('Tratamientos').some(l => l.includes('Antiguo'))).toBe(false);
+    expect(by('Alimento')).toHaveLength(1);
+    expect(by('Alimento')[0]).toContain('Barfood');
+    expect(by('Salud').some(l => l.startsWith('Último peso: 12,5 kg'))).toBe(true);
+    expect(by('Salud').some(l => l.includes('Antirrábica') && l.includes('próxima el'))).toBe(true);
+    expect(by('Salud').some(l => l.includes('Frontline') && l.includes('vencida el'))).toBe(true);
+    expect(by('Salud').some(l => l.includes('Lejana'))).toBe(false); // más de 30 días
+    expect(by('Próximas citas')).toHaveLength(1);
+    expect(by('Veterinario')[0]).toContain('Dra. Rojas');
+  });
+
+  it('con muchas vacunas o desparasitaciones pendientes muestra las 6 más urgentes y cuántas faltan', () => {
+    const p = pet();
+    p.vaccines = Array.from({ length: 9 }, (_, i) => ({ name: `V${i}`, date: '2025-01-01', nextDate: `2026-0${(i % 9) + 1}-15` }));
+    p.deworming = [];
+    const lines = handoffSummary(p, [], 'yo', today).sections.find(s => s.title === 'Salud').lines;
+    expect(lines.filter(l => l.startsWith('Vacuna'))).toHaveLength(6);
+    expect(lines[lines.length - 1]).toBe('…y 3 más en las fichas de vacunas y desparasitación');
+    expect(lines.filter(l => l.startsWith('Vacuna'))[0]).toContain('V0'); // la más antigua (más vencida) primero
+  });
+
+  it('dice si la dosis de hoy está pendiente o quién la dio', () => {
+    const r1 = handoffSummary(pet(), [], 'yo', today);
+    expect(r1.sections[0].lines).toContain('Dosis de hoy: pendiente');
+    const p = pet(); p.doseLog = [{ date: today, given: true, createdBy: 'otro', createdByName: 'Pedro' }];
+    expect(handoffSummary(p, [], 'yo', today).sections[0].lines.some(l => l.startsWith('Dosis de hoy: dada por Pedro'))).toBe(true);
+    p.doseLog = [{ date: today, given: true, createdBy: 'yo', createdByName: 'Ana' }];
+    expect(handoffSummary(p, [], 'yo', today).sections[0].lines.some(l => l.startsWith('Dosis de hoy: dada por ti'))).toBe(true);
+  });
+
+  it('omite las secciones sin datos y arma un texto plano para copiar', () => {
+    const r = handoffSummary({ id: 'p2', name: 'Luna' }, [], 'yo', today);
+    expect(r.sections).toEqual([]);
+    expect(r.text).toContain('Traspaso de Luna');
+    const full = handoffSummary(pet(), [], 'yo', today).text;
+    expect(full).toContain('\nTratamientos\n- Gabapentina');
   });
 });

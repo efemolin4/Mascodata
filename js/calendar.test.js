@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '../js/utils.js';
 import '../js/app.js'; // deja canEditPet/appShell/icon reales en window
 import '../js/data.js'; // deja getAgendaEvents real en window
-import { viewCalendar, openEventModal, onEventTypeChange, saveEvent, deleteEvent } from './calendar.js';
+import { viewCalendar, openEventModal, onEventTypeChange, onRepeatChange, saveEvent, deleteEvent, deleteFutureStays } from './calendar.js';
 
 const day = (offset) => { const d = new Date(); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 const ownerPet = (over = {}) => ({ id: 'p1', name: 'Greta', myRole: 'owner', careMode: 'separated', tutor2: { name: 'Pedro', pending: false }, ...over });
 const insertMock = (capture) => ({ from: vi.fn(() => ({
-  insert: vi.fn(row => { capture.row = row; return { select: () => ({ single: () => Promise.resolve({ data: { id: 'new', ...row }, error: null }) }) }; }),
-  delete: vi.fn(() => ({ eq: () => Promise.resolve({ error: null }) })),
+  insert: vi.fn(row => { capture.row = row; return { select: () => Promise.resolve({ data: (Array.isArray(row) ? row : [row]).map((r, i) => ({ id: `new${i}`, ...r })), error: null }) }; }),
+  delete: vi.fn(() => { const q = { eq: () => q, gte: () => q, then: (ok, ko) => Promise.resolve({ error: null }).then(ok, ko) }; return q; }),
 })) });
 
 beforeEach(() => {
@@ -93,7 +93,7 @@ describe('saveEvent — estadía', () => {
   });
 
   it('si la base aún no tiene las columnas nuevas, avisa que falta actualizarla', async () => {
-    window.sb = { from: () => ({ insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: { message: "Could not find the 'end_date' column of 'events'" } }) }) }) }) };
+    window.sb = { from: () => ({ insert: () => ({ select: () => Promise.resolve({ data: null, error: { message: "Could not find the 'end_date' column of 'events'" } }) }) }) };
     openEventModal(); fillStay();
     await saveEvent({ preventDefault() {} });
     expect(window.showToast).toHaveBeenCalledWith('Falta actualizar la base de datos para usar estadías', 'error');
@@ -108,6 +108,107 @@ describe('saveEvent — estadía', () => {
     await saveEvent({ preventDefault() {} });
     expect(cap.row).not.toHaveProperty('end_date');
     expect(cap.row).not.toHaveProperty('holder');
+  });
+});
+
+describe('estadías recurrentes', () => {
+  const setRepeat = (mode, over = {}) => {
+    document.getElementById('ev-repeat').value = mode;
+    onRepeatChange();
+    if (over.every) document.getElementById('ev-every').value = String(over.every);
+    if (over.until) document.getElementById('ev-until').value = over.until;
+  };
+
+  it('al elegir un patrón se ocultan "Hasta" y aparecen la repetición y su fin', () => {
+    openEventModal(); fillStay();
+    setRepeat('alternate');
+    expect(document.getElementById('ev-end-wrap').classList.contains('hidden')).toBe(true);
+    expect(document.getElementById('ev-every-wrap').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('ev-until-wrap').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('ev-holder-label').textContent).toBe('Empieza con');
+    setRepeat('weekends');
+    expect(document.getElementById('ev-every-wrap').classList.contains('hidden')).toBe(true);
+    expect(document.getElementById('ev-holder-label').textContent).toBe('Los fines de semana con');
+    setRepeat('none');
+    expect(document.getElementById('ev-end-wrap').classList.contains('hidden')).toBe(false);
+  });
+
+  it('alternar turnos crea todas las estadías de una vez, con los responsables alternados', async () => {
+    const cap = {}; window.sb = insertMock(cap);
+    openEventModal(); fillStay({ date: '2026-10-05', holder: 'me' });
+    setRepeat('alternate', { every: 7, until: '2026-10-25' });
+    await saveEvent({ preventDefault() {} });
+    expect(cap.row.map(r => `${r.date}→${r.end_date}:${r.holder}`)).toEqual(['2026-10-05→2026-10-11:owner', '2026-10-12→2026-10-18:guest', '2026-10-19→2026-10-25:owner']);
+    expect(window.state.events).toHaveLength(3);
+    expect(window.showToast).toHaveBeenCalledWith('Se crearon 3 estadías', 'success');
+  });
+
+  it('los fines de semana se crean de viernes a domingo con el responsable elegido', async () => {
+    const cap = {}; window.sb = insertMock(cap);
+    openEventModal(); fillStay({ date: '2026-10-05', holder: 'other' });
+    setRepeat('weekends', { until: '2026-10-18' });
+    await saveEvent({ preventDefault() {} });
+    expect(cap.row.map(r => `${r.date}→${r.end_date}:${r.holder}`)).toEqual(['2026-10-09→2026-10-11:guest', '2026-10-16→2026-10-18:guest']);
+  });
+
+  it('no duplica ni pisa estadías que ya existen en esas fechas', async () => {
+    window.state.events = [{ id: 'x', type: 'Estadía', petId: 'p1', date: '2026-10-12', endDate: '2026-10-14', holder: 'guest' }];
+    const cap = {}; window.sb = insertMock(cap);
+    openEventModal(); fillStay({ date: '2026-10-05', holder: 'me' });
+    setRepeat('alternate', { every: 7, until: '2026-10-25' });
+    await saveEvent({ preventDefault() {} });
+    expect(cap.row.map(r => r.date)).toEqual(['2026-10-05', '2026-10-19']);
+    expect(window.showToast).toHaveBeenCalledWith('Se crearon 2 estadías (1 ya existían y se omitieron)', 'success');
+  });
+
+  it('si todas las fechas ya tienen estadía, no crea nada', async () => {
+    window.state.events = [{ id: 'x', type: 'Estadía', petId: 'p1', date: '2026-10-01', endDate: '2026-11-30', holder: 'guest' }];
+    const cap = {}; window.sb = insertMock(cap);
+    openEventModal(); fillStay({ date: '2026-10-05' });
+    setRepeat('alternate', { until: '2026-10-25' });
+    await saveEvent({ preventDefault() {} });
+    expect(cap.row).toBeUndefined();
+    expect(window.showToast).toHaveBeenCalledWith('Ya hay estadías registradas en todas esas fechas', 'error');
+  });
+
+  it('exige hasta cuándo se repite, y no más de un año', async () => {
+    const cap = {}; window.sb = insertMock(cap);
+    openEventModal(); fillStay({ date: '2026-10-05' });
+    setRepeat('weekends');
+    await saveEvent({ preventDefault() {} });
+    expect(window.showToast).toHaveBeenCalledWith('Indica hasta cuándo se repite (igual o posterior al inicio)', 'error');
+    setRepeat('weekends', { until: '2028-01-01' });
+    await saveEvent({ preventDefault() {} });
+    expect(window.showToast).toHaveBeenCalledWith('Los turnos pueden repetirse hasta por un año', 'error');
+    expect(cap.row).toBeUndefined();
+  });
+});
+
+describe('deleteFutureStays', () => {
+  it('quita las estadías que no terminaron y conserva las cumplidas y las de otras mascotas', async () => {
+    window.confirm = vi.fn(() => true);
+    window.state.events = [
+      { id: 'a', type: 'Estadía', petId: 'p1', date: day(-20), endDate: day(-10) },
+      { id: 'b', type: 'Estadía', petId: 'p1', date: day(-1), endDate: day(2) },
+      { id: 'c', type: 'Estadía', petId: 'p1', date: day(5), endDate: day(8) },
+      { id: 'd', type: 'Estadía', petId: 'p2', date: day(5), endDate: day(8) },
+      { id: 'e', type: 'Consulta', petId: 'p1', date: day(5) },
+    ];
+    window.sb = insertMock({});
+    await deleteFutureStays('p1');
+    expect(window.state.events.map(e => e.id)).toEqual(['a', 'd', 'e']);
+  });
+
+  it('no hace nada si el usuario cancela o no puede editar la mascota', async () => {
+    window.state.events = [{ id: 'b', type: 'Estadía', petId: 'p1', date: day(1), endDate: day(2) }];
+    window.confirm = vi.fn(() => false);
+    window.sb = insertMock({});
+    await deleteFutureStays('p1');
+    expect(window.state.events).toHaveLength(1);
+    window.confirm = vi.fn(() => true);
+    window.state.pets = [ownerPet({ myRole: 'viewer' })];
+    await deleteFutureStays('p1');
+    expect(window.state.events).toHaveLength(1);
   });
 });
 
