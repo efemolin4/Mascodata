@@ -50,6 +50,12 @@ Function, desplegada y probada con `?dry=1` · sé cómo volver atrás.
 
 Y en Vercel (*Settings → Git*): **Production Branch = `main`**, con vistas previas activadas para las demás ramas (es lo normal).
 
+## Lo que no pasa por el repositorio
+
+Las plantillas de correo del panel, los límites de envío, el SMTP, las Edge Functions pegadas y el SQL del editor se aplican
+**directo en producción**. Qué hay configurado hoy: [`docs/CONFIG-SUPABASE.md`](CONFIG-SUPABASE.md) (actualizarlo al cambiar algo).
+Regla: cambiar una cosa a la vez, anotar el valor anterior antes de cambiarlo y probar en el momento.
+
 ## Cuándo sumar un entorno de pruebas (Nivel 2)
 
 Antes de invitar a más personas, o antes del primer cambio de reglas de acceso que no se pueda ensayar sin riesgo:

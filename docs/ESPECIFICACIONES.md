@@ -177,6 +177,8 @@ Migraciones nuevas, todas idempotentes y en `supabase/schema/`: `pet_reminders.s
 ### 4.4.2 Entornos y publicación
 Un solo entorno real (producción). Los cambios se hacen en ramas con pruebas automáticas en GitHub Actions y vista previa en Vercel, y se fusionan a `main` por pull request (publica en `mascodata.cl`). Antes de un SQL que modifique datos se hace un respaldo en el esquema `backups`. Detalle, reglas de GitHub y el plan para sumar un entorno de pruebas: [`docs/ENTORNOS.md`](ENTORNOS.md).
 
+Configuración del panel de Supabase (autenticación, límites, SMTP, plantillas, funciones y crons) y decisiones pendientes: [`docs/CONFIG-SUPABASE.md`](CONFIG-SUPABASE.md).
+
 ### 4.5 Edge Functions y tareas programadas
 
 | Función | Cron (UTC) | Propósito |
