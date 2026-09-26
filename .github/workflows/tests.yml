@@ -1,0 +1,23 @@
+# Corre las pruebas en cada cambio. Un cambio con pruebas en rojo no debería llegar a main (que es producción).
+# Para exigirlo: GitHub → Settings → Branches → regla para main → "Require status checks to pass" → "Pruebas".
+name: Pruebas
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pruebas:
+    name: Pruebas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Incluye check-exports (que ningún botón apunte a una función sin exportar) y las pruebas de las
+      # Edge Functions y de las plantillas de correo.
+      - run: npm test
