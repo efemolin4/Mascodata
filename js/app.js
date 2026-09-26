@@ -911,6 +911,7 @@ export async function initApp() {
       const userName = session.user.user_metadata?.name || session.user.email.split('@')[0];
       state.user = { name: userName, email: session.user.email, id: session.user.id };
       state.isLoggedIn = true;
+      if (hash.includes('type=signup')) track('signup_completed'); // volvió del enlace de confirmación
       // Cubre sesiones que nunca pasan por register()/login() — ej. un segundo
       // tutor que crea su cuenta vía el magic link de una invitación — para que
       // siempre exista una fila en profiles antes de cualquier insert que dependa

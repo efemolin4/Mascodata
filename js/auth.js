@@ -95,6 +95,7 @@ export function viewLogin() {
 
 // ---- VISTA: REGISTER ----
 export function viewRegister() {
+  if (state.registerSent) return viewRegisterSent();
   return `
   <div class="min-h-screen overflow-y-auto bg-gray-50">
     <div class="min-h-full flex flex-col justify-center px-5 py-8 sm:px-8 sm:items-center">
@@ -244,7 +245,17 @@ export async function login() {
   showToast('Iniciando sesión...', '');
   const captchaToken = await getCaptchaToken();
   const { data, error } = await sb.auth.signInWithPassword(withCaptcha({ email, password: pass }, captchaToken));
-  if (error) { showToast(isCaptchaError(error) ? 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo' : error.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos' : error.message, 'error'); return; }
+  if (error) {
+    if (/email not confirmed/i.test(error.message || '')) {
+      // Cuenta creada pero sin abrir el enlace de confirmación: se lleva a la pantalla que permite reenviarlo.
+      state.registerSent = { email };
+      showToast('Tu correo aún no está confirmado', 'error');
+      navigate('register');
+      return;
+    }
+    showToast(isCaptchaError(error) ? 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo' : error.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos' : error.message, 'error');
+    return;
+  }
 
   const userName = data.user.user_metadata?.name || email.split('@')[0];
   state.user = { name: userName, email, id: data.user.id };
@@ -262,6 +273,51 @@ export async function login() {
   track('login');
   showToast('¡Bienvenido!', 'success');
   navigate('dashboard', {}, { replace: true });
+}
+
+// Después de crear la cuenta (o de intentar entrar sin haberla confirmado).
+function viewRegisterSent() {
+  return `
+  <div class="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+    <div class="w-full max-w-sm animate-scale-in">
+      <div class="text-center mb-6">
+        <div class="mb-2 flex justify-center text-brand-400">${icon('mail','w-10 h-10')}</div>
+        <h2 class="text-2xl font-bold text-gray-900">Confirma tu correo</h2>
+        <p class="text-sm text-gray-500 mt-2">Te enviamos un enlace a <strong class="text-gray-700">${esc(state.registerSent.email)}</strong>. Ábrelo para activar tu cuenta y entrar. Puede tardar unos minutos; revisa también la carpeta de spam.</p>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm p-6 space-y-3">
+        <p class="text-sm font-semibold text-gray-800">¿No te llega?</p>
+        <ul class="text-sm text-gray-600 space-y-2">
+          <li><span class="font-medium text-gray-800">Puedes pedirlo de nuevo</span> con el botón de abajo.</li>
+          <li><span class="font-medium text-gray-800">Si ya tenías una cuenta con este correo,</span> inicia sesión o recupera tu contraseña: no se envía un correo nuevo.</li>
+        </ul>
+        <button onclick="resendConfirmation()" class="btn-primary w-full">Reenviar el correo</button>
+        <button onclick="navigate('login')" class="btn-secondary w-full">Iniciar sesión</button>
+        <button onclick="openForgot()" class="w-full text-sm text-gray-500 hover:text-gray-700">Olvidé mi contraseña</button>
+        <button onclick="retryRegister()" class="w-full text-sm text-gray-500 hover:text-gray-700">Usar otro correo</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+export async function resendConfirmation() {
+  const email = state.registerSent?.email;
+  if (!email) return;
+  const captchaToken = await getCaptchaToken();
+  const { error } = await sb.auth.resend({ type: 'signup', email, options: withCaptcha({ emailRedirectTo: window.location.origin }, captchaToken) });
+  if (error) {
+    showToast(isCaptchaError(error) ? 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo'
+      : error.status === 429 || /rate limit|security purposes/i.test(error.message || '') ? 'Espera un minuto antes de pedir otro correo'
+      : error.message, 'error');
+    return;
+  }
+  showToast('Te enviamos el correo de nuevo', 'success');
+}
+
+// "Usar otro correo": vuelve al formulario de registro.
+export function retryRegister() {
+  state.registerSent = null;
+  render();
 }
 
 export async function handleRegister(e) {
@@ -283,10 +339,20 @@ export async function register() {
   const captchaToken = await getCaptchaToken();
   const { data, error } = await sb.auth.signUp({
     email, password: pass,
-    options: withCaptcha({ data: { name } }, captchaToken)
+    options: withCaptcha({ data: { name }, emailRedirectTo: window.location.origin }, captchaToken)
   });
   if (error) {
     showToast(isCaptchaError(error) ? 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo' : error.message === 'User already registered' ? 'Email ya registrado' : error.message, 'error');
+    return;
+  }
+
+  // Con "Confirm email" activado en Supabase, signUp NO devuelve sesión: la cuenta queda pendiente hasta que la persona
+  // abre el enlace del correo (así se comprueba que el correo es suyo). Tampoco se dice si la cuenta ya existía: en ese
+  // caso Supabase responde igual y no envía nada, y la pantalla explica qué hacer.
+  if (!data?.session) {
+    track('signup_submitted');
+    state.registerSent = { email };
+    render();
     return;
   }
 
@@ -915,7 +981,7 @@ export function loadDemoAndLogin(silent) {
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     viewLogin, viewRegister, viewResetPassword, handleResetPassword, viewForgot,
-    handleLogin, login, handleRegister, register, handleForgot, sendForgotEmail, openForgot, goRegisterWithEmail, retryForgot, signInWithGoogle,
+    handleLogin, login, handleRegister, register, handleForgot, sendForgotEmail, openForgot, goRegisterWithEmail, retryForgot, resendConfirmation, retryRegister, signInWithGoogle,
     logout, loadDemoAndLogin, viewProfile, saveProfile,
     openDeleteAccountModal, sendAccountDeleteCode, verifyAccountDeleteCode,
   });
