@@ -87,18 +87,46 @@ describe('sendAccountDeleteCode', () => {
     expect(document.getElementById('del-acc-step-2').classList.contains('hidden')).toBe(false);
   });
 
-  it('para un usuario real, pide el código por email vía signInWithOtp', async () => {
+  // Un error de una Edge Function trae el cuerpo de la respuesta en error.context.
+  const edgeError = (error, status = 429) => ({ message: 'Edge Function returned a non-2xx status code', context: { status, json: async () => ({ error }) } });
+
+  it('para un usuario real, pide el código a la función propia (no a Supabase Auth) y avanza al paso 2', async () => {
     state.user = { id: 'user-1', plan: 'free', email: 'felipe@mqlab.io' };
     window.sb = makeMockSb();
     await sendAccountDeleteCode();
-    expect(window.sb.auth.signInWithOtp).toHaveBeenCalledWith({ email: 'felipe@mqlab.io', options: { shouldCreateUser: false } });
+    expect(window.sb.functions.invoke).toHaveBeenCalledWith('verification-codes', { body: { action: 'send', purpose: 'delete_account' } });
+    expect(window.sb.auth.signInWithOtp).not.toHaveBeenCalled();
     expect(document.getElementById('del-acc-step-1').classList.contains('hidden')).toBe(true);
+    expect(document.getElementById('del-acc-step-2').classList.contains('hidden')).toBe(false);
   });
 
-  it('si Supabase falla al enviar el código, muestra un toast y no avanza al paso 2', async () => {
+  it('no pide CAPTCHA para este envío: la función ya exige sesión y limita los envíos', async () => {
+    window.MASCODATA_TURNSTILE_KEY = 'k';
+    window.turnstile = { render: vi.fn(), remove: vi.fn() };
     state.user = { id: 'user-1', plan: 'free', email: 'felipe@mqlab.io' };
     window.sb = makeMockSb();
-    window.sb.auth.signInWithOtp = vi.fn(async () => ({ error: { message: 'boom' } }));
+    await sendAccountDeleteCode();
+    expect(window.turnstile.render).not.toHaveBeenCalled();
+    window.MASCODATA_TURNSTILE_KEY = ''; delete window.turnstile;
+  });
+
+  it.each([
+    ['too_soon', 'Espera un minuto antes de pedir otro código'],
+    ['too_many', 'Pediste demasiados códigos. Inténtalo de nuevo en una hora'],
+    ['send_failed', 'No se pudo enviar el correo. Inténtalo de nuevo'],
+  ])('si la función responde %s, lo explica y no avanza al paso 2', async (code, message) => {
+    state.user = { id: 'user-1', plan: 'free', email: 'felipe@mqlab.io' };
+    window.sb = makeMockSb();
+    window.sb.functions.invoke = vi.fn(async () => ({ data: null, error: edgeError(code) }));
+    await sendAccountDeleteCode();
+    expect(window.showToast).toHaveBeenCalledWith(message, 'error');
+    expect(document.getElementById('del-acc-step-2').classList.contains('hidden')).toBe(true);
+  });
+
+  it('un error desconocido muestra el aviso genérico y no avanza', async () => {
+    state.user = { id: 'user-1', plan: 'free', email: 'felipe@mqlab.io' };
+    window.sb = makeMockSb();
+    window.sb.functions.invoke = vi.fn(async () => ({ data: null, error: { message: 'boom' } }));
     await sendAccountDeleteCode();
     expect(window.showToast).toHaveBeenCalledWith('No se pudo enviar el código', 'error');
     expect(document.getElementById('del-acc-step-2').classList.contains('hidden')).toBe(true);
@@ -140,44 +168,45 @@ describe('verifyAccountDeleteCode', () => {
     expect(state.isLoggedIn).toBe(true);
   });
 
-  it('para un usuario real, verifica el código por OTP y luego invoca la Edge Function', async () => {
+  const edgeError = (error, status = 403) => ({ message: 'Edge Function returned a non-2xx status code', context: { status, json: async () => ({ error }) } });
+  const setup = () => {
     state.user = { id: 'user-1', plan: 'free', email: 'felipe@mqlab.io' };
     state.isLoggedIn = true;
     window.sb = makeMockSb();
+  };
+
+  it('para un usuario real, manda el código a delete-account (el servidor lo comprueba) y cierra sesión', async () => {
+    setup();
     await verifyAccountDeleteCode();
-    expect(window.sb.auth.verifyOtp).toHaveBeenCalledWith({ email: 'felipe@mqlab.io', token: '123456', type: 'email' });
-    expect(window.sb.functions.invoke).toHaveBeenCalledWith('delete-account');
+    expect(window.sb.functions.invoke).toHaveBeenCalledWith('delete-account', { body: { code: '123456' } });
+    expect(window.sb.auth.verifyOtp).not.toHaveBeenCalled(); // ya no se comprueba en el navegador
     expect(window.showToast).toHaveBeenCalledWith('Cuenta eliminada', 'success');
     expect(state.isLoggedIn).toBe(false);
   });
 
-  it('si el tipo "email" del OTP falla, reintenta como "magiclink" antes de rendirse', async () => {
-    state.user = { id: 'user-1', plan: 'free', email: 'felipe@mqlab.io' };
-    window.sb = makeMockSb();
-    window.sb.auth.verifyOtp = vi.fn()
-      .mockResolvedValueOnce({ error: { message: 'wrong type' } })
-      .mockResolvedValueOnce({ error: null });
+  it('código incorrecto: el servidor lo rechaza, se marca el campo y NO se cierra sesión', async () => {
+    setup();
+    window.sb.functions.invoke = vi.fn(async () => ({ data: null, error: edgeError('code_invalid') }));
     await verifyAccountDeleteCode();
-    expect(window.sb.auth.verifyOtp).toHaveBeenCalledTimes(2);
-    expect(window.sb.auth.verifyOtp).toHaveBeenNthCalledWith(2, { email: 'felipe@mqlab.io', token: '123456', type: 'magiclink' });
-    expect(window.sb.functions.invoke).toHaveBeenCalled();
-  });
-
-  it('código incorrecto (ambos tipos de OTP fallan): no invoca la función ni cierra sesión', async () => {
-    state.user = { id: 'user-1', plan: 'free', email: 'felipe@mqlab.io' };
-    state.isLoggedIn = true;
-    window.sb = makeMockSb();
-    window.sb.auth.verifyOtp = vi.fn(async () => ({ error: { message: 'invalid' } }));
-    await verifyAccountDeleteCode();
-    expect(window.sb.functions.invoke).not.toHaveBeenCalled();
     expect(document.getElementById('del-acc-code-error').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('del-acc-code-error').textContent).toBe('Código incorrecto. Intenta nuevamente.');
+    expect(window.closeModal).not.toHaveBeenCalled();
     expect(state.isLoggedIn).toBe(true);
   });
 
-  it('si la Edge Function falla, muestra un toast de error y NO cierra sesión (la cuenta no se borró)', async () => {
-    state.user = { id: 'user-1', plan: 'free', email: 'felipe@mqlab.io' };
-    state.isLoggedIn = true;
-    window.sb = makeMockSb();
+  it.each([
+    ['code_expired', 'El código venció. Pide uno nuevo.'],
+    ['code_locked', 'Demasiados intentos. Pide un código nuevo.'],
+  ])('%s se explica con su propio mensaje', async (code, message) => {
+    setup();
+    window.sb.functions.invoke = vi.fn(async () => ({ data: null, error: edgeError(code) }));
+    await verifyAccountDeleteCode();
+    expect(document.getElementById('del-acc-code-error').textContent).toBe(message);
+    expect(state.isLoggedIn).toBe(true);
+  });
+
+  it('si la Edge Function falla por otra razón, muestra un toast de error y NO cierra sesión (la cuenta no se borró)', async () => {
+    setup();
     window.sb.functions.invoke = vi.fn(async () => ({ data: null, error: { message: 'boom' } }));
     await verifyAccountDeleteCode();
     expect(window.showToast).toHaveBeenCalledWith('No se pudo eliminar la cuenta. Intenta nuevamente o contáctanos.', 'error');

@@ -251,6 +251,12 @@ export function isCaptchaError(error) {
   return /captcha/i.test(error?.message || '');
 }
 
+// Código de error que devuelve una Edge Function propia (403 code_invalid, 429 too_soon…). supabase-js entrega el
+// cuerpo de la respuesta dentro de error.context; si no se puede leer, null.
+export async function edgeErrorCode(error) {
+  try { return (await error.context.json())?.error || null; } catch (e) { return null; }
+}
+
 export function track(event, props = {}) {
   try { window.posthog?.capture(event, { ...props, demo: isDemoUser() }); } catch (e) {}
 }
@@ -997,7 +1003,7 @@ document.addEventListener('DOMContentLoaded', initApp);
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     getPage, setPage, paginate, pagerHTML, loadState, saveState, isDemoUser,
-    canEditPet, blockIfReadOnly, isPremium, blockIfNotPremium, premiumUpsell, premiumUpsellCard, track, requestPremium, MIN_PASSWORD_LENGTH, getCaptchaToken, withCaptcha, isCaptchaError,
+    canEditPet, blockIfReadOnly, isPremium, blockIfNotPremium, premiumUpsell, premiumUpsellCard, track, requestPremium, MIN_PASSWORD_LENGTH, getCaptchaToken, withCaptcha, isCaptchaError, edgeErrorCode,
     requestPlanUpgrade, viewPlans,
     showToast, viewToPath, pathToView,
     resolveInitialViewFromUrl, navigate, iconSVG, icon, sidebar, bottomNav, mobileTopBar,

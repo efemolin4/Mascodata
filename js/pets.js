@@ -845,16 +845,19 @@ export function openDeletePetWithCode(petId) {
   const pet = state.pets.find(p => p.id === petId);
   if (!pet) return;
   const hasTwoTutors = pet.tutor2?.name;
+  const isOwnerOfPet = !pet.myRole || pet.myRole === 'owner';
   const email = state.user?.email || '';
   openModal(`
     <div class="modal-box p-4 sm:p-6">
       <div class="text-center mb-4">
         <div class="mb-2 flex justify-center text-red-400">${icon('trash','w-12 h-12')}</div>
-        <h3 class="text-lg font-bold text-gray-900">Eliminar a ${esc(pet.name)}</h3>
+        <h3 class="text-lg font-bold text-gray-900">${isOwnerOfPet ? 'Eliminar a' : 'Dejar de ver a'} ${esc(pet.name)}</h3>
         <p class="text-sm text-gray-500 mt-1">
-          ${hasTwoTutors
-            ? `Esta mascota tiene 2 tutores. Solo se eliminará de <strong>tu perfil</strong>. El otro tutor mantendrá acceso.`
-            : `Esta acción eliminará toda la información de <strong>${esc(pet.name)}</strong> permanentemente.`}
+          ${!isOwnerOfPet
+            ? `Solo dejarás de ver a <strong>${esc(pet.name)}</strong>. Su dueño conserva toda la información.`
+            : hasTwoTutors
+              ? `Esta acción eliminará toda la información de <strong>${esc(pet.name)}</strong> permanentemente, <strong>también para su otro tutor</strong>.`
+              : `Esta acción eliminará toda la información de <strong>${esc(pet.name)}</strong> permanentemente.`}
         </p>
       </div>
       <div id="delete-step-1">
@@ -885,6 +888,18 @@ export function openDeletePetWithCode(petId) {
     </div>`);
 }
 
+// Mensajes de las Edge Functions de códigos (ver supabase/functions/verification-codes).
+const CODE_SEND_ERRORS = {
+  too_soon: 'Espera un minuto antes de pedir otro código',
+  too_many: 'Pediste demasiados códigos. Inténtalo de nuevo en una hora',
+  send_failed: 'No se pudo enviar el correo. Inténtalo de nuevo',
+};
+const CODE_CHECK_ERRORS = {
+  code_invalid: 'Código incorrecto. Intenta nuevamente.',
+  code_expired: 'El código venció. Pide uno nuevo.',
+  code_locked: 'Demasiados intentos. Pide un código nuevo.',
+};
+
 export async function sendDeleteCode(petId) {
   state.deletePetId = petId;
   if (isDemoUser()) {
@@ -895,14 +910,15 @@ export async function sendDeleteCode(petId) {
     showToast(`Código enviado a ${state.user?.email} (demo: ${state.deleteCode})`, 'success');
     return;
   }
-  // Código real de un solo uso vía Supabase Auth (email OTP) — se envía por el
-  // mismo SMTP configurado en el proyecto. Requiere que la plantilla "Magic Link"
-  // en Supabase → Authentication → Email Templates incluya {{ .Token }}, si no,
-  // el correo solo mostrará el link y no el código (su largo lo define Supabase,
-  // no asumir 6 dígitos).
-  const captchaToken = await getCaptchaToken();
-  const { error } = await sb.auth.signInWithOtp({ email: state.user.email, options: withCaptcha({ shouldCreateUser: false }, captchaToken) });
-  if (error) { showToast(isCaptchaError(error) ? 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo' : 'No se pudo enviar el código', 'error'); console.error(error); return; }
+  // Código real de un solo uso, con un correo propio de esta acción ("Código para eliminar a Greta"), enviado por la
+  // Edge Function verification-codes (Resend). Vence a los 10 minutos.
+  const { error } = await sb.functions.invoke('verification-codes', { body: { action: 'send', purpose: 'delete_pet', pet_id: petId } });
+  if (error) {
+    const code = await edgeErrorCode(error);
+    showToast(CODE_SEND_ERRORS[code] || 'No se pudo enviar el código', 'error');
+    console.error(error);
+    return;
+  }
   document.getElementById('delete-step-1').classList.add('hidden');
   document.getElementById('delete-step-2').classList.remove('hidden');
   showToast(`Código enviado a ${state.user?.email}`, 'success');
@@ -911,69 +927,43 @@ export async function sendDeleteCode(petId) {
 export async function verifyDeleteCode(petId) {
   const input = document.getElementById('delete-code-input')?.value?.trim();
   const error = document.getElementById('delete-code-error');
-  // Si un intento anterior falló por otra razón (ej. el borrado en Supabase,
-  // más abajo en deletePet()), sin esto el aviso de "código incorrecto" de
-  // esa vez quedaba pegado en pantalla aunque el código de este intento sí
-  // fuera válido.
+  const markInvalid = message => {
+    if (error) { error.textContent = message; error.classList.remove('hidden'); }
+    document.getElementById('delete-code-input')?.classList.add('border-red-400');
+  };
+  // Si un intento anterior falló por otra razón, sin esto el aviso de esa vez quedaba pegado en pantalla
+  // aunque el código de este intento sí fuera válido.
   error?.classList.add('hidden');
   document.getElementById('delete-code-input')?.classList.remove('border-red-400');
   if (isDemoUser()) {
-    if (input !== state.deleteCode) {
-      error?.classList.remove('hidden');
-      document.getElementById('delete-code-input').classList.add('border-red-400');
-      return;
-    }
+    if (input !== state.deleteCode) { markInvalid(CODE_CHECK_ERRORS.code_invalid); return; }
     deletePet(petId);
     return;
   }
-  // Nuestra plantilla de correo ("Magic Link or OTP") mantiene {{ .ConfirmationURL }}
-  // además de {{ .Token }} para no romper el flujo de invitación de segundo tutor,
-  // que sí depende del link. Eso hace que Supabase emita el token como tipo
-  // 'magiclink' en vez de 'email' — se prueban ambos tipos por robustez.
-  let { error: otpError } = await sb.auth.verifyOtp({ email: state.user.email, token: input, type: 'email' });
-  if (otpError) {
-    ({ error: otpError } = await sb.auth.verifyOtp({ email: state.user.email, token: input, type: 'magiclink' }));
-  }
-  if (otpError) {
-    error?.classList.remove('hidden');
-    document.getElementById('delete-code-input').classList.add('border-red-400');
+  // El código se comprueba en el SERVIDOR y, si es válido, la misma función borra la mascota (o quita el acceso de
+  // quien la comparte). Ya no hay borrado directo desde el navegador (ver supabase/schema/verification_codes.sql).
+  const { data, error: fnError } = await sb.functions.invoke('verification-codes', { body: { action: 'delete_pet', pet_id: petId, code: input } });
+  if (fnError) {
+    const code = await edgeErrorCode(fnError);
+    if (CODE_CHECK_ERRORS[code]) { markInvalid(CODE_CHECK_ERRORS[code]); return; }
+    showToast('No se pudo eliminar. Inténtalo de nuevo.', 'error');
+    console.error(fnError);
     return;
   }
-  deletePet(petId);
+  deletePet(petId, data?.mode);
 }
 
 export function confirmDeletePet(petId) { openDeletePetWithCode(petId); }
 
-export async function deletePet(petId) {
+// Actualiza la pantalla después de eliminar (o de dejar de ver) una mascota. El borrado real ya ocurrió en el servidor
+// (verification-codes) o, en el modo demo, no existe: acá solo se ajusta el estado local.
+// `mode`: 'deleted' (la dueña la eliminó) o 'left' (quien la comparte dejó de verla); si no viene, se deduce del rol.
+export function deletePet(petId, mode) {
   const pet = state.pets.find(p => p.id === petId);
-  // Antes esta rama se decidía por "¿existe un tutor2?" (pet?.tutor2?.name),
-  // no por si el usuario actual es el dueño — así que el dueño de una
-  // mascota compartida (invitación aceptada O TODAVÍA PENDIENTE) entraba
-  // por error a la rama de "salir": borraba la invitación y su propio
-  // pet_access, pero nunca la fila de `pets`, dejándola huérfana en la
-  // base para siempre mientras la app mostraba "eliminada permanentemente".
-  const isOwner = !pet?.myRole || pet.myRole === 'owner';
-  if (!isOwner) {
-    // Salir de una mascota compartida es una acción sobre el propio acceso, no
-    // una edición de la mascota — se permite incluso con rol de solo lectura.
-    if (!isDemoUser()) {
-      const { error: invError } = await sb.from('invitations').delete().eq('pet_id', petId);
-      if (invError) { showToast('Error al eliminar', 'error'); console.error(invError); return; }
-      // Quita solo el acceso del usuario actual — el otro tutor conserva el suyo.
-      const { error } = await sb.from('pet_access').delete().eq('pet_id', petId).eq('user_id', state.user.id);
-      if (error) { showToast('Error al eliminar', 'error'); console.error(error); return; }
-    }
-    state.pets = state.pets.filter(p => p.id !== petId);
-    showToast(`${pet.name} eliminada de tu perfil`, 'success');
-  } else {
-    if (blockIfReadOnly(pet)) return;
-    if (!isDemoUser()) {
-      const { error } = await sb.from('pets').delete().eq('id', petId);
-      if (error) { showToast('Error al eliminar', 'error'); return; }
-    }
-    state.pets = state.pets.filter(p => p.id !== petId);
-    showToast(`${pet?.name} eliminada`, 'error');
-  }
+  const left = mode ? mode === 'left' : !!pet?.myRole && pet.myRole !== 'owner';
+  state.pets = state.pets.filter(p => p.id !== petId);
+  if (left) showToast(`${pet?.name || 'La mascota'} eliminada de tu perfil`, 'success');
+  else showToast(`${pet?.name || 'La mascota'} eliminada`, 'error');
   state.deleteCode = null; state.deletePetId = null;
   closeModal(); navigate('pets');
 }

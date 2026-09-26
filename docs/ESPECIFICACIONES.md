@@ -161,6 +161,7 @@ Migraciones nuevas, todas idempotentes y en `supabase/schema/`: `pet_reminders.s
 - **Invitaciones:** solo el dueño de la mascota puede crearlas; quien las recibe solo puede marcarlas como usadas (trigger); aceptar exige que la haya creado el dueño real.
 - **Dueño de la mascota:** un trigger impide cambiar `pets.owner_id` desde el navegador; solo el servidor (`delete-account`, clave de servicio) puede.
 - **Contraseñas y abuso:** largo mínimo de **8** caracteres al crear o cambiar una contraseña (las cuentas antiguas más cortas siguen entrando); mensajes de error que no revelan si un correo tiene cuenta; pantalla "Revisa tu correo" al recuperar contraseña con salidas si no llega. **CAPTCHA (Cloudflare Turnstile)** integrado en login, registro, recuperar contraseña y códigos de verificación, apagado hasta configurar la clave pública en `index.html` y activarlo en Supabase (ver `supabase/README.md`, *Protección contra abuso*).
+- **Acciones destructivas con código verificado en el servidor:** eliminar la cuenta, eliminar una mascota o dejar de ver una compartida piden un código de 6 dígitos que llega por un **correo propio de esa acción** ("Código para eliminar a Greta"). El servidor lo comprueba (vence a los 10 minutos, un solo uso, se bloquea tras 5 intentos, máx. 1 por minuto y 5 por hora) y recién ahí borra; ya no hay borrado directo de mascotas desde el navegador. Probado con `test_verification_codes.sql` y `test_close_direct_pet_delete.sql`.
 - **Autoría:** `created_by` y `created_by_name` los fija un trigger en cada tabla de registros (no el navegador) y no se pueden modificar después. Probado con `test_activity_attribution.sql`.
 - **Gastos compartidos:** los gastos de una mascota solo los ve el otro tutor si la mascota reparte a partes iguales (`expense_split = 'equal'`); nadie puede modificar ni borrar gastos ajenos, y los pagos entre tutores llevan la firma de quien los registró (no falsificable) y solo él puede borrarlos. Probado con `test_shared_expenses.sql`.
 - **Agenda compartida:** `events` se comparte por mascota mediante `pet_accessible()` (ver) y `pet_editor()` (crear, modificar, borrar); un trigger impide cambiar el autor de un evento. Probado con simulación de sesiones (`test_shared_events.sql`).
@@ -185,7 +186,8 @@ Configuración del panel de Supabase (autenticación, límites, SMTP, plantillas
 |---|---|---|
 | `pet-completion-reminders` | `0 13 * * *` | Correos para completar el perfil |
 | `food-restock-reminders` | `30 13 * * *` | Aviso de alimento por acabarse |
-| `delete-account` | — (a demanda) | Elimina la cuenta y transfiere mascotas al segundo tutor |
+| `verification-codes` | — (a demanda) | Envía el código para eliminar una mascota (o dejar de ver una compartida) y la elimina si el código es válido |
+| `delete-account` | — (a demanda) | Elimina la cuenta y transfiere mascotas al segundo tutor; **exige el código** |
 
 Las funciones de correo corren con **Verify JWT desactivado** y se protegen con `CRON_SECRET`; el enlace de baja se valida con `UNSUB_SECRET`. Reservan el envío en la base antes de llamar a Resend y liberan la reserva si falla. Ambas admiten `?dry=1` para simular. Programación con `pg_cron` + `pg_net`. **El despliegue es manual** (pegar el código en el panel de Supabase); el repositorio es la fuente del código.
 
