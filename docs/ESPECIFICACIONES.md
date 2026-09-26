@@ -211,7 +211,7 @@ Vitest con jsdom: **262 pruebas en 15 archivos**, más `check-exports`. Las vist
 - Que `/` muestre la landing a quien no tiene sesión.
 
 **Marca y comunicación**
-- Logo nuevo en la pantalla de consentimiento de Google.
+- Logo nuevo en la pantalla de consentimiento de Google: archivo listo en `img/logos/mascodata-app-icon-120.png` (120×120, PNG); falta subirlo en Google Cloud → *Google Auth Platform → Branding*.
 - Entorno de pruebas (staging): segundo proyecto de Supabase y elección de la base según el sitio, antes de invitar a más gente (ver `docs/ENTORNOS.md`).
 - Activar la protección contra abuso en Supabase: mínimo de contraseña 8, límites de envío, vigencia de códigos y CAPTCHA (Turnstile).
 - Instalar las plantillas de correo de Supabase Auth (archivos listos en `supabase/email-templates/`) y configurar el remitente propio con Resend SMTP.
