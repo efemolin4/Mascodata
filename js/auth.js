@@ -65,8 +65,8 @@ export function viewLogin() {
               <div class="text-xs text-gray-500 mt-1.5">El cuidado de tu mascota, siempre a mano</div>
             </div>
           </div>
-          <h2 class="text-2xl font-bold text-gray-900 mb-1">Bienvenido de vuelta</h2>
-          <p class="text-gray-500 text-sm mb-5">Ingresa a tu cuenta para continuar</p>
+          <h2 class="text-2xl font-bold text-gray-900 mb-1">${state.inviteToken ? 'Te invitaron a Mascodata' : 'Bienvenido de vuelta'}</h2>
+          <p class="text-gray-500 text-sm mb-5">${state.inviteToken ? 'Crea tu cuenta o inicia sesión para ver la ficha' : 'Ingresa a tu cuenta para continuar'}</p>
           ${inviteNotice()}
           <form onsubmit="handleLogin(event)" class="space-y-3">
             <div>
@@ -94,7 +94,7 @@ export function viewLogin() {
             ${googleIcon()} Continuar con Google
           </button>
           <div class="mt-4 text-center text-sm text-gray-500">
-            ¿No tienes cuenta? <button onclick="navigate('register')" class="text-brand-600 font-semibold hover:underline">Regístrate gratis</button>
+            ¿No tienes cuenta? <button onclick="navigate('register')" class="text-brand-600 font-semibold hover:underline ${state.inviteToken ? 'text-base' : ''}">Regístrate gratis</button>
           </div>
         </div>
       </div>
@@ -112,7 +112,7 @@ export function viewRegister() {
       <div class="text-center mb-5">
         <img src="/img/logos/mascodata-lockup.svg" alt="Mascodata" class="h-10 w-auto mx-auto mb-3">
         <h2 class="text-2xl font-bold text-gray-900">Crear cuenta</h2>
-        <p class="text-sm text-gray-500 mt-1">Únete a Mascodata gratis</p>
+        <p class="text-sm text-gray-500 mt-1">${state.inviteToken ? 'Crea tu cuenta para ver la ficha compartida' : 'Únete a Mascodata gratis'}</p>
         ${inviteNotice()}
       </div>
       <div class="bg-white rounded-2xl shadow-sm p-5 space-y-4">
