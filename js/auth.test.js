@@ -572,10 +572,13 @@ describe('aviso de invitación pendiente', () => {
     state.inviteToken = null;
     expect(inviteNotice()).toBe('');
     expect(viewLogin()).not.toContain('invitación pendiente');
+    expect(viewLogin()).toContain('Bienvenido de vuelta');
     state.inviteToken = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
     expect(inviteNotice()).toContain('invitación pendiente');
     expect(viewLogin()).toContain('invitación pendiente');
     expect(viewRegister()).toContain('invitación pendiente');
+    expect(viewLogin()).toContain('Te invitaron a Mascodata');
+    expect(viewLogin()).not.toContain('Bienvenido de vuelta');
     expect(viewLogin()).not.toContain('a1b2c3d4');
     state.inviteToken = null;
   });
