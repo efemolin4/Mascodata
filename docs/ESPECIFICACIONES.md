@@ -174,6 +174,9 @@ Migraciones nuevas, todas idempotentes y en `supabase/schema/`: `pet_reminders.s
 ### 4.4.1 Pruebas de seguridad disponibles
 `test_harden_invitations_pets.sql` (invitaciones y dueño) y `test_protect_profiles.sql` (columnas privilegiadas). Ambas terminan con un error a propósito para no guardar nada.
 
+### 4.4.2 Entornos y publicación
+Un solo entorno real (producción). Los cambios se hacen en ramas con pruebas automáticas en GitHub Actions y vista previa en Vercel, y se fusionan a `main` por pull request (publica en `mascodata.cl`). Antes de un SQL que modifique datos se hace un respaldo en el esquema `backups`. Detalle, reglas de GitHub y el plan para sumar un entorno de pruebas: [`docs/ENTORNOS.md`](ENTORNOS.md).
+
 ### 4.5 Edge Functions y tareas programadas
 
 | Función | Cron (UTC) | Propósito |
@@ -209,6 +212,7 @@ Vitest con jsdom: **262 pruebas en 15 archivos**, más `check-exports`. Las vist
 
 **Marca y comunicación**
 - Logo nuevo en la pantalla de consentimiento de Google.
+- Entorno de pruebas (staging): segundo proyecto de Supabase y elección de la base según el sitio, antes de invitar a más gente (ver `docs/ENTORNOS.md`).
 - Activar la protección contra abuso en Supabase: mínimo de contraseña 8, límites de envío, vigencia de códigos y CAPTCHA (Turnstile).
 - Instalar las plantillas de correo de Supabase Auth (archivos listos en `supabase/email-templates/`) y configurar el remitente propio con Resend SMTP.
 
