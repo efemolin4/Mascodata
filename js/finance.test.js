@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js';   // deja parseCLP real en window
 import { state } from '../js/app.js'; // isPremium() (llamada dentro de viewFinance) lee `state` del scope de app.js — hay que mutar el mismo objeto, no reemplazar window.state
@@ -124,6 +124,44 @@ describe('viewFinance — gating Premium de la vista Gráfico', () => {
     expect(html).toContain('<option value="Greta " selected>');
     expect(html).toContain('$60.000');
     state.finPet = '';
+  });
+
+  describe('el período cambia los totales, los registros y la lista', () => {
+    const iso = (dy, dm) => { const d = new Date(); d.setDate(15); d.setMonth(d.getMonth() + dm); d.setFullYear(d.getFullYear() + dy); return d.toISOString().slice(0, 10); };
+    const gastos = () => [
+      { id: 1, amount: 1000, date: iso(0, 0), category: 'Otro', description: 'este mes', pet: 'Greta' },
+      { id: 2, amount: 20000, date: iso(0, -3), category: 'Otro', description: 'hace 3 meses', pet: 'Greta' },
+      { id: 3, amount: 300000, date: iso(-2, 0), category: 'Otro', description: 'hace 2 años', pet: 'Greta' },
+    ];
+    const render = period => {
+      state.pets = [{ id: 'pet-1', name: 'Greta', foodItems: [] }];
+      state.user = { id: 'user-1', plan: 'free' };
+      window.getFinanceExpenses = gastos;
+      state.finPet = ''; state.finView = 'listado'; state.finPeriod = period;
+      return viewFinance();
+    };
+    afterEach(() => { state.finPeriod = 'mensual'; });
+
+    it('mensual: solo los últimos 6 meses (no incluye lo de hace 2 años)', () => {
+      const html = render('mensual');
+      expect(html).toContain('Total últimos 6 meses');
+      expect(html).toContain('$21.000');
+      expect(html).not.toContain('$321.000');
+      expect(html).toContain('hace 3 meses');
+      expect(html).not.toContain('hace 2 años');
+    });
+
+    it('anual: la ventana es de 4 años e incluye lo de hace 2 años', () => {
+      const html = render('anual');
+      expect(html).toContain('Total últimos 4 años');
+      expect(html).toContain('$321.000');
+      expect(html).toContain('hace 2 años');
+    });
+
+    it('la segunda tarjeta sigue al período (este mes / este año)', () => {
+      expect(render('mensual')).toContain('Este mes');
+      expect(render('anual')).toContain('Este año');
+    });
   });
 
   it('un usuario Premium ve el dashboard de gastos', () => {
