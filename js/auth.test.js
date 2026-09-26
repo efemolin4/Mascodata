@@ -6,7 +6,7 @@ import '../js/utils.js';
 // que mutar ese mismo objeto, no reemplazar window.state (ver el mismo
 // patrón ya documentado en finance.test.js/app.test.js).
 import { state, getCaptchaToken, withCaptcha, isCaptchaError, MIN_PASSWORD_LENGTH } from '../js/app.js';
-import { openDeleteAccountModal, sendAccountDeleteCode, verifyAccountDeleteCode, signInWithGoogle, sendForgotEmail, viewForgot, viewRegister, openForgot, goRegisterWithEmail, retryForgot, login, register, handleResetPassword, viewResetPassword } from './auth.js';
+import { openDeleteAccountModal, sendAccountDeleteCode, verifyAccountDeleteCode, signInWithGoogle, sendForgotEmail, viewForgot, viewRegister, openForgot, goRegisterWithEmail, retryForgot, login, register, handleResetPassword, viewResetPassword, resendConfirmation, retryRegister } from './auth.js';
 
 describe('openDeleteAccountModal', () => {
   beforeEach(() => {
@@ -393,7 +393,7 @@ describe('login, registro y recuperación con CAPTCHA', () => {
     window.sb = makeMockSb();
     window.sb.auth.signUp = vi.fn(async () => ({ data: null, error: { message: 'boom' } }));
     await register();
-    expect(window.sb.auth.signUp).toHaveBeenCalledWith({ email: 'a@b.cl', password: '12345678', options: { data: { name: 'Ana' }, captchaToken: 'tok-1' } });
+    expect(window.sb.auth.signUp).toHaveBeenCalledWith({ email: 'a@b.cl', password: '12345678', options: { data: { name: 'Ana' }, emailRedirectTo: window.location.origin, captchaToken: 'tok-1' } });
   });
 });
 
@@ -436,5 +436,102 @@ describe('largo mínimo de contraseña', () => {
     await login();
     expect(window.sb.auth.signInWithPassword).toHaveBeenCalled();
     expect(window.showToast).not.toHaveBeenCalledWith('Mínimo 8 caracteres', 'error');
+  });
+});
+
+// Confirmar el correo al registrarse (Supabase → Authentication → Sign In / Providers → Confirm email).
+describe('confirmar el correo al registrarse', () => {
+  beforeEach(() => {
+    window.showToast = vi.fn();
+    window.render = vi.fn();
+    window.track = vi.fn();
+    window.navigate = vi.fn();
+    window.saveState = vi.fn();
+    window.loadDataFromSupabase = vi.fn();
+    delete state.registerSent;
+    state.isLoggedIn = false; state.user = null;
+    document.body.innerHTML = '<input id="r-name" value="Ana" /><input id="r-email" value=" Ana@Correo.CL " /><input id="r-pass" value="12345678" /><input id="r-pass2" value="12345678" />'
+      + '<input id="l-email" value="ana@correo.cl" /><input id="l-pass" value="secreto12" />';
+  });
+
+  it('sin sesión (Confirm email activado) muestra "Confirma tu correo" y no entra ni crea el perfil', async () => {
+    window.sb = makeMockSb();
+    window.sb.auth.signUp = vi.fn(async () => ({ data: { user: { id: 'u1' }, session: null }, error: null }));
+    await register();
+    expect(state.registerSent).toEqual({ email: 'ana@correo.cl' });
+    expect(state.isLoggedIn).toBe(false);
+    expect(window.sb.from).not.toHaveBeenCalled(); // sin sesión no se puede escribir el perfil
+    expect(window.loadDataFromSupabase).not.toHaveBeenCalled();
+    expect(window.navigate).not.toHaveBeenCalledWith('dashboard', expect.anything(), expect.anything());
+    const html = viewRegister();
+    expect(html).toContain('Confirma tu correo');
+    expect(html).toContain('ana@correo.cl');
+    expect(html).toContain('resendConfirmation()');
+  });
+
+  it('con sesión inmediata (Confirm email apagado) sigue entrando directo, como antes', async () => {
+    window.sb = makeMockSb();
+    window.sb.auth.signUp = vi.fn(async () => ({ data: { user: { id: 'u1' }, session: { access_token: 'x' } }, error: null }));
+    await register();
+    expect(state.registerSent).toBeUndefined();
+    expect(state.isLoggedIn).toBe(true);
+    expect(window.navigate).toHaveBeenCalledWith('dashboard', {}, { replace: true });
+  });
+
+  it('un correo que ya tenía cuenta recibe la misma pantalla: no se revela si existe', async () => {
+    window.sb = makeMockSb();
+    window.sb.auth.signUp = vi.fn(async () => ({ data: { user: { id: 'u1', identities: [] }, session: null }, error: null }));
+    await register();
+    expect(viewRegister()).toContain('Si ya tenías una cuenta con este correo');
+    expect(viewRegister()).not.toMatch(/ya está registrado|ya existe/i);
+  });
+
+  it('intentar entrar con una cuenta sin confirmar lleva a la pantalla de reenviar el correo', async () => {
+    window.sb = makeMockSb();
+    window.sb.auth.signInWithPassword = vi.fn(async () => ({ data: null, error: { message: 'Email not confirmed' } }));
+    await login();
+    expect(state.registerSent).toEqual({ email: 'ana@correo.cl' });
+    expect(window.navigate).toHaveBeenCalledWith('register');
+    expect(window.showToast).toHaveBeenCalledWith('Tu correo aún no está confirmado', 'error');
+  });
+
+  it('reenviar pide a Supabase un correo de confirmación con la dirección de retorno', async () => {
+    window.sb = makeMockSb();
+    window.sb.auth.resend = vi.fn(async () => ({ error: null }));
+    state.registerSent = { email: 'ana@correo.cl' };
+    await resendConfirmation();
+    expect(window.sb.auth.resend).toHaveBeenCalledWith({ type: 'signup', email: 'ana@correo.cl', options: { emailRedirectTo: window.location.origin } });
+    expect(window.showToast).toHaveBeenCalledWith('Te enviamos el correo de nuevo', 'success');
+  });
+
+  it('el límite de reenvíos se explica en español y los demás errores se avisan', async () => {
+    window.sb = makeMockSb();
+    state.registerSent = { email: 'ana@correo.cl' };
+    window.sb.auth.resend = vi.fn(async () => ({ error: { status: 429, message: 'For security purposes, you can only request this once every 60 seconds' } }));
+    await resendConfirmation();
+    expect(window.showToast).toHaveBeenCalledWith('Espera un minuto antes de pedir otro correo', 'error');
+    window.sb.auth.resend = vi.fn(async () => ({ error: { message: 'boom' } }));
+    await resendConfirmation();
+    expect(window.showToast).toHaveBeenCalledWith('boom', 'error');
+  });
+
+  it('"Usar otro correo" vuelve al formulario de registro', () => {
+    state.registerSent = { email: 'ana@correo.cl' };
+    retryRegister();
+    expect(state.registerSent).toBeNull();
+    expect(viewRegister()).toContain('Crear cuenta gratuita');
+  });
+
+  it('sin correo pendiente no llama a Supabase al reenviar', async () => {
+    window.sb = makeMockSb();
+    window.sb.auth.resend = vi.fn();
+    state.registerSent = null;
+    await resendConfirmation();
+    expect(window.sb.auth.resend).not.toHaveBeenCalled();
+  });
+
+  it('escapa el correo mostrado', () => {
+    state.registerSent = { email: '"><img src=x onerror=1>@a.cl' };
+    expect(viewRegister()).not.toContain('<img src=x');
   });
 });

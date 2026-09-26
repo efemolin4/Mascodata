@@ -21,7 +21,7 @@ Mascodata es una aplicación web de página única (SPA) para tutores de mascota
 ## 2. Especificación funcional
 
 ### 2.1 Cuenta y acceso
-- Registro con nombre, correo y contraseña; inicio de sesión con correo o con Google (OAuth); recuperación de contraseña por correo.
+- Registro con nombre, correo y contraseña. **Confirmación del correo:** la app funciona con *Confirm email* de Supabase apagado o activado. Activado, al registrarse aparece "Confirma tu correo" (con reenviar, iniciar sesión o usar otro correo) y la cuenta se abre al pulsar el enlace; intentar entrar sin confirmar lleva a la misma pantalla. No se revela si un correo ya tenía cuenta; inicio de sesión con correo o con Google (OAuth); recuperación de contraseña por correo.
 - **Modo demo** (`demo@mascodata.cl`) con tres mascotas de ejemplo y todas las funciones desbloqueadas.
 - **Mi perfil:** nombre, teléfono, ciudad, e interruptores de *promociones personalizadas* (`marketing_opt_in`, apagado por defecto) y *recordatorios por correo* (`reminders_opt_out`). Eliminación de cuenta con verificación por código (transfiere las mascotas al segundo tutor si existe).
 
