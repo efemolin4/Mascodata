@@ -1223,31 +1223,38 @@ export function openInviteTutor2Modal(petId) {
     </div>`);
 }
 
+// Mensajes de la Edge Function send-invitation.
+const INVITE_SEND_ERRORS = {
+  too_soon: 'Espera un minuto antes de reenviar la invitación',
+  too_many: 'Enviaste demasiadas invitaciones. Inténtalo de nuevo en una hora',
+  send_failed: 'No se pudo enviar el correo. Inténtalo de nuevo',
+};
+
 export async function createPetInvite(pet, { name, email, role }) {
   if (isDemoUser()) {
     pet.tutor2 = { name, email, role, pending: true };
     showToast(`Invitación simulada para ${email} (modo demo)`, 'success');
     return true;
   }
-  const token = genId() + genId();
-  const link = `${location.origin}${location.pathname}?invite=${token}`;
+  // Token aleatorio de 128 bits (no genId, que es predecible): quien lo tenga y entre con el correo invitado acepta.
+  const token = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
   const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
   const { error: inviteError } = await sb.from('invitations').insert({
     token, pet_id: pet.id, pet_name: pet.name, inviter_id: state.user.id,
     invited_email: email, invited_name: name, role, used: false, expires_at: expiresAt,
   });
   if (inviteError) { showToast('Error al crear la invitación', 'error'); console.error(inviteError); return false; }
-  // Enviado vía Supabase Auth (magic link) en vez de un tercero: requiere SMTP
-  // configurado en el proyecto de Supabase (Auth → Emails → SMTP Settings).
-  const captchaToken = await getCaptchaToken();
-  const { error } = await sb.auth.signInWithOtp({
-    email,
-    options: withCaptcha({
-      emailRedirectTo: link,
-      data: { invited_name: name, pet_name: pet.name, inviter_name: state.user?.name || '', role },
-    }, captchaToken),
-  });
-  if (error) { showToast(isCaptchaError(error) ? 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo' : 'Error al enviar el correo de invitación', 'error'); console.error(error); return false; }
+  // El correo ("Ana te invitó a cuidar a Greta", con el enlace ?invite=TOKEN) lo envía la Edge Function send-invitation por
+  // Resend, armado en el servidor. Exige sesión y limita los envíos, por eso no necesita CAPTCHA.
+  const { error } = await sb.functions.invoke('send-invitation', { body: { token } });
+  if (error) {
+    // Sin correo la invitación no sirve: se quita para que no quede una "pendiente" que nadie recibió.
+    await sb.from('invitations').delete().eq('token', token);
+    const code = await edgeErrorCode(error);
+    showToast(INVITE_SEND_ERRORS[code] || 'Error al enviar el correo de invitación', 'error');
+    console.error(error);
+    return false;
+  }
   pet.tutor2 = { name, email, role, pending: true };
   showToast(`Invitación enviada a ${email}`, 'success');
   return true;

@@ -564,3 +564,19 @@ describe('confirmar el correo al registrarse', () => {
     expect(viewRegister()).not.toContain('<img src=x');
   });
 });
+
+describe('aviso de invitación pendiente', () => {
+  it('aparece en el login y el registro solo cuando llegó desde un enlace de invitación, sin revelar datos de ella', async () => {
+    const { inviteNotice, viewLogin } = await import('./auth.js');
+    state.registerSent = null; // otras pruebas dejan la pantalla "Confirma tu correo" activa
+    state.inviteToken = null;
+    expect(inviteNotice()).toBe('');
+    expect(viewLogin()).not.toContain('invitación pendiente');
+    state.inviteToken = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
+    expect(inviteNotice()).toContain('invitación pendiente');
+    expect(viewLogin()).toContain('invitación pendiente');
+    expect(viewRegister()).toContain('invitación pendiente');
+    expect(viewLogin()).not.toContain('a1b2c3d4');
+    state.inviteToken = null;
+  });
+});

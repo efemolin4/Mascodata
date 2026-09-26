@@ -53,7 +53,7 @@ panel, actualizar también el archivo. Al pegarlas, escribir el asunto a mano y 
 | Change Email Address | `email-change.html` | Confirma tu nuevo correo en Mascodata |
 | Reauthentication | `reauthentication.html` | Tu código de verificación de Mascodata |
 
-`Invite user` no se usa. **Magic Link** ya no envía los códigos de eliminación (los envía `verification-codes`): queda para aceptar una invitación con un correo que ya tiene cuenta. Las plantillas son genéricas a propósito (sin `.Data` ni nombres): cualquiera puede pedirle a Supabase un
+`Invite user` no se usa. **Magic Link** ya no envía los códigos de eliminación (los envía `verification-codes`): ya no se usa para invitaciones (las envía `send-invitation` con un correo propio), así que queda solo como respaldo del inicio de sesión sin contraseña. Las plantillas son genéricas a propósito (sin `.Data` ni nombres): cualquiera puede pedirle a Supabase un
 correo con datos inventados hacia cualquier dirección.
 
 ## 4. Edge Functions y secretos
@@ -79,10 +79,10 @@ SQL aplicado, **en este orden** (todos en `supabase/schema/`, idempotentes):
    la CLI de Supabase, o el esquema desde el panel) y guardarlas en el repositorio.
 2. `pet_reminders.sql` · 3. `food_purchases.sql` · 4. `food_category.sql` · 5. `food_restock_reminders.sql`
 6. `harden_invitations_pets.sql` · 7. `harden_limits_and_audit.sql` · 8. `shared_events_care_mode.sql`
-9. `activity_attribution.sql` · 10. `shared_expenses.sql` · 11. `verification_codes.sql` · 12. `close_direct_pet_delete.sql` (siempre AL FINAL, con la app nueva ya publicada)
+9. `activity_attribution.sql` · 10. `shared_expenses.sql` · 11. `verification_codes.sql` · 12. `close_direct_pet_delete.sql` (siempre AL FINAL, con la app nueva ya publicada) · 13. `invitation_emails.sql` (antes de publicar la app con invitaciones propias)
 
 Pruebas de reglas (simulan sesiones y no guardan nada): `test_harden_invitations_pets.sql`, `test_protect_profiles.sql`,
-`test_shared_events.sql`, `test_activity_attribution.sql`, `test_shared_expenses.sql`. Respaldo antes de cambios que toquen datos:
+`test_shared_events.sql`, `test_activity_attribution.sql`, `test_shared_expenses.sql`, `test_verification_codes.sql`, `test_close_direct_pet_delete.sql`, `test_invitation_emails.sql`. Respaldo antes de cambios que toquen datos:
 `backup_before_migration.sql`. El plan gratuito **no tiene respaldos automáticos**.
 
 Triggers que protegen datos: `profiles` (no se puede cambiar `is_admin`, `plan`, `plan_expires_at`, `stripe_customer_id`), `pets.owner_id`,

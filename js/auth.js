@@ -32,6 +32,14 @@ export async function signInWithGoogle() {
 }
 
 // ---- VISTA: LOGIN ----
+// Aviso para quien llegó desde el correo de una invitación (?invite=TOKEN, guardado en state.inviteToken): sin él no sabría
+// qué hacer con un correo que dice "te invitó a cuidar a Greta" y cae en una pantalla de login. Es genérico a propósito:
+// no se consulta la invitación sin sesión, así que no se revela nada de ella.
+export function inviteNotice() {
+  if (!state.inviteToken) return '';
+  return `<div class="mt-3 mb-1 rounded-xl bg-brand-50 border border-brand-100 px-3 py-2.5 text-sm text-brand-800">Tienes una invitación pendiente. Inicia sesión o crea tu cuenta <strong>con el correo al que llegó la invitación</strong> y se acepta sola.</div>`;
+}
+
 export function viewLogin() {
   return `
   <div class="min-h-screen flex">
@@ -59,6 +67,7 @@ export function viewLogin() {
           </div>
           <h2 class="text-2xl font-bold text-gray-900 mb-1">Bienvenido de vuelta</h2>
           <p class="text-gray-500 text-sm mb-5">Ingresa a tu cuenta para continuar</p>
+          ${inviteNotice()}
           <form onsubmit="handleLogin(event)" class="space-y-3">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -104,6 +113,7 @@ export function viewRegister() {
         <img src="/img/logos/mascodata-lockup.svg" alt="Mascodata" class="h-10 w-auto mx-auto mb-3">
         <h2 class="text-2xl font-bold text-gray-900">Crear cuenta</h2>
         <p class="text-sm text-gray-500 mt-1">Únete a Mascodata gratis</p>
+        ${inviteNotice()}
       </div>
       <div class="bg-white rounded-2xl shadow-sm p-5 space-y-4">
         <form onsubmit="handleRegister(event)" class="space-y-3">
