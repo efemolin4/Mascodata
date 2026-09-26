@@ -12,7 +12,7 @@ proyecto de pruebas (staging) y para saber qué cambió y cuándo. **Nunca se an
 | Ajuste | Dónde | Valor | Estado |
 |---|---|---|---|
 | Correo y contraseña | Authentication → Sign In / Providers → Email | Activado | ✅ |
-| **Confirm email** (exigir confirmar el correo al registrarse) | Mismo lugar | Probablemente **apagado** | ⚠️ ver "Decisiones pendientes" |
+| **Confirm email** (exigir confirmar el correo al registrarse) | Authentication → Sign In / Providers → *User Signups* | **Activado** (25-sep-2026), probado de punta a punta | ✅ |
 | **Largo mínimo de contraseña** | Mismo lugar | **8** (igual que `MIN_PASSWORD_LENGTH` en `js/app.js`) | ✅ |
 | Google | Authentication → Sign In / Providers → Google | Activado. El *client id* y el secreto vienen de Google Cloud | ✅ |
 | Site URL | Authentication → URL Configuration | `https://mascodata.cl` | ⚠️ |
@@ -47,7 +47,7 @@ panel, actualizar también el archivo. Al pegarlas, escribir el asunto a mano y 
 
 | Pestaña | Archivo | Asunto |
 |---|---|---|
-| Confirm signup | `confirm-signup.html` | Confirma tu correo en Mascodata |
+| Confirm signup | `confirm-signup.html` | Confirma tu cuenta en Mascodata (el asunto que quedó en el panel; el correo dice "Confirma tu correo") |
 | Magic Link | `magic-link.html` | Tu enlace y código para entrar a Mascodata |
 | Reset Password | `recovery.html` | Restablece tu contraseña de Mascodata |
 | Change Email Address | `email-change.html` | Confirma tu nuevo correo en Mascodata |
@@ -89,19 +89,19 @@ columnas de `invitations`, autor de cada registro (`set_created_by`), autor de u
 
 ## 6. Decisiones pendientes y riesgos
 
-### Confirmar el correo al registrarse (Confirm email)
+### Confirmar el correo al registrarse (Confirm email): resuelto el 25-sep-2026
 
-La pantalla de registro asume que `signUp` devuelve una **sesión inmediata** ("¡Cuenta creada! Bienvenido"), lo que solo pasa con
-**Confirm email apagado**. Si es así:
+Antes estaba apagado: nadie verificaba que el correo fuera suyo (se podía crear una cuenta con el correo de otra persona, y quien
+se registrara antes con el correo de una persona invitada podía ver su invitación). Ahora está **activado**:
 
-- **Nadie verifica que el correo sea suyo.** Se puede crear una cuenta con la dirección de otra persona.
-- **Invitaciones:** aceptar una invitación exige que el correo de la cuenta coincida con el invitado (`auth.email()`), y ese
-  correo no está verificado. Quien se registre antes con el correo de una persona invitada podría ver su invitación.
-- La recuperación de contraseña **no** se ve afectada: el enlace llega al dueño real del correo.
-
-Con pocos usuarios el riesgo es bajo, pero conviene resolverlo antes de invitar a más gente: **activar Confirm email** (Authentication → Sign In / Providers →
-Email) y cambiar el registro para que, al no recibir sesión, muestre "Revisa tu correo para confirmar tu cuenta" en vez de entrar
-directo. Para verificar cuál es el estado real: crear una cuenta de prueba y ver si llega un correo de confirmación.
+- La app funciona con la opción apagada o activada (`register()` en `js/auth.js`): sin sesión inmediata muestra "Confirma tu correo",
+  con reenviar, iniciar sesión, recuperar contraseña o usar otro correo. No revela si un correo ya tenía cuenta.
+- Intentar entrar con una cuenta sin confirmar lleva a esa misma pantalla.
+- **Orden de activación (para no romper el registro):** primero publicar el código, luego activar el interruptor. Antes de activar se
+  comprobó que ninguna cuenta existente quedara sin confirmar: `select count(*) filter (where email_confirmed_at is null) from auth.users;` devolvió 0.
+- **Probado:** registro con un alias `+prueba1` de Gmail → pantalla "Confirma tu correo" → correo con la marca v2 desde `noreply@mascodata.cl`
+  → el botón abre la app con la sesión iniciada. Para desactivarlo si algo falla: apagar el mismo interruptor.
+- Efecto en las invitaciones: un segundo tutor que no tiene cuenta debe confirmar su correo al aceptar la invitación.
 
 ### Otros pendientes
 - Confirmar Site URL, Redirect URLs y la vigencia de códigos (⚠️ arriba).
