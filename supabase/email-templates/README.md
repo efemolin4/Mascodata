@@ -13,7 +13,7 @@ cuadro de mensaje, pegar el archivo completo y **Save changes**.
 | Plantilla de Supabase | Archivo | Asunto |
 |---|---|---|
 | Confirm signup | `confirm-signup.html` | Confirma tu correo en Mascodata |
-| Magic Link | `magic-link.html` | Tu enlace y código para entrar a Mascodata |
+| Magic Link | `magic-link.html` | Tu código y enlace de acceso a Mascodata |
 | Reset Password | `recovery.html` | Restablece tu contraseña de Mascodata |
 | Change Email Address | `email-change.html` | Confirma tu nuevo correo en Mascodata |
 | Reauthentication | `reauthentication.html` | Tu código de verificación de Mascodata |

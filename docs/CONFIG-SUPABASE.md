@@ -48,12 +48,12 @@ panel, actualizar también el archivo. Al pegarlas, escribir el asunto a mano y 
 | Pestaña | Archivo | Asunto |
 |---|---|---|
 | Confirm signup | `confirm-signup.html` | Confirma tu correo en Mascodata |
-| Magic Link | `magic-link.html` | Tu enlace y código para entrar a Mascodata |
+| Magic Link | `magic-link.html` | Tu código y enlace de acceso a Mascodata |
 | Reset Password | `recovery.html` | Restablece tu contraseña de Mascodata |
 | Change Email Address | `email-change.html` | Confirma tu nuevo correo en Mascodata |
 | Reauthentication | `reauthentication.html` | Tu código de verificación de Mascodata |
 
-`Invite user` no se usa. Las plantillas son genéricas a propósito (sin `.Data` ni nombres): cualquiera puede pedirle a Supabase un
+`Invite user` no se usa. **Magic Link sirve para tres cosas** (entrar con enlace, aceptar una invitación y el código de verificación al eliminar la cuenta o una mascota), por eso su texto es neutro. Las plantillas son genéricas a propósito (sin `.Data` ni nombres): cualquiera puede pedirle a Supabase un
 correo con datos inventados hacia cualquier dirección.
 
 ## 4. Edge Functions y secretos
