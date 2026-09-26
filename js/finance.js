@@ -168,7 +168,6 @@ export function viewFinance() {
   // Gastos filtrados por mascota
   const expenses = petFilter ? allExpenses.filter(e => e.pet === petFilter) : allExpenses;
 
-  const total      = expenses.reduce((s,e) => s + Number(e.amount||0), 0);
   const monthTotal = expenses.filter(e => e.date?.startsWith(thisMonth)).reduce((s,e) => s + Number(e.amount||0), 0);
   const catColors  = { Veterinaria:'#4c5fd7', Medicamentos:'#ff8a6b', Alimentación:'#8f9cff', Peluquería:'#252a62', Hotel:'#3856b8', Otro:'#9299ba' };
 
@@ -295,9 +294,9 @@ export function viewFinance() {
 
     <!-- Widgets -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 stagger">
-      ${statCard(icon('money','w-5 h-5 md:w-6 md:h-6'),'Total '+(petFilter||'todas'), fmtCLP(total), 'brand')}
-      ${statCard(icon('calendar','w-5 h-5 md:w-6 md:h-6'),'Este mes', fmtCLP(monthTotal), 'teal')}
-      ${statCard(icon('receipt','w-5 h-5 md:w-6 md:h-6'),'Registros', expenses.length, 'amber')}
+      ${statCard(icon('money','w-5 h-5 md:w-6 md:h-6'),'Total '+windowLabel, fmtCLP(windowTotal), 'brand')}
+      ${statCard(icon('calendar','w-5 h-5 md:w-6 md:h-6'),currentWord.charAt(0).toUpperCase() + currentWord.slice(1), fmtCLP(curTotal), 'teal')}
+      ${statCard(icon('receipt','w-5 h-5 md:w-6 md:h-6'),'Registros', windowExpenses.length, 'amber')}
       ${statCard(icon('paw','w-5 h-5 md:w-6 md:h-6'),'Mascotas', pets.length, 'brand')}
     </div>
 
@@ -372,14 +371,15 @@ export function viewFinance() {
     </div>` : `
     <!-- LISTADO -->
     ${(() => {
-      const sorted = [...expenses].sort((a,b)=>b.date>a.date?1:-1);
+      // La lista sigue el mismo período que los totales de arriba (últimos 6 meses, 4 trimestres, 4 semestres o 4 años).
+      const sorted = [...windowExpenses].sort((a,b)=>b.date>a.date?1:-1);
       const { items: expPage, total: expTotal, pages: expPages, page: expPage_ } = paginate(sorted, 'finance');
       return `
       <div class="bg-white rounded-2xl shadow-sm p-5">
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="font-semibold text-gray-800">Historial de gastos${petFilter?' · '+petFilter:''}</h3>
-            <p class="text-xs text-gray-400 mt-0.5">${expTotal} registro${expTotal!==1?'s':''} · Total ${fmtCLP(total)}</p>
+            <p class="text-xs text-gray-400 mt-0.5">${expTotal} registro${expTotal!==1?'s':''} · Total ${fmtCLP(windowTotal)} · ${windowLabel}</p>
           </div>
         </div>
         ${expTotal === 0
