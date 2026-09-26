@@ -13,10 +13,17 @@
 // ver supabase/README.md): Dashboard → Edge Functions → delete-account →
 // Code → pegar este archivo → Deploy.
 //
-// La app la invoca vía sb.functions.invoke('delete-account') (ver
+// La app la invoca vía sb.functions.invoke('delete-account', { body: { code } }) (ver
 // verifyAccountDeleteCode() en js/auth.js), que adjunta automáticamente el
 // token de sesión del usuario ya autenticado — nunca confiar en un userId
 // que mande el propio request, siempre se toma del token verificado acá.
+//
+// EXIGE el código de verificación que envía `verification-codes` ("Código para
+// eliminar tu cuenta"): se comprueba acá, en el servidor, con
+// consume_verification_code (supabase/schema/verification_codes.sql). Sin un
+// código válido no se borra nada, aunque alguien tenga la sesión abierta y
+// llame a esta función directamente. Usa el secreto UNSUB_SECRET, el mismo de
+// los recordatorios.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -32,6 +39,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Resumen del código (debe ser idéntico al de verification-codes/index.ts; un test comprueba que coinciden).
+const enc = new TextEncoder();
+const toHex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+export async function hashCode(secret: string, userId: string, purpose: string, subject: string | null, code: string): Promise<string> {
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return toHex(await crypto.subtle.sign('HMAC', key, enc.encode(`code:${userId}:${purpose}:${subject ?? ''}:${code}`)));
+}
+export const normalizeCode = (v: unknown) => String(v ?? '').replace(/\D/g, '');
+
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), {
     status,
@@ -39,7 +55,7 @@ function json(body: unknown, status: number) {
   });
 }
 
-Deno.serve(async (req) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -66,6 +82,19 @@ Deno.serve(async (req) => {
   // borrar de auth.users.
   const admin = createClient(supabaseUrl, serviceRoleKey);
   const userId = user.id;
+
+  // Código de verificación: sin uno válido y vigente no se borra nada.
+  let body: Record<string, unknown> = {};
+  try { body = await req.json(); } catch (_e) { /* sin cuerpo: el código queda vacío y se rechaza abajo */ }
+  const code = normalizeCode(body.code);
+  const secret = Deno.env.get('UNSUB_SECRET') ?? '';
+  if (!secret) return json({ error: 'server_config' }, 500);
+  if (code.length !== 6) return json({ error: 'code_invalid' }, 403);
+  const { data: codeStatus, error: codeError } = await admin.rpc('consume_verification_code', {
+    p_user: userId, p_purpose: 'delete_account', p_subject: null, p_hash: await hashCode(secret, userId, 'delete_account', null, code),
+  });
+  if (codeError) return json({ error: 'server_error' }, 500);
+  if (codeStatus !== 'ok') return json({ error: `code_${codeStatus}` }, 403);
 
   try {
     // 1. Mascotas que posee: transferir al segundo tutor si tiene uno,
@@ -126,4 +155,9 @@ Deno.serve(async (req) => {
     console.error('Error al eliminar cuenta:', e);
     return json({ error: 'No se pudo eliminar la cuenta' }, 500);
   }
-});
+}
+
+// Solo arranca cuando corre en Deno / Supabase (los tests importan únicamente los helpers de arriba).
+// deno-lint-ignore no-explicit-any
+const DenoRef = (globalThis as any).Deno;
+if (DenoRef?.serve) DenoRef.serve(handle);

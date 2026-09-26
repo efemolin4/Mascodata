@@ -3,7 +3,7 @@ import { makeMockSb } from '../test/mockSupabase.js';
 import '../js/utils.js'; // deja esc/icon/fmtCLP/formatDate reales en window
 import '../js/app.js'; // deja canEditPet/blockIfReadOnly reales en window
 import '../js/tracking.js'; // deja recordWeight real en window (saveEditPet lo usa)
-import { savePet, deletePet, openInviteTutor2Modal, exportPetRecord, printPetRecord, saveEditPet, petActivityCard, openHandoffModal, copyHandoff, tabGeneral } from './pets.js';
+import { savePet, deletePet, sendDeleteCode, verifyDeleteCode, openDeletePetWithCode, openInviteTutor2Modal, exportPetRecord, printPetRecord, saveEditPet, petActivityCard, openHandoffModal, copyHandoff, tabGeneral } from './pets.js';
 
 // savePet() lee/escribe sobre `state`, `sb`, etc. como globales (ver
 // js/utils.js para el porqué de esa convención) — acá se los proveemos a
@@ -96,49 +96,137 @@ describe('savePet', () => {
 // dueño?" — el dueño de una mascota con un tutor2 (aceptado O pendiente)
 // entraba por error a la rama de "salir de mascota compartida", que nunca
 // borra la fila `pets`, dejándola huérfana en Supabase para siempre.
-describe('deletePet', () => {
+// Eliminar una mascota: el código se comprueba y el borrado ocurre en el SERVIDOR (verification-codes). deletePet() solo
+// actualiza la pantalla; ya no toca la base desde el navegador.
+describe('deletePet (solo pantalla)', () => {
   beforeEach(() => {
     window.showToast = vi.fn();
     window.navigate = vi.fn();
     window.closeModal = vi.fn();
     window.isDemoUser = vi.fn(() => false);
-    window.state = { user: { id: 'owner-1' }, pets: [], deleteCode: null, deletePetId: null };
+    window.sb = makeMockSb();
+    window.state = { user: { id: 'owner-1' }, pets: [], deleteCode: 'x', deletePetId: 'pet-1' };
   });
 
-  it('el dueño con un tutor2 pendiente (invitación no aceptada) SÍ borra la fila de la mascota', async () => {
-    const pet = { id: 'pet-1', name: 'Greta', myRole: 'owner', tutor2: { name: 'María', pending: true } };
-    window.state.pets = [pet];
-    window.sb = makeMockSb({ pets: { data: null, error: null } });
-    await deletePet('pet-1');
-    expect(window.sb.from.mock.calls.map(c => c[0])).toContain('pets');
-    // Nunca debe entrar a la rama de "salir" (que solo toca invitations/pet_access).
-    expect(window.sb.from.mock.calls.map(c => c[0])).not.toContain('invitations');
+  it('la dueña: quita la mascota de la lista y avisa "eliminada"', () => {
+    window.state.pets = [{ id: 'pet-1', name: 'Greta', myRole: 'owner', tutor2: { name: 'María', pending: false } }];
+    deletePet('pet-1', 'deleted');
     expect(window.state.pets).toHaveLength(0);
+    expect(window.showToast).toHaveBeenCalledWith('Greta eliminada', 'error');
+    expect(window.state.deleteCode).toBeNull();
+    expect(window.navigate).toHaveBeenCalledWith('pets');
   });
 
-  it('el dueño con un tutor2 ya aceptado también borra la fila de la mascota', async () => {
-    const pet = { id: 'pet-1', name: 'Greta', myRole: 'owner', tutor2: { name: 'María', pending: false } };
-    window.state.pets = [pet];
-    window.sb = makeMockSb({ pets: { data: null, error: null } });
-    await deletePet('pet-1');
-    expect(window.sb.from.mock.calls.map(c => c[0])).toEqual(['pets']);
-  });
-
-  it('un tutor invitado (no dueño) solo quita su propio acceso, no borra la mascota', async () => {
-    const pet = { id: 'pet-1', name: 'Greta', myRole: 'editor', tutor2: null };
-    window.state.pets = [pet];
-    window.sb = makeMockSb({ invitations: { data: null, error: null }, pet_access: { data: null, error: null } });
-    await deletePet('pet-1');
-    expect(window.sb.from.mock.calls.map(c => c[0])).toEqual(['invitations', 'pet_access']);
+  it('quien la comparte: avisa que se quitó de su perfil', () => {
+    window.state.pets = [{ id: 'pet-1', name: 'Greta', myRole: 'editor' }];
+    deletePet('pet-1', 'left');
+    expect(window.state.pets).toHaveLength(0);
     expect(window.showToast).toHaveBeenCalledWith('Greta eliminada de tu perfil', 'success');
   });
 
-  it('un tutor de solo lectura (viewer) también puede salir de la mascota compartida', async () => {
-    const pet = { id: 'pet-1', name: 'Greta', myRole: 'viewer', tutor2: null };
-    window.state.pets = [pet];
-    window.sb = makeMockSb({ invitations: { data: null, error: null }, pet_access: { data: null, error: null } });
-    await deletePet('pet-1');
+  it('sin modo explícito lo deduce del rol (modo demo)', () => {
+    window.state.pets = [{ id: 'pet-1', name: 'Greta', myRole: 'viewer' }];
+    deletePet('pet-1');
+    expect(window.showToast).toHaveBeenCalledWith('Greta eliminada de tu perfil', 'success');
+    window.state.pets = [{ id: 'pet-2', name: 'Luna' }];
+    deletePet('pet-2');
+    expect(window.showToast).toHaveBeenCalledWith('Luna eliminada', 'error');
+  });
+
+  it('nunca llama a la base de datos desde el navegador', () => {
+    window.state.pets = [{ id: 'pet-1', name: 'Greta', myRole: 'owner' }];
+    deletePet('pet-1', 'deleted');
+    expect(window.sb.from).not.toHaveBeenCalled();
+  });
+});
+
+describe('códigos para eliminar una mascota', () => {
+  const edgeError = (error, status = 403) => ({ message: 'Edge Function returned a non-2xx status code', context: { status, json: async () => ({ error }) } });
+  const dom = () => { document.body.innerHTML = '<div id="delete-step-1"></div><div id="delete-step-2" class="hidden"></div><input id="delete-code-input" value=" 123456 " /><p id="delete-code-error" class="hidden">x</p>'; };
+
+  beforeEach(() => {
+    window.showToast = vi.fn();
+    window.navigate = vi.fn();
+    window.closeModal = vi.fn();
+    window.isDemoUser = vi.fn(() => false);
+    window.sb = makeMockSb();
+    window.state = { user: { id: 'owner-1', email: 'ana@correo.cl' }, pets: [{ id: 'pet-1', name: 'Greta', myRole: 'owner' }] };
+    dom();
+  });
+
+  it('pedir el código lo manda a la función propia, con la mascota, y avanza al paso 2', async () => {
+    await sendDeleteCode('pet-1');
+    expect(window.sb.functions.invoke).toHaveBeenCalledWith('verification-codes', { body: { action: 'send', purpose: 'delete_pet', pet_id: 'pet-1' } });
+    expect(window.sb.auth.signInWithOtp).not.toHaveBeenCalled();
+    expect(document.getElementById('delete-step-2').classList.contains('hidden')).toBe(false);
+  });
+
+  it('si el envío está limitado o falla, lo explica y no avanza', async () => {
+    window.sb.functions.invoke = vi.fn(async () => ({ data: null, error: edgeError('too_soon', 429) }));
+    await sendDeleteCode('pet-1');
+    expect(window.showToast).toHaveBeenCalledWith('Espera un minuto antes de pedir otro código', 'error');
+    expect(document.getElementById('delete-step-2').classList.contains('hidden')).toBe(true);
+  });
+
+  it('con el código correcto, el SERVIDOR elimina la mascota y la pantalla la quita', async () => {
+    window.sb.functions.invoke = vi.fn(async () => ({ data: { ok: true, mode: 'deleted' }, error: null }));
+    await verifyDeleteCode('pet-1');
+    expect(window.sb.functions.invoke).toHaveBeenCalledWith('verification-codes', { body: { action: 'delete_pet', pet_id: 'pet-1', code: '123456' } });
+    expect(window.sb.from).not.toHaveBeenCalled();
     expect(window.state.pets).toHaveLength(0);
+    expect(window.showToast).toHaveBeenCalledWith('Greta eliminada', 'error');
+  });
+
+  it('quien la comparte recibe "left": solo se quita de su perfil', async () => {
+    window.state.pets = [{ id: 'pet-1', name: 'Greta', myRole: 'editor' }];
+    window.sb.functions.invoke = vi.fn(async () => ({ data: { ok: true, mode: 'left' }, error: null }));
+    await verifyDeleteCode('pet-1');
+    expect(window.showToast).toHaveBeenCalledWith('Greta eliminada de tu perfil', 'success');
+  });
+
+  it.each([
+    ['code_invalid', 'Código incorrecto. Intenta nuevamente.'],
+    ['code_expired', 'El código venció. Pide uno nuevo.'],
+    ['code_locked', 'Demasiados intentos. Pide un código nuevo.'],
+  ])('%s: se marca el campo con su mensaje y la mascota NO se quita', async (code, message) => {
+    window.sb.functions.invoke = vi.fn(async () => ({ data: null, error: edgeError(code) }));
+    await verifyDeleteCode('pet-1');
+    expect(document.getElementById('delete-code-error').textContent).toBe(message);
+    expect(document.getElementById('delete-code-error').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('delete-code-input').classList.contains('border-red-400')).toBe(true);
+    expect(window.state.pets).toHaveLength(1);
+  });
+
+  it('un fallo inesperado avisa con un toast y no quita la mascota', async () => {
+    window.sb.functions.invoke = vi.fn(async () => ({ data: null, error: { message: 'boom' } }));
+    await verifyDeleteCode('pet-1');
+    expect(window.showToast).toHaveBeenCalledWith('No se pudo eliminar. Inténtalo de nuevo.', 'error');
+    expect(window.state.pets).toHaveLength(1);
+  });
+
+  it('en el modo demo el código es local y no llama a ninguna función', async () => {
+    window.isDemoUser = vi.fn(() => true);
+    await sendDeleteCode('pet-1');
+    expect(window.sb.functions.invoke).not.toHaveBeenCalled();
+    document.getElementById('delete-code-input').value = window.state.deleteCode;
+    await verifyDeleteCode('pet-1');
+    expect(window.state.pets).toHaveLength(0);
+    expect(window.sb.functions.invoke).not.toHaveBeenCalled();
+  });
+
+  it('el modal dice la verdad: la dueña con dos tutores elimina también para el otro; quien la comparte solo deja de verla', () => {
+    window.openModal = html => { document.getElementById('modal-root') ? (document.getElementById('modal-root').innerHTML = html) : (document.body.innerHTML += `<div id="modal-root">${html}</div>`); };
+    document.body.innerHTML = '<div id="modal-root"></div>';
+    window.state.pets = [{ id: 'pet-1', name: 'Greta', myRole: 'owner', tutor2: { name: 'María' } }];
+    openDeletePetWithCode('pet-1');
+    let html = document.getElementById('modal-root').innerHTML;
+    expect(html).toContain('también para su otro tutor');
+    expect(html).not.toContain('Solo se eliminará de');
+    window.state.pets = [{ id: 'pet-1', name: 'Greta', myRole: 'editor', tutor2: { name: 'Yo' } }];
+    openDeletePetWithCode('pet-1');
+    html = document.getElementById('modal-root').innerHTML;
+    expect(html).toContain('Solo dejarás de ver a');
+    expect(html).toContain('Dejar de ver a');
   });
 });
 

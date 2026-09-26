@@ -616,6 +616,12 @@ export function openDeleteAccountModal() {
     </div>`);
 }
 
+const ACCOUNT_CODE_SEND_ERRORS = {
+  too_soon: 'Espera un minuto antes de pedir otro código',
+  too_many: 'Pediste demasiados códigos. Inténtalo de nuevo en una hora',
+  send_failed: 'No se pudo enviar el correo. Inténtalo de nuevo',
+};
+
 export async function sendAccountDeleteCode() {
   if (isDemoUser()) {
     // Sin sesión real de Supabase en modo demo — simulamos el código acá mismo.
@@ -625,9 +631,14 @@ export async function sendAccountDeleteCode() {
     showToast(`Código enviado a ${state.user?.email} (demo: ${state.deleteAccountCode})`, 'success');
     return;
   }
-  const captchaToken = await getCaptchaToken();
-  const { error } = await sb.auth.signInWithOtp({ email: state.user.email, options: withCaptcha({ shouldCreateUser: false }, captchaToken) });
-  if (error) { showToast(isCaptchaError(error) ? 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo' : 'No se pudo enviar el código', 'error'); console.error(error); return; }
+  // Correo propio de esta acción ("Código para eliminar tu cuenta"), enviado por la Edge Function verification-codes.
+  const { error } = await sb.functions.invoke('verification-codes', { body: { action: 'send', purpose: 'delete_account' } });
+  if (error) {
+    const code = await edgeErrorCode(error);
+    showToast(ACCOUNT_CODE_SEND_ERRORS[code] || 'No se pudo enviar el código', 'error');
+    console.error(error);
+    return;
+  }
   document.getElementById('del-acc-step-1')?.classList.add('hidden');
   document.getElementById('del-acc-step-2')?.classList.remove('hidden');
   showToast(`Código enviado a ${state.user?.email}`, 'success');
@@ -635,8 +646,9 @@ export async function sendAccountDeleteCode() {
 
 export async function verifyAccountDeleteCode() {
   const input = document.getElementById('del-acc-code-input')?.value?.trim();
-  const markInvalid = () => {
-    document.getElementById('del-acc-code-error')?.classList.remove('hidden');
+  const markInvalid = message => {
+    const el = document.getElementById('del-acc-code-error');
+    if (el) { el.textContent = message || 'Código incorrecto. Intenta nuevamente.'; el.classList.remove('hidden'); }
     document.getElementById('del-acc-code-input')?.classList.add('border-red-400');
   };
   // Si un intento anterior falló por otra razón (ej. la Edge Function, más
@@ -654,16 +666,15 @@ export async function verifyAccountDeleteCode() {
     return;
   }
 
-  // Misma plantilla de correo que el borrado de mascota (ver el comentario en
-  // verifyDeleteCode, js/pets.js) — se emite como tipo 'magiclink', no 'email'.
-  let { error: otpError } = await sb.auth.verifyOtp({ email: state.user.email, token: input, type: 'email' });
-  if (otpError) {
-    ({ error: otpError } = await sb.auth.verifyOtp({ email: state.user.email, token: input, type: 'magiclink' }));
-  }
-  if (otpError) { markInvalid(); return; }
-
-  const { error: fnError } = await sb.functions.invoke('delete-account');
+  // El código se comprueba en el SERVIDOR: delete-account lo exige y solo borra la cuenta si es válido y vigente.
+  const { error: fnError } = await sb.functions.invoke('delete-account', { body: { code: input } });
   if (fnError) {
+    const code = await edgeErrorCode(fnError);
+    if (code === 'code_invalid') { markInvalid(); return; }
+    if (code === 'code_expired' || code === 'code_locked') {
+      markInvalid(code === 'code_expired' ? 'El código venció. Pide uno nuevo.' : 'Demasiados intentos. Pide un código nuevo.');
+      return;
+    }
     showToast('No se pudo eliminar la cuenta. Intenta nuevamente o contáctanos.', 'error');
     console.error('Error al eliminar cuenta:', fnError);
     return;

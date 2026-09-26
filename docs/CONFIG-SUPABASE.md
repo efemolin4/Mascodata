@@ -53,7 +53,7 @@ panel, actualizar también el archivo. Al pegarlas, escribir el asunto a mano y 
 | Change Email Address | `email-change.html` | Confirma tu nuevo correo en Mascodata |
 | Reauthentication | `reauthentication.html` | Tu código de verificación de Mascodata |
 
-`Invite user` no se usa. Las plantillas son genéricas a propósito (sin `.Data` ni nombres): cualquiera puede pedirle a Supabase un
+`Invite user` no se usa. **Magic Link** ya no envía los códigos de eliminación (los envía `verification-codes`): queda para aceptar una invitación con un correo que ya tiene cuenta. Las plantillas son genéricas a propósito (sin `.Data` ni nombres): cualquiera puede pedirle a Supabase un
 correo con datos inventados hacia cualquier dirección.
 
 ## 4. Edge Functions y secretos
@@ -62,7 +62,8 @@ correo con datos inventados hacia cualquier dirección.
 |---|---|---|
 | `pet-completion-reminders` | **Apagado** (la protege `CRON_SECRET`; el enlace de baja va firmado) | Cron `0 13 * * *` UTC |
 | `food-restock-reminders` | **Apagado** (ídem) | Cron `30 13 * * *` UTC |
-| `delete-account` | Según se creó (usa la sesión del usuario) | La app, al eliminar la cuenta |
+| `verification-codes` | **Apagado** (valida la sesión por su cuenta con `auth.getUser`) | La app, al pedir el código y al eliminar/dejar de ver una mascota |
+| `delete-account` | Según se creó (usa la sesión del usuario). **Exige el código** de verificación | La app, al eliminar la cuenta |
 
 Secretos (Edge Functions → Secrets), **solo nombres**: `RESEND_API_KEY`, `CRON_SECRET`, `UNSUB_SECRET`, `APP_URL` (opcional).
 `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` las inyecta Supabase. El deploy es manual (pegar `index.ts` en el panel).
@@ -78,7 +79,7 @@ SQL aplicado, **en este orden** (todos en `supabase/schema/`, idempotentes):
    la CLI de Supabase, o el esquema desde el panel) y guardarlas en el repositorio.
 2. `pet_reminders.sql` · 3. `food_purchases.sql` · 4. `food_category.sql` · 5. `food_restock_reminders.sql`
 6. `harden_invitations_pets.sql` · 7. `harden_limits_and_audit.sql` · 8. `shared_events_care_mode.sql`
-9. `activity_attribution.sql` · 10. `shared_expenses.sql`
+9. `activity_attribution.sql` · 10. `shared_expenses.sql` · 11. `verification_codes.sql` · 12. `close_direct_pet_delete.sql` (siempre AL FINAL, con la app nueva ya publicada)
 
 Pruebas de reglas (simulan sesiones y no guardan nada): `test_harden_invitations_pets.sql`, `test_protect_profiles.sql`,
 `test_shared_events.sql`, `test_activity_attribution.sql`, `test_shared_expenses.sql`. Respaldo antes de cambios que toquen datos:

@@ -176,3 +176,24 @@ se puede llamar desde cualquier script con la clave pública. Se protege por cap
       pegar la **clave secreta**. La secreta va únicamente en Supabase: nunca en el repositorio ni en un chat.
    Activarlo en Supabase antes del paso 2 impide iniciar sesión a todo el mundo. Para desactivarlo: apagar el interruptor en Supabase.
 5. **Alertas**: en Resend, aviso de consumo al llegar a ~70 correos diarios, y revisar de vez en cuando *Logs → Auth*.
+
+## Códigos de verificación para eliminar la cuenta o una mascota
+
+Antes el código lo enviaba Supabase Auth (plantilla "Magic Link", igual para todo) y solo lo comprobaba el navegador. Ahora
+lo envía la función `functions/verification-codes` con un correo propio de cada acción, y **el servidor lo exige** antes de
+borrar: `verification-codes` (eliminar o dejar de ver una mascota) y `delete-account` (eliminar la cuenta). El código es de 6
+dígitos, se guarda solo su resumen HMAC (`UNSUB_SECRET`), vence a los 10 minutos, sirve una vez, se bloquea tras 5 intentos y
+solo se pueden pedir 1 por minuto y 5 por hora (la lógica vive en `schema/verification_codes.sql`).
+
+**Orden de instalación (importa: cada paso depende del anterior):**
+
+1. **SQL Editor:** `schema/verification_codes.sql`, y luego `schema/test_verification_codes.sql` (debe salir todo en `OK`).
+2. **Edge Functions → New function `verification-codes`:** pegar `functions/verification-codes/index.ts`, Deploy y en Settings
+   dejar **"Verify JWT with legacy secret" apagado** (la función valida la sesión por su cuenta). Sin secretos nuevos.
+3. **Publicar la app** (fusionar el pull request): la app nueva pide los códigos a estas funciones.
+4. **Volver a desplegar `delete-account`** con `functions/delete-account/index.ts` (ahora exige el código). Hacerlo antes de
+   publicar la app rompería el borrado de cuenta de la app anterior.
+5. **Al final:** `schema/close_direct_pet_delete.sql` y `schema/test_close_direct_pet_delete.sql`. Cierra el borrado directo de
+   mascotas desde el navegador; hacerlo antes de publicar la app dejaría a la app anterior mostrando "eliminada" sin borrar.
+
+Cada código cuenta para los 100 correos diarios de Resend.

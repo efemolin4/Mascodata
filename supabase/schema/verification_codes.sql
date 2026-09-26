@@ -8,8 +8,7 @@
 --   * La tabla no tiene ninguna regla de acceso: solo el servidor (clave de servicio) la lee o escribe.
 --   * Solo se guarda un resumen (hash HMAC) del código, nunca el código.
 --   * Toda la lógica de vigencia, intentos y límites vive aquí, en dos funciones SQL, para no duplicarla.
---   * Se cierra la puerta directa: un usuario ya no puede borrar una mascota desde el navegador (salvo los 2 primeros minutos
---     de vida, que es lo que necesita la marcha atrás del alta de una mascota).
+--   * Cerrar el borrado directo de mascotas desde el navegador va aparte, para hacerlo AL FINAL: close_direct_pet_delete.sql.
 
 create table if not exists public.verification_codes (
   id         uuid primary key default gen_random_uuid(),
@@ -83,10 +82,3 @@ revoke all on function public.create_verification_code(uuid, text, uuid, text) f
 revoke all on function public.consume_verification_code(uuid, text, uuid, text) from public, anon, authenticated;
 grant execute on function public.create_verification_code(uuid, text, uuid, text) to service_role;
 grant execute on function public.consume_verification_code(uuid, text, uuid, text) to service_role;
-
--- Cierra la puerta directa: el dueño ya no borra la mascota desde el navegador (lo hace la función `verification-codes`,
--- que exige el código). La excepción de 2 minutos permite deshacer el alta de una mascota si falla su acceso (savePet).
-drop policy if exists "Owner can delete pets" on public.pets;
-create policy "Owner can delete pets" on public.pets
-  for delete to public
-  using (owner_id = auth.uid() and created_at > now() - interval '2 minutes');
