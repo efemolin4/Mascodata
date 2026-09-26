@@ -114,6 +114,18 @@ describe('viewFinance — gating Premium de la vista Gráfico', () => {
     expect(html).not.toContain('finance-period-chart');
   });
 
+  it('el selector de mascota conserva el nombre exacto (un espacio al final no deja Finanzas en cero)', () => {
+    // Un <option> sin value entrega su texto ya recortado: elegir "Greta " dejaba el filtro en "Greta" y no calzaba con ningún gasto.
+    state.pets = [{ id: 'pet-1', name: 'Greta ', foodItems: [] }];
+    window.getFinanceExpenses = () => [{ id: 1, amount: 60000, date: new Date().toISOString().slice(0, 10), category: 'Veterinaria', pet: 'Greta ' }];
+    state.user = { id: 'user-1', plan: 'free' };
+    state.finPet = 'Greta ';
+    const html = viewFinance();
+    expect(html).toContain('<option value="Greta " selected>');
+    expect(html).toContain('$60.000');
+    state.finPet = '';
+  });
+
   it('un usuario Premium ve el dashboard de gastos', () => {
     state.user = { id: 'user-1', plan: 'premium' };
     const html = viewFinance();

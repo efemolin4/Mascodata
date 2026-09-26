@@ -267,7 +267,7 @@ export function viewFinance() {
           <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Mascota</span>
           <select onchange="state.finPet=this.value;render()" class="input-field text-sm py-1.5" style="width:auto;min-width:130px">
             <option value="">Todas</option>
-            ${pets.map(p=>`<option ${petFilter===p.name?'selected':''}>${esc(p.name)}</option>`).join('')}
+            ${pets.map(p=>`<option value="${esc(p.name)}" ${petFilter===p.name?'selected':''}>${esc(p.name)}</option>`).join('')}
           </select>
         </div>
         <!-- Vista toggle -->

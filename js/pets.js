@@ -766,7 +766,7 @@ export function collectStepData() {
   const d = state.newPetData;
   const g = id => document.getElementById(id);
   if (state.addPetStep === 1) {
-    if (g('pet-name')) d.name = g('pet-name').value;
+    if (g('pet-name')) d.name = g('pet-name').value.trim();
     if (g('pet-species')) d.species = g('pet-species').value;
     if (g('pet-sex')) d.sex = g('pet-sex').value;
     if (g('pet-breed')) d.breed = g('pet-breed').value;
@@ -973,7 +973,7 @@ export async function saveEditPet(petId) {
   if (!p) return;
   if (blockIfReadOnly(p)) return;
   const g = id => document.getElementById(id)?.value;
-  const name = g('ep-name') || p.name;
+  const name = (g('ep-name') || '').trim() || p.name;
   const species = g('ep-species') || p.species;
   const breed = g('ep-breed');
   const sex = g('ep-sex'), color = g('ep-color');
