@@ -25,6 +25,10 @@ begin
       else E'MAL  El dueño logró crear una invitación con contadores manipulados\n' end;
   exception when others then res := res || E'FALLA El dueño no pudo crear la invitación: ' || sqlerrm || E'\n'; end;
   reset role;
+  -- El servidor (clave de servicio) no tiene sesión de persona: se limpia la sesión simulada del dueño.
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', '', true);
 
   -- ===== Servidor: reserva de envíos =====
   r := claim_invitation_email(a, 'zz-mail-1');
