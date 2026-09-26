@@ -436,3 +436,41 @@ describe('resumen de traspaso', () => {
     expect(tabGeneral({ ...pet(), tutor2: null })).not.toContain('Resumen de traspaso');
   });
 });
+
+describe('createPetInvite (correo propio)', () => {
+  const edgeError = (error, status = 429) => ({ message: 'Edge Function returned a non-2xx status code', context: { status, json: async () => ({ error }) } });
+  let createPetInvite;
+  beforeEach(async () => {
+    ({ createPetInvite } = await import('./pets.js'));
+    window.showToast = vi.fn();
+    window.isDemoUser = vi.fn(() => false);
+    window.state = { user: { id: 'user-1', name: 'Ana' }, pets: [] };
+    window.sb = makeMockSb();
+  });
+  const pet = () => ({ id: 'pet-1', name: 'Greta' });
+
+  it('crea la invitación con un token aleatorio y pide el correo a send-invitation (no a Supabase Auth)', async () => {
+    const p = pet();
+    const ok = await createPetInvite(p, { name: 'Luis', email: 'luis@correo.cl', role: 'edicion' });
+    expect(ok).toBe(true);
+    const [fn, opts] = window.sb.functions.invoke.mock.calls[0];
+    expect(fn).toBe('send-invitation');
+    expect(opts.body.token).toMatch(/^[0-9a-f]{32}$/);
+    expect(window.sb.auth.signInWithOtp).not.toHaveBeenCalled();
+    expect(p.tutor2).toEqual({ name: 'Luis', email: 'luis@correo.cl', role: 'edicion', pending: true });
+  });
+
+  it.each([
+    ['too_soon', 'Espera un minuto antes de reenviar la invitación'],
+    ['too_many', 'Enviaste demasiadas invitaciones. Inténtalo de nuevo en una hora'],
+    ['send_failed', 'No se pudo enviar el correo. Inténtalo de nuevo'],
+  ])('si el correo falla (%s), lo explica, quita la invitación y no deja al tutor como pendiente', async (code, message) => {
+    window.sb.functions.invoke = vi.fn(async () => ({ data: null, error: edgeError(code) }));
+    const p = pet();
+    const ok = await createPetInvite(p, { name: 'Luis', email: 'luis@correo.cl', role: 'lectura' });
+    expect(ok).toBe(false);
+    expect(window.showToast).toHaveBeenCalledWith(message, 'error');
+    expect(window.sb.from).toHaveBeenCalledWith('invitations');
+    expect(p.tutor2).toBeUndefined();
+  });
+});

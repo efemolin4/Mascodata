@@ -197,3 +197,21 @@ solo se pueden pedir 1 por minuto y 5 por hora (la lógica vive en `schema/verif
    mascotas desde el navegador; hacerlo antes de publicar la app dejaría a la app anterior mostrando "eliminada" sin borrar.
 
 Cada código cuenta para los 100 correos diarios de Resend.
+
+## Correo propio de invitación a un segundo tutor
+
+Antes la invitación salía de Supabase Auth (magic link con plantilla genérica, distinta si la persona tenía cuenta o no). Ahora la
+app crea la invitación y la función `functions/send-invitation` envía por Resend un correo propio ("Ana te invitó a cuidar a
+Greta") armado en el servidor con datos de la base, con un enlace `?invite=TOKEN`. Quien lo abre inicia sesión o crea su cuenta
+con ese correo y la invitación se acepta sola. Límites (en `schema/invitation_emails.sql`): 1 envío por minuto y 5 por
+invitación, 10 invitaciones por hora por persona.
+
+**Orden de instalación:**
+
+1. **SQL Editor:** `schema/invitation_emails.sql`, y luego `schema/test_invitation_emails.sql` (debe salir todo en `OK`). Es seguro
+   antes de publicar la app: la app anterior no usa esas columnas.
+2. **Edge Functions → New function `send-invitation`:** pegar `functions/send-invitation/index.ts`, Deploy y en Settings dejar
+   **"Verify JWT with legacy secret" apagado**. Sin secretos nuevos (usa `RESEND_API_KEY` y, si existe, `APP_URL`).
+3. **Publicar la app** (fusionar el pull request). Hacerlo antes rompería el envío de invitaciones.
+
+Cada invitación cuenta para los 100 correos diarios de Resend.

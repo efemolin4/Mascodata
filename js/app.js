@@ -142,15 +142,24 @@ export function loadState() {
       else state.currentView = state.isLoggedIn ? 'dashboard' : 'login';
       state.currentTab = 'general'; state.addPetStep = 1; state.newPetData = {};
     }
-    // Un link de invitación de segundo tutor llega como ?invite=TOKEN — el login real
-    // ocurre vía magic link de Supabase, procesado por separado en initApp(). Solo
-    // guardamos el token acá; NO tocamos currentView (el usuario ya queda autenticado).
-    const inviteMatch = location.search.match(/invite=([^&]+)/);
+    // Un link de invitación de segundo tutor llega como ?invite=TOKEN (correo de la función send-invitation). Quien lo abre
+    // puede necesitar iniciar sesión, crear su cuenta, confirmar el correo o pasar por Google antes de que la app pueda
+    // aceptarla, y eso recarga la página: por eso el token se guarda y se recupera hasta que se use (ver initApp()).
+    const inviteMatch = location.search.match(/invite=([A-Za-z0-9_-]+)/);
     if (inviteMatch) {
       state.inviteToken = inviteMatch[1];
+      try { localStorage.setItem(INVITE_KEY, inviteMatch[1]); } catch (e) {}
       history.replaceState(null, '', location.pathname + location.hash);
+    } else {
+      try { state.inviteToken = localStorage.getItem(INVITE_KEY) || null; } catch (e) {}
     }
   } catch(e) {}
+}
+
+const INVITE_KEY = 'mascodata_invite';
+export function clearPendingInvite() {
+  state.inviteToken = null;
+  try { localStorage.removeItem(INVITE_KEY); } catch (e) {}
 }
 
 export function saveState() {
@@ -955,7 +964,7 @@ export async function initApp() {
   // Invitación de segundo tutor pendiente (llegó por ?invite=TOKEN, ver loadState())
   if (session && state.inviteToken) {
     const token = state.inviteToken;
-    state.inviteToken = null;
+    clearPendingInvite();
     await acceptPetInvite(token);
     state.currentView = 'dashboard';
     history.replaceState(null, '', ROUTE_PATHS.dashboard);
@@ -1003,7 +1012,7 @@ document.addEventListener('DOMContentLoaded', initApp);
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     getPage, setPage, paginate, pagerHTML, loadState, saveState, isDemoUser,
-    canEditPet, blockIfReadOnly, isPremium, blockIfNotPremium, premiumUpsell, premiumUpsellCard, track, requestPremium, MIN_PASSWORD_LENGTH, getCaptchaToken, withCaptcha, isCaptchaError, edgeErrorCode,
+    canEditPet, blockIfReadOnly, isPremium, blockIfNotPremium, premiumUpsell, premiumUpsellCard, track, requestPremium, MIN_PASSWORD_LENGTH, clearPendingInvite, getCaptchaToken, withCaptcha, isCaptchaError, edgeErrorCode,
     requestPlanUpgrade, viewPlans,
     showToast, viewToPath, pathToView,
     resolveInitialViewFromUrl, navigate, iconSVG, icon, sidebar, bottomNav, mobileTopBar,
