@@ -217,7 +217,7 @@ describe('límite de adjuntos por plan (Free: 1, Premium: ilimitado)', () => {
   });
 
   it('saveHistory recorta a 1 archivo cuando el usuario es Free', async () => {
-    window.isPremium = vi.fn(() => false);
+    window.petIsPremium = vi.fn(() => false);
     fakeFileInput('h-files', ['a.pdf', 'b.pdf', 'c.pdf']);
     const pet = { id: 'pet-1', myRole: 'owner', clinicalHistory: [] };
     window.state = { pets: [pet] };
@@ -229,7 +229,7 @@ describe('límite de adjuntos por plan (Free: 1, Premium: ilimitado)', () => {
   });
 
   it('saveHistory NO recorta archivos cuando el usuario es Premium', async () => {
-    window.isPremium = vi.fn(() => true);
+    window.petIsPremium = vi.fn(() => true);
     fakeFileInput('h-files', ['a.pdf', 'b.pdf', 'c.pdf']);
     const pet = { id: 'pet-1', myRole: 'owner', clinicalHistory: [] };
     window.state = { pets: [pet] };
@@ -240,7 +240,7 @@ describe('límite de adjuntos por plan (Free: 1, Premium: ilimitado)', () => {
   });
 
   it('saveEditHistory recorta a 1 archivo TOTAL (existentes + nuevos) cuando el usuario es Free', async () => {
-    window.isPremium = vi.fn(() => false);
+    window.petIsPremium = vi.fn(() => false);
     fakeFileInput('eh-files', ['nuevo.pdf']);
     const h = { id: 'h1', title: 'Control', files: [{ name: 'viejo.pdf', data: 'x' }] };
     const pet = { id: 'pet-1', myRole: 'owner', clinicalHistory: [h] };
