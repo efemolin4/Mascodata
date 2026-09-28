@@ -280,6 +280,7 @@ export async function login() {
   const { error: profileError } = await sb.from('profiles').upsert({ id: data.user.id, email, name: userName }, { onConflict: 'id' });
   if (profileError) console.error('Error al crear/actualizar profile:', profileError);
   await loadDataFromSupabase();
+  await acceptPendingInvites();
   track('login');
   showToast('¡Bienvenido!', 'success');
   navigate('dashboard', {}, { replace: true });

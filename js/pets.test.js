@@ -254,15 +254,15 @@ describe('gating Premium: segundo tutor y exportar expediente', () => {
     expect(window.openModal).toHaveBeenCalled();
   });
 
-  it('exportPetRecord no abre el modal si blockIfNotPremium bloquea', () => {
-    window.blockIfNotPremium = vi.fn(() => true);
+  it('exportPetRecord no abre el modal si blockIfPetNotPremium bloquea', () => {
+    window.blockIfPetNotPremium = vi.fn(() => true);
     exportPetRecord('pet-1');
-    expect(window.blockIfNotPremium).toHaveBeenCalledWith('Exportar el expediente');
+    expect(window.blockIfPetNotPremium).toHaveBeenCalledWith(pet, 'Exportar el expediente');
     expect(window.openModal).not.toHaveBeenCalled();
   });
 
-  it('exportPetRecord abre el modal cuando blockIfNotPremium no bloquea', () => {
-    window.blockIfNotPremium = vi.fn(() => false);
+  it('exportPetRecord abre el modal cuando blockIfPetNotPremium no bloquea', () => {
+    window.blockIfPetNotPremium = vi.fn(() => false);
     window.todayStr = vi.fn(() => '2026-06-15');
     exportPetRecord('pet-1');
     expect(window.openModal).toHaveBeenCalled();

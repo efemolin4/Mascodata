@@ -90,6 +90,7 @@ async function loadDataFromSupabase() {
         vet: { name: pet.vet_name||'', clinic: pet.vet_clinic||'', phone: pet.vet_phone||'', email: pet.vet_email||'' },
         weightKg: pet.weight_kg ?? '', weightGr: pet.weight_gr ?? '',
         createdAt: pet.created_at || null,
+        ownerPremium: pet.owner_premium === true,
         careMode: pet.care_mode || 'together',
         expenseSplit: pet.expense_split || 'none',
         sizeRange: pet.size_range || '', activityLevel: pet.activity_level || 2,

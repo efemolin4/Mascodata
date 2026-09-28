@@ -278,6 +278,7 @@ export function openMedModal(petId) {
 }
 
 export function openHistoryModal(petId) {
+  const pet = state.pets.find(p => p.id === petId);
   openModal(`
     <div class="modal-box p-4 sm:p-6">
       <h3 class="text-lg font-bold text-gray-900 mb-4">Nuevo evento clínico</h3>
@@ -313,7 +314,7 @@ export function openHistoryModal(petId) {
             class="mt-1 border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-brand-300 hover:bg-brand-50 transition-colors">
             <div class="mb-1 flex justify-center">${icon('folder','w-6 h-6')}</div>
             <p class="text-xs text-gray-500">Haz clic para seleccionar archivos</p>
-            <p class="text-xs text-gray-400">PNG, JPG, PDF (máx. 5MB c/u)${!isPremium() ? ' · Plan Free: 1 archivo por evento (Premium: ilimitados)' : ''}</p>
+            <p class="text-xs text-gray-400">PNG, JPG, PDF (máx. 5MB c/u)${!petIsPremium(pet) ? ' · Plan Free: 1 archivo por evento (Premium: ilimitados)' : ''}</p>
           </div>
           <input id="h-files" type="file" multiple accept="image/*,.pdf,.doc,.docx" class="hidden" onchange="previewHistoryFiles(this)" />
           <div id="h-files-preview" class="flex flex-wrap gap-2 mt-2"></div>
@@ -450,8 +451,8 @@ export async function saveHistory(e, petId) {
   const g = id => document.getElementById(id)?.value;
   const filesInput = document.getElementById('h-files');
   let files = filesInput?.files?.length ? await readFilesAsBase64(filesInput) : [];
-  // Plan Free: 1 adjunto por evento (avisado junto al input) — Premium sin límite.
-  if (!isPremium()) files = files.slice(0, 1);
+  // Plan Free: 1 adjunto por evento (avisado junto al input) — Premium sin límite. Rige el plan del dueño de la mascota.
+  if (!petIsPremium(pet)) files = files.slice(0, 1);
   const record = { title: g('h-title'), type: g('h-type'), date: g('h-date'),
     doctor: g('h-doctor'), clinic: g('h-clinic'), cost: parseCLP(g('h-cost')), notes: g('h-notes'), files };
   pet.clinicalHistory = pet.clinicalHistory || [];
@@ -755,7 +756,7 @@ export function openEditHistoryModal(petId, histId) {
           <label class="form-label flex items-center gap-1">${icon('paperclip','w-3.5 h-3.5')} Agregar más archivos</label>
           <div onclick="document.getElementById('eh-files').click()"
             class="mt-1 border-2 border-dashed border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:border-brand-300 hover:bg-brand-50 transition-colors">
-            <p class="text-xs text-gray-400">Haz clic para seleccionar archivos${!isPremium() ? ' · Plan Free: 1 archivo por evento (Premium: ilimitados)' : ''}</p>
+            <p class="text-xs text-gray-400">Haz clic para seleccionar archivos${!petIsPremium(pet) ? ' · Plan Free: 1 archivo por evento (Premium: ilimitados)' : ''}</p>
           </div>
           <input id="eh-files" type="file" multiple accept="image/*,.pdf,.doc,.docx" class="hidden" onchange="previewHistoryFilesEdit(this)" />
           <div id="eh-files-preview" class="flex flex-wrap gap-2 mt-2"></div>
@@ -815,8 +816,8 @@ export async function saveEditHistory(e, petId, histId) {
   const title = g('eh-title'), type = g('eh-type'), date = g('eh-date');
   const doctor = g('eh-doctor'), clinic = g('eh-clinic'), cost = parseCLP(g('eh-cost')), notes = g('eh-notes');
   let files = [...(h.files||[]), ...newFiles];
-  // Plan Free: 1 adjunto por evento en total (existentes + nuevos) — Premium sin límite.
-  if (!isPremium()) files = files.slice(0, 1);
+  // Plan Free: 1 adjunto por evento en total (existentes + nuevos) — Premium sin límite. Rige el plan del dueño de la mascota.
+  if (!petIsPremium(pet)) files = files.slice(0, 1);
   if (!isDemoUser()) {
     const { error } = await sb.from('history_records').update({
       title, type, date, vet: doctor, clinic, cost, notes,
