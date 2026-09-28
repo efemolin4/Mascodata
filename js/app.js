@@ -195,6 +195,23 @@ export function isPremium() {
   return isDemoUser() || PAID_PLAN_IDS.includes(state.user?.plan);
 }
 
+// Las funciones que pertenecen a UNA mascota (exportar su expediente, adjuntos ilimitados en su historial) siguen al plan de
+// su DUEÑO: quien la cuida con él la ve igual que él, con el permiso que se le dio (edición o solo lectura). El plan propio de
+// cada persona rige lo que es suyo: cuántas mascotas propias tiene, su botiquín y sus gráficos de gastos. `ownerPremium` lo
+// mantiene la base (pets.owner_premium, supabase/schema/pet_owner_premium.sql): el invitado no puede leer el perfil del dueño.
+export function petIsPremium(pet) {
+  if (isDemoUser() || !pet) return isPremium();
+  if (!pet.myRole || pet.myRole === 'owner') return isPremium();
+  return pet.ownerPremium === true;
+}
+
+export function blockIfPetNotPremium(pet, feature) {
+  if (petIsPremium(pet)) return false;
+  track('premium_blocked', { feature });
+  showToast(`${feature} es una función Premium — ${(!pet?.myRole || pet.myRole === 'owner') ? 'mejora tu plan para usarla' : 'el plan de quien comparte esta mascota no la incluye'}.`, 'error');
+  return true;
+}
+
 // Analítica de producto (PostHog, ver index.html). No-op si el script no cargó
 // (localhost, tests, bloqueador). `demo` separa a quienes solo prueban la demo.
 // Nunca mandar nombre, email, teléfono ni datos de salud en `props`.
@@ -393,11 +410,11 @@ export function viewPlans() {
 // activityStreak, speciesEmoji, eventIcon, esc, genId) viven en
 // js/utils.js — cargado como módulo antes que este archivo y expuesto en
 // window, así que se siguen llamando igual acá sin cambiar nada.
-export function showToast(msg, type = '') {
+export function showToast(msg, type = '', ms = 3000) {
   const t = document.createElement('div');
   t.className = `toast ${type}`; t.textContent = msg;
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+  setTimeout(() => t.remove(), ms);
 }
 
 // ---- ROUTER ----
@@ -969,6 +986,9 @@ export async function initApp() {
     state.currentView = 'dashboard';
     history.replaceState(null, '', ROUTE_PATHS.dashboard);
   }
+  // Invitaciones para el correo de esta cuenta que el enlace no alcanzó a aceptar (otro navegador, otro dispositivo,
+  // confirmación del correo en otra ventana): se aceptan solas al entrar.
+  if (session) await acceptPendingInvites();
 
   // Listen for auth changes
   sb.auth.onAuthStateChange((event, session) => {
@@ -1012,7 +1032,7 @@ document.addEventListener('DOMContentLoaded', initApp);
 if (typeof window !== 'undefined') {
   Object.assign(window, {
     getPage, setPage, paginate, pagerHTML, loadState, saveState, isDemoUser,
-    canEditPet, blockIfReadOnly, isPremium, blockIfNotPremium, premiumUpsell, premiumUpsellCard, track, requestPremium, MIN_PASSWORD_LENGTH, clearPendingInvite, getCaptchaToken, withCaptcha, isCaptchaError, edgeErrorCode,
+    canEditPet, blockIfReadOnly, isPremium, petIsPremium, blockIfPetNotPremium, blockIfNotPremium, premiumUpsell, premiumUpsellCard, track, requestPremium, MIN_PASSWORD_LENGTH, clearPendingInvite, getCaptchaToken, withCaptcha, isCaptchaError, edgeErrorCode,
     requestPlanUpgrade, viewPlans,
     showToast, viewToPath, pathToView,
     resolveInitialViewFromUrl, navigate, iconSVG, icon, sidebar, bottomNav, mobileTopBar,

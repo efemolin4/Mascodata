@@ -1109,7 +1109,7 @@ export function updateBreedOptions(species) {
 export function exportPetRecord(petId) {
   const pet = state.pets.find(p => p.id === petId);
   if (!pet) return;
-  if (blockIfNotPremium('Exportar el expediente')) return;
+  if (blockIfPetNotPremium(pet, 'Exportar el expediente')) return;
   const vet = pet.vet || {};
   const vaccines = [...(pet.vaccines||[])].sort((a,b)=>b.date>a.date?1:-1);
   const dewormings = [...(pet.deworming||[])].sort((a,b)=>b.date>a.date?1:-1);
@@ -1260,24 +1260,42 @@ export async function createPetInvite(pet, { name, email, role }) {
   return true;
 }
 
-export async function acceptPetInvite(token) {
+export async function acceptPetInvite(token, { reload = true, quiet = false } = {}) {
   const { data: invite, error } = await sb.from('invitations').select('*').eq('token', token).eq('used', false).maybeSingle();
-  if (error || !invite) return;
+  if (error || !invite) return false;
   if ((invite.invited_email || '').toLowerCase() !== (state.user?.email || '').toLowerCase()) {
-    showToast('Esta invitación fue enviada a otro correo', 'error');
-    return;
+    if (!quiet) showToast('Esta invitación es para otro correo. Cierra sesión e ingresa con el correo al que llegó.', 'error', 9000);
+    return false;
   }
   if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
-    showToast('Esta invitación ya expiró', 'error');
-    return;
+    if (!quiet) showToast('Esta invitación ya expiró. Pídele a quien te invitó que la envíe de nuevo.', 'error', 6000);
+    return false;
   }
   const { error: accessError } = await sb.from('pet_access').insert({
     pet_id: invite.pet_id, user_id: state.user.id, role: invite.role === 'edicion' ? 'editor' : 'viewer'
   });
-  if (accessError) { showToast('No se pudo aceptar la invitación', 'error'); console.error(accessError); return; }
+  if (accessError) { showToast('No se pudo aceptar la invitación', 'error'); console.error(accessError); return false; }
   await sb.from('invitations').update({ used: true }).eq('token', token);
   showToast(`Ahora tienes acceso a ${invite.pet_name}`, 'success');
-  await loadDataFromSupabase();
+  if (reload) await loadDataFromSupabase();
+  return true;
+}
+
+// Acepta las invitaciones vigentes dirigidas al correo de esta cuenta, sin depender del enlace ni del navegador donde se
+// abrió. Se omiten las de mascotas a las que ya tiene acceso. La base sigue decidiendo (la regla de pet_access).
+export async function acceptPendingInvites() {
+  if (isDemoUser() || !state.user?.email) return 0;
+  const { data, error } = await sb.from('invitations').select('token, pet_id, expires_at')
+    .eq('used', false).eq('invited_email', state.user.email.toLowerCase());
+  if (error || !data?.length) return 0;
+  let accepted = 0;
+  for (const inv of data) {
+    if (inv.expires_at && new Date(inv.expires_at) < new Date()) continue;
+    if ((state.pets || []).some(p => p.id === inv.pet_id)) continue;
+    if (await acceptPetInvite(inv.token, { reload: false, quiet: true })) accepted++;
+  }
+  if (accepted) await loadDataFromSupabase();
+  return accepted;
 }
 
 export async function sendTutor2Invite(e, petId) {
@@ -1326,6 +1344,6 @@ if (typeof window !== 'undefined') {
     verifyDeleteCode, confirmDeletePet, deletePet, saveEditPet, previewPhoto,
     setActivity, toggleTag, toggleCondition, toggleAllergy, toggleTutor2,
     updateBreedOptions, petCompletenessCard, completionAction, exportPetRecord, printPetRecord, openInviteTutor2Modal, createPetInvite,
-    acceptPetInvite, sendTutor2Invite, removeTutor2,
+    acceptPetInvite, acceptPendingInvites, sendTutor2Invite, removeTutor2,
   });
 }
