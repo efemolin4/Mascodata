@@ -93,7 +93,7 @@ Ambos son avisos de servicio (no promociones), solo al **dueño**, con enlace de
 Solo `is_admin = true`. Métricas de usuarios, mascotas y planes; tabla de usuarios; cambio de plan con registro de auditoría; gestión de usuarios que aceptan promociones (contador, filtro y exportación CSV). MRR estimado = usuarios Premium × precio mensual.
 
 ### 2.11 Sitio público y marca
-Landing v2 (siempre en tema claro, con eventos `landing_*` en PostHog), Manual de marca v2 en `/marca`, páginas legales y confirmación de baja de correos (`/recordatorios`).
+Landing v2 (siempre en tema claro, con eventos `landing_*` en PostHog; quien llega a `/` sin sesión, sin invitación pendiente y sin parámetros en la URL es llevado a `/landing`; las fechas del ejemplo se calculan con el día de hoy), Manual de marca v2 en `/marca`, páginas legales y confirmación de baja de correos (`/recordatorios`).
 
 ---
 
@@ -213,8 +213,7 @@ Vitest con jsdom: **262 pruebas en 15 archivos**, más `check-exports`. Las vist
 
 **Producto**
 - Cobro en línea de Premium (hoy manual); registrar si la persona paga mensual o anual.
-- Fotografía real para la landing y `/marca` (hoy hay un espacio reservado).
-- Que `/` muestre la landing a quien no tiene sesión.
+- Fotografía real para la landing y `/marca`. En la landing el panel de "Cuidar también puede sentirse simple" ahora muestra una vista de ejemplo de Nutrición (marcada como *Ejemplo*); `/marca` sigue con el espacio reservado.
 
 **Marca y comunicación**
 - Logo nuevo en la pantalla de consentimiento de Google: archivo listo en `img/logos/mascodata-app-icon-120.png` (120×120, PNG); falta subirlo en Google Cloud → *Google Auth Platform → Branding*.

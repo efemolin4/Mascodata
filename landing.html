@@ -152,6 +152,17 @@ h1 .hl{color:var(--md-brand-primary);display:block}
 .photo::after{content:'';position:absolute;width:260px;height:260px;border-radius:50%;background:var(--md-brand-primary);left:-80px;bottom:60px;opacity:.6}
 .photo img.iso{position:absolute;left:34px;top:34px;height:72px;width:auto;z-index:1}
 .photo p{position:relative;z-index:1;margin:0;padding:32px;font-size:28px;line-height:34px;font-weight:800;letter-spacing:-.03em;color:#fff;max-width:14em}
+.photo{flex-direction:column;justify-content:space-between;align-items:stretch;padding-top:88px}
+.photo .mini{position:relative;z-index:1;margin:0 32px;background:var(--md-surface-raised);border-radius:var(--md-radius-xl);padding:22px;box-shadow:var(--md-shadow-card)}
+.mini-h{display:flex;align-items:center;justify-content:space-between;gap:10px;font:700 15px/22px var(--md-font);color:var(--md-brand-deep)}
+.mini-p{margin:2px 0 14px!important;padding:0!important;font-size:14px!important;line-height:20px!important;font-weight:400!important;letter-spacing:0!important;color:var(--md-text-muted)!important;max-width:none!important}
+.mini-g{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.mini-g div{background:var(--md-brand-sky);border-radius:var(--md-radius-md);padding:12px}
+.mini-g span{display:block;font-size:12px;line-height:16px;color:var(--md-text-muted)}
+.mini-g b{display:block;font-size:20px;line-height:26px;font-weight:800;color:var(--md-brand-deep)}
+.mini-g i{display:block;font-style:normal;font-size:11px;line-height:15px;color:var(--md-success)}
+.mini-t{margin-top:14px;font-size:13px;line-height:19px;color:var(--md-brand-deep);background:var(--md-brand-coral-soft);border-radius:var(--md-radius-md);padding:10px 12px}
+@media (max-width:600px){.mini-g{grid-template-columns:1fr}.photo .mini{margin:0 18px}}
 .steps{list-style:none;padding:0;margin:36px 0 36px;display:grid;gap:22px}
 .steps li{display:grid;grid-template-columns:44px 1fr;gap:16px;align-items:start}
 .steps .num{width:44px;height:44px;border-radius:var(--md-radius-full);background:var(--md-brand-coral);color:var(--md-brand-deep);font-weight:800;font-size:18px;display:grid;place-items:center}
@@ -258,8 +269,8 @@ footer{background:var(--md-surface-raised);border-top:1px solid var(--md-border)
     <div class="pcard">
       <div class="pet-row"><div class="pet-av" aria-hidden="true">L</div><div><h2>Luna</h2><p>Golden retriever · 4 años</p></div><span class="badge badge-ok"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Al día</span></div>
       <div class="care-h"><span>Próximos cuidados</span><span class="n">2</span></div>
-      <div class="care"><div class="ci"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg></div><div class="t"><b>Vacuna antirrábica</b><span class="s">Vence el 28 de septiembre</span></div><span class="badge badge-soon"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> En 5 días</span></div>
-      <div class="care"><div class="ci"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div><div class="t"><b>Control anual</b><span class="s">Veterinaria Parque</span></div><span class="badge badge-info">14 oct.</span></div>
+      <div class="care"><div class="ci"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg></div><div class="t"><b>Vacuna antirrábica</b><span class="s">Vence el <span id="d-vac">3 de octubre</span></span></div><span class="badge badge-soon"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> En 5 días</span></div>
+      <div class="care"><div class="ci"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div><div class="t"><b>Control anual</b><span class="s">Veterinaria Parque</span></div><span class="badge badge-info" id="d-ctl">14 oct.</span></div>
     </div>
     <div class="stats"><div class="stat"><b>3</b><span>Eventos próximos</span></div><div class="stat"><b>$45.000</b><span>Gasto este mes</span></div></div>
     <div class="note"><b>Todo bajo control</b><span>Tu tranquilidad también cuenta.</span></div>
@@ -279,19 +290,28 @@ footer{background:var(--md-surface-raised);border-top:1px solid var(--md-border)
     <p class="intro">Todo lo necesario para cuidar mejor, explicado de forma simple y disponible cuando lo necesitas.</p>
   </div>
   <div class="feats">
-    <article class="feat w"><div class="feat-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><h3>Ficha médica</h3><p>Vacunas, controles, exámenes y tratamientos ordenados por mascota.</p></article>
+    <article class="feat w"><div class="feat-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><h3>Ficha médica</h3><p>Vacunas, desparasitaciones, historial clínico y tratamientos ordenados por mascota.</p></article>
     <article class="feat d"><div class="feat-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg></div><h3>Alertas útiles</h3><p>Recordatorios simples, antes de que una vacuna o dosis se te pase.</p></article>
     <article class="feat s"><div class="feat-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 15.5L15.5 7a4.243 4.243 0 116 6L13 21.5a4.243 4.243 0 01-6-6z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 11.5l3 3"/></svg></div><h3>Medicamentos</h3><p>Dosis, horarios y registro de cada toma, incluso en tratamientos largos.</p></article>
     <article class="feat c"><div class="feat-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><h3>Gastos claros</h3><p>Entiende cuánto inviertes en su cuidado, por mes y categoría.</p></article>
-    <article class="feat w"><div class="feat-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm5 0a4 4 0 10-1.5-7.7"/></svg></div><h3>Cuidado compartido</h3><p>Invita a otro tutor y mantengan la misma información actualizada.</p><span class="tag">Incluido en Premium</span></article>
-    <article class="feat s"><div class="feat-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg></div><h3>Botiquín del hogar</h3><p>Controla lo que tienes, lo que falta y las próximas fechas de vencimiento.</p><span class="tag">Incluido en Premium</span></article>
+    <article class="feat w"><div class="feat-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm5 0a4 4 0 10-1.5-7.7"/></svg></div><h3>Cuidado compartido</h3><p>Invita a otro tutor: misma agenda, la dosis del día sin duplicar y quién hizo cada cosa.</p><span class="tag">Incluido en Premium</span></article>
+    <article class="feat s"><div class="feat-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg></div><h3>Botiquín del hogar</h3><p>Controla lo que tienes, lo que falta y las próximas fechas de vencimiento.</p><span class="tag">Incluido en Premium</span></article><article class="feat c"><div class="feat-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3c-.6.6-.2 1.7.7 1.7H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div><h3>Alimento sin sorpresas</h3><p>Te avisa antes de que se acabe, muestra el precio por kilo de cada compra y te lleva a buscar ofertas.</p></article><article class="feat s"><div class="feat-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l4-4 3 3 5-6M4 4v16h16"/></svg></div><h3>Peso y bienestar</h3><p>Gráfico de peso con fechas reales, ánimo y síntomas, y un recordatorio mensual para pesarla.</p></article><article class="feat d"><div class="feat-ic"><svg class="ic ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"/></svg></div><h3>Turnos y gastos compartidos</h3><p>Estadías y turnos entre tutores, quién hizo cada registro y un saldo claro de gastos a partes iguales.</p><span class="tag">Incluido en Premium</span></article>
   </div>
 </div></section>
 
 <section id="como-funciona" class="how" aria-labelledby="como-title"><div class="wrap">
-  <!-- Reemplazar este panel por la fotografía principal (brief en el manual de marca v2, sección Fotografía). -->
-  <div class="photo" role="img" aria-label="Tutora junto a su perro y gato revisando Mascodata desde el teléfono.">
-    <img class="iso" src="/img/logos/mascodata-isotipo.svg" alt="">
+  <div class="photo" role="img" aria-label="Ejemplo de la pestaña Nutrición de una mascota: cuándo se acaba el alimento, precio por kilo y cada cuánto se repone.">
+    <span class="badge badge-neutral mock-tag" style="top:22px;right:22px">Ejemplo</span>
+    <div class="mini">
+      <div class="mini-h"><b>Alimento diario</b><span class="badge badge-soon">Se acaba pronto</span></div>
+      <p class="mini-p">Croquetas adulto · 15 kg</p>
+      <div class="mini-g">
+        <div><span>Se acaba en</span><b>6 días</b></div>
+        <div><span>Precio por kg</span><b>$2.890</b><i>▼ 4 % vs. la compra anterior</i></div>
+        <div><span>Repones cada</span><b>34 días</b></div>
+      </div>
+      <div class="mini-t">Hoy Luna está con Pedro · hasta el fin de semana</div>
+    </div>
     <p>Cuidar también puede sentirse simple</p>
   </div>
   <div>
@@ -336,10 +356,10 @@ footer{background:var(--md-surface-raised);border-top:1px solid var(--md-border)
         <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg><span>Predicción de gastos.</span></li>
         <li><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg><span>Expediente PDF y botiquín.</span></li>
       </ul>
-      <a class="btn btn-coral" href="mailto:contacto@mascodata.cl?subject=Quiero%20activar%20Mascodata%20Premium" data-cta="premium" data-loc="pricing" data-plan="premium">Elegir Premium <svg class="ic ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a>
+      <a class="btn btn-coral" href="mailto:contacto@mascodata.cl?subject=Quiero%20activar%20Mascodata%20Premium" data-cta="premium" data-loc="pricing" data-plan="premium">Quiero Premium <svg class="ic ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a>
     </article>
   </div>
-  <p class="plans-note">Precios en pesos chilenos (CLP). Puedes cancelar cuando quieras.</p>
+  <p class="plans-note">Precios en pesos chilenos (CLP). Por ahora Premium se activa por correo: escríbenos y lo dejamos listo.</p>
 </div></section>
 
 <section id="preguntas" aria-labelledby="preguntas-title" style="background:var(--md-surface-raised)"><div class="wrap faq-wrap">
@@ -347,7 +367,7 @@ footer{background:var(--md-surface-raised);border-top:1px solid var(--md-border)
     <h2 class="sec" id="preguntas-title">Lo importante, respondido sin vueltas.</h2>
     <p class="faq-contact">¿Te queda alguna duda? Escríbenos a <a href="mailto:contacto@mascodata.cl">contacto@mascodata.cl</a>.</p>
   </div>
-  <div><details data-faq="gratis"><summary>¿Mascodata es gratis?</summary><p>Sí. El plan Gratis incluye la ficha completa de una mascota, agenda, alertas y control básico de gastos.</p></details><details data-faq="compartir"><summary>¿Puedo compartir la ficha?</summary><p>Con Premium puedes invitar a un segundo tutor. Cada persona entra con su propia cuenta y ambos ven la información actualizada.</p></details><details data-faq="veterinario"><summary>¿Reemplaza a mi veterinario?</summary><p>No. Mascodata organiza la información y te ayuda a recordar cuidados, pero las decisiones médicas siempre deben tomarse con un profesional.</p></details><details data-faq="datos"><summary>¿Qué pasa con mis datos?</summary><p>Tus datos son tuyos. No los vendemos y puedes eliminar tu cuenta desde tu perfil cuando quieras.</p></details></div>
+  <div><details data-faq="gratis"><summary>¿Mascodata es gratis?</summary><p>Sí. El plan Gratis incluye la ficha completa de una mascota, agenda, alertas y control básico de gastos.</p></details><details data-faq="compartir"><summary>¿Puedo compartir la ficha?</summary><p>Con Premium puedes invitar a un segundo tutor. Cada persona entra con su propia cuenta y ambos ven la información actualizada.</p></details><details data-faq="veterinario"><summary>¿Reemplaza a mi veterinario?</summary><p>No. Mascodata organiza la información y te ayuda a recordar cuidados, pero las decisiones médicas siempre deben tomarse con un profesional.</p></details><details data-faq="premium"><summary>¿Cómo activo Premium?</summary><p>Por ahora se activa escribiéndonos a contacto@mascodata.cl. Te respondemos y lo dejamos listo en tu cuenta; todavía no hay pago en línea.</p></details><details data-faq="datos"><summary>¿Qué pasa con mis datos?</summary><p>Tus datos son tuyos. No los vendemos, solo ven la ficha quienes tú invitas, y eliminar tu cuenta o una mascota pide un código enviado a tu correo. Los correos que enviamos son avisos útiles; las promociones son opcionales.</p></details></div>
 </div></section>
 
 <section class="final" style="padding-top:96px"><div class="wrap"><div class="box">
@@ -364,6 +384,15 @@ footer{background:var(--md-surface-raised);border-top:1px solid var(--md-border)
 
 <script>
 (function () {
+  // Las fechas del ejemplo se calculan con el día de hoy para que nunca queden en el pasado.
+  try {
+    var f = function (d, o) { return d.toLocaleDateString('es-CL', o); };
+    var t1 = new Date(); t1.setDate(t1.getDate() + 5);
+    var t2 = new Date(); t2.setDate(t2.getDate() + 16);
+    var a = document.getElementById('d-vac'), b = document.getElementById('d-ctl');
+    if (a) a.textContent = f(t1, { day: 'numeric', month: 'long' });
+    if (b) b.textContent = f(t2, { day: 'numeric', month: 'short' }).replace(/\.$/, '') + '.';
+  } catch (e) {}
   function vp() { var w = innerWidth; return w <= 600 ? 'mobile' : w <= 900 ? 'tablet' : 'desktop'; }
   function cap(ev, props) {
     try { if (window.posthog) window.posthog.capture(ev, Object.assign({ viewport: vp() }, props || {})); } catch (e) {}

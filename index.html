@@ -9,6 +9,21 @@
   <meta name="theme-color" content="#4c5fd7" />
   <link rel="apple-touch-icon" href="/img/logos/mascodata-app-icon.png" />
   <script>
+    // Quien llega a mascodata.cl sin sesión ve primero la propuesta de valor (/landing) y no el login.
+    // No se redirige si la URL trae algo (tokens de Google, confirmación de correo o recuperación de contraseña,
+    // invitaciones) ni si hay una sesión o una invitación guardadas en este navegador.
+    (function () {
+      try {
+        if (location.pathname !== '/' || location.search || location.hash) return;
+        var s = JSON.parse(localStorage.getItem('mascodata_v3') || 'null');
+        if (s && s.isLoggedIn) return;
+        if (localStorage.getItem('mascodata_invite')) return;
+        for (var i = 0; i < localStorage.length; i++) { if (/^sb-.*-auth-token$/.test(localStorage.key(i))) return; }
+        location.replace('/landing');
+      } catch (e) {}
+    })();
+  </script>
+  <script>
     // Clave PÚBLICA de Cloudflare Turnstile (CAPTCHA). Vacía = CAPTCHA apagado. Solo se completa después de crear el
     // sitio en Cloudflare y ANTES de activar el CAPTCHA en Supabase (ver supabase/README.md, "Protección contra abuso").
     // La clave secreta va únicamente en Supabase, nunca aquí.
