@@ -12,6 +12,7 @@ export function tabMedications(pet) {
   const today = todayStr();
   const reminderLabels = { exact:'Horario exacto', '15':'15 min antes', '30':'30 min antes', '60':'60 min antes' };
   const hasActive = (pet.medications||[]).some(m => m.active);
+  const canEdit = canEditPet(pet);
   const doseToday = (pet.doseLog||[]).find(dl => dl.date === today && dl.given);
   const doseGivenToday = !!doseToday;
   const doseBy = doseToday ? actorLabel(doseToday, state.user?.id) : null;
@@ -66,6 +67,22 @@ export function tabMedications(pet) {
                            <div class="w-full bg-gray-100 rounded-full h-1.5">
                              <div class="h-1.5 rounded-full ${barColor}" style="width:${ms.pct}%"></div>
                            </div>
+                         </div>`; })()}
+                       ${(() => {
+                         const sup = medSupplyStatus(m), buys = [...(m.purchases||[])].sort((a, b) => b.date.localeCompare(a.date));
+                         if (!sup && !buys.length && !(m.active && canEdit)) return '';
+                         const color = sup ? { critico:'text-red-600', bajo:'text-amber-600', ok:'text-green-700' }[sup.level] : '';
+                         return `
+                         <div class="mt-2 pt-2 border-t border-gray-50">
+                           <div class="flex items-center justify-between gap-2 flex-wrap">
+                             <span class="text-xs ${color || 'text-gray-500'} font-medium">${sup ? `${icon('clock','w-3 h-3 inline align-text-bottom')} ${esc(sup.label)} · se acaba ~${formatDate(sup.runOutDate)}` : (buys.length ? 'Registra cuántos días alcanza cada compra para saber cuándo se acaba' : '')}</span>
+                             ${m.active && canEdit ? `<button onclick="openMedPurchaseModal('${pet.id}','${m.id}')" class="text-xs font-semibold text-brand-600 hover:underline">Compré de nuevo</button>` : ''}
+                           </div>
+                           ${buys.slice(0, 3).map(b => `
+                             <div class="flex items-center justify-between text-xs text-gray-400 mt-1">
+                               <span>${formatDate(b.date)} · ${fmtCLP(b.price)}${b.daysSupply ? ` · alcanza ${b.daysSupply} días` : ''}</span>
+                               ${canEdit ? `<button onclick="deleteMedPurchase('${pet.id}','${m.id}','${b.id}')" title="Eliminar compra" class="text-gray-300 hover:text-red-500">✕</button>` : ''}
+                             </div>`).join('')}
                          </div>`; })()}
                      </div>
                    </div>
@@ -831,9 +848,88 @@ export async function saveEditHistory(e, petId, histId) {
   showToast('Evento actualizado ✓', 'success');
 }
 
+
+// ---- Compras de un tratamiento de uso continuo ----
+// Una sola acción ("Compré de nuevo") crea el gasto en Finanzas y calcula cuándo se acaba; el aviso va solo al panel.
+export function openMedPurchaseModal(petId, medId) {
+  const pet = state.pets.find(p => p.id === petId);
+  const m = pet?.medications?.find(x => x.id === medId);
+  if (!m) return;
+  if (blockIfReadOnly(pet)) return;
+  const last = [...(m.purchases || [])].sort((a, b) => b.date.localeCompare(a.date))[0];
+  openModal(`
+    <div class="modal-box p-4 sm:p-6">
+      <h3 class="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">${icon('pill','w-5 h-5')} Nueva compra</h3>
+      <p class="text-sm text-gray-500 mb-4">${esc(m.name)}</p>
+      <form onsubmit="saveMedPurchase(event,'${safeId(petId)}','${safeId(medId)}')" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="form-label">Precio pagado (CLP) *</label><input id="mp-price" type="text" inputmode="numeric" required placeholder="0" class="input-field" /></div>
+          <div><label class="form-label">Fecha de compra</label><input id="mp-date" type="date" value="${todayStr()}" class="input-field" /></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="form-label">¿Para cuántos días alcanza?</label><input id="mp-days" type="number" min="1" max="3650" value="${esc(last?.daysSupply || '')}" placeholder="Ej: 30" class="input-field" /></div>
+          <div><label class="form-label">Cantidad <span class="text-gray-400 font-normal">(opcional${m.stockUnit ? `, en ${esc(m.stockUnit)}` : ''})</span></label><input id="mp-qty" type="number" min="0" step="0.1" placeholder="0" class="input-field" /></div>
+        </div>
+        <p class="text-xs text-gray-400">Con los días te avisamos en la plataforma antes de que se acabe. No enviamos correos por esto. La compra cuenta como gasto en Finanzas.</p>
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="closeModal()" class="btn-secondary flex-1">Cancelar</button>
+          <button type="submit" class="btn-primary flex-1">Guardar</button>
+        </div>
+      </form>
+    </div>`);
+}
+
+export async function saveMedPurchase(e, petId, medId) {
+  e.preventDefault();
+  const pet = state.pets.find(p => p.id === petId);
+  const m = pet?.medications?.find(x => x.id === medId);
+  if (!m) return;
+  if (blockIfReadOnly(pet)) return;
+  const g = id => document.getElementById(id)?.value;
+  const price = parseCLP(g('mp-price')), date = g('mp-date') || todayStr();
+  const quantity = parseFloat(g('mp-qty')) > 0 ? parseFloat(g('mp-qty')) : null;
+  let daysSupply = parseInt(g('mp-days'), 10) > 0 ? parseInt(g('mp-days'), 10) : null;
+  if (!(price > 0)) { showToast('Ingresa el precio pagado', 'error'); return; }
+  if (!daysSupply && quantity) daysSupply = medDaysFromQuantity(m, quantity);
+  if (date > todayStr()) { showToast('La fecha de compra no puede ser futura', 'error'); return; }
+
+  m.purchases = m.purchases || [];
+  // Si el tratamiento ya tenía un costo (su primera compra), pasa a ser la primera compra: así no se cuenta doble en Finanzas.
+  const rows = [];
+  if (!m.purchases.length && Number(m.cost) > 0) rows.push({ med_id: medId, pet_id: petId, purchase_date: m.startDate || date, price: Number(m.cost), quantity: null, days_supply: null });
+  rows.push({ med_id: medId, pet_id: petId, purchase_date: date, price, quantity, days_supply: daysSupply });
+
+  let saved;
+  if (isDemoUser()) {
+    saved = rows.map(r => ({ id: genId(), purchase_date: r.purchase_date, price: r.price, quantity: r.quantity, days_supply: r.days_supply }));
+  } else {
+    const { data, error } = await sb.from('medication_purchases').insert(rows).select();
+    if (error) { showToast('No se pudo guardar la compra', 'error'); console.error(error); return; }
+    saved = data;
+  }
+  const me = { createdBy: state.user?.id || null, createdByName: state.user?.name || null };
+  saved.forEach(r => m.purchases.push({ id: r.id, date: r.purchase_date, price: r.price, quantity: r.quantity, daysSupply: r.days_supply,
+    createdBy: r.created_by || me.createdBy, createdByName: r.created_by_name || me.createdByName }));
+  track('med_purchase_logged');
+  closeModal(); render();
+  showToast('Compra registrada', 'success');
+}
+
+export async function deleteMedPurchase(petId, medId, purchaseId) {
+  const pet = state.pets.find(p => p.id === petId);
+  const m = pet?.medications?.find(x => x.id === medId);
+  if (!m || blockIfReadOnly(pet)) return;
+  if (!isDemoUser()) {
+    const { error } = await sb.from('medication_purchases').delete().eq('id', purchaseId);
+    if (error) { showToast('Error al eliminar', 'error'); console.error(error); return; }
+  }
+  m.purchases = (m.purchases || []).filter(x => x.id !== purchaseId);
+  render();
+}
+
 if (typeof window !== 'undefined') {
   Object.assign(window, {
-    tabMedications, tabHistory, openMedModal, openHistoryModal, saveMedication,
+    openMedPurchaseModal, saveMedPurchase, deleteMedPurchase, tabMedications, tabHistory, openMedModal, openHistoryModal, saveMedication,
     deleteMedication, markDoseTaken, previewHistoryFiles, readFilesAsBase64,
     saveHistory, deleteHistory, updateMedPreview, selectMedReminder,
     selectEditMedReminder, updateDoseSection, updateDosePreview, updateDoseUnit,

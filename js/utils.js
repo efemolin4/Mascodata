@@ -268,6 +268,43 @@ export function medStockDaysRemaining(m) {
   return Math.floor(stock / consumptionPerDay);
 }
 
+// ---- Compras de un tratamiento de uso continuo (suplementos, gotas, comprimidos diarios) ----
+// Cada compra dice para cuántos días alcanza. Una compra hecha antes de que se acabe la anterior se suma a lo que sobraba.
+// Sin correos: es de todos los días, el aviso vive solo en el panel de la plataforma.
+export function medRunOutDate(m) {
+  const list = (m?.purchases || []).filter(p => p.date && Number(p.daysSupply) > 0).sort((a, b) => a.date.localeCompare(b.date));
+  if (!list.length) return null;
+  let end = null;
+  for (const p of list) {
+    const start = end && end > p.date ? end : p.date;
+    end = addDays(start, Number(p.daysSupply));
+  }
+  return end;
+}
+
+// Cuántos días alcanza una cantidad, solo cuando la dosis y el stock están en la misma unidad (si no, no se adivina).
+export function medDaysFromQuantity(m, qty) {
+  const q = parseFloat(qty), freqN = parseFloat(m?.freqN);
+  if (!(q > 0) || !(freqN > 0)) return null;
+  const same = (m.doseUnit || '').toLowerCase().replace(/\(s\)$/, '') === (m.stockUnit || '').toLowerCase().replace(/s$/, '');
+  if (!same) return null;
+  const perDay = (m.freqUnit === 'dias' ? 1 / freqN : 24 / freqN) * (parseFloat(m.doseVal) || 1);
+  return perDay > 0 ? Math.max(1, Math.floor(q / perDay)) : null;
+}
+
+export function medSupplyStatus(m) {
+  if (!m?.active) return null;
+  const runOut = medRunOutDate(m);
+  if (!runOut) return null;
+  if (m.endDate && m.endDate <= runOut) return null; // lo comprado alcanza hasta que termina el tratamiento
+  const daysLeft = daysBetween(todayStr(), runOut);
+  const level = daysLeft <= 3 ? 'critico' : daysLeft <= 7 ? 'bajo' : 'ok';
+  return {
+    level, daysLeft, runOutDate: runOut,
+    label: daysLeft < 0 ? 'Se estima que ya se acabó' : daysLeft === 0 ? 'Se acaba hoy' : `Quedan ~${daysLeft} día${daysLeft !== 1 ? 's' : ''}`,
+  };
+}
+
 export function medStockStatus(m) {
   const stock = parseInt(m.stockTotal);
   if (!stock) return null;
@@ -637,7 +674,7 @@ if (typeof window !== 'undefined') {
   Object.assign(window, {
     genId, formatDate, todayStr, daysFromNowStr, addMonths, addDays, daysBetween,
     getAge, careAlertStatus, speciesEmoji, fmtCLP, fmtCompactCLP, parseCLP, esc, safeId, safeDataUrl, shrinkImage, slugify, petCompleteness, COMPLETENESS_FIELDS, eventIcon, botiquinStatus,
-    medStockDaysRemaining, medStockStatus, foodDaysTotal, foodRunOutDate,
+    medStockDaysRemaining, medStockStatus, medRunOutDate, medDaysFromQuantity, medSupplyStatus, foodDaysTotal, foodRunOutDate,
     splitBalance, MAX_STAYS_PER_SERIES, stayTurns, rangesOverlap, handoffSummary, actorLabel, timeOf, recentActivity, STAY_TYPE, hasOtherTutor, stayWho, eventCoversDate, petStayOn, lastWeighedDate, foodCategory, foodCostPerDay, foodCadence, foodPriceSeries, foodStockStatus, foodPricePerUnit, foodPurchaseHistory, foodPriceInsight, foodOfferUrl, activityStreak,
   });
 }

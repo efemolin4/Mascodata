@@ -96,6 +96,16 @@ export function viewDashboard() {
         actionLabel2: canEditPet(p) ? 'Compré de nuevo' : '', action2: `openFoodPurchaseModal('${safeId(p.id)}','${safeId(f.id)}')` });
     });
 
+    // Tratamiento de uso continuo que se acaba (suplementos, gotas): aviso solo en la plataforma, sin correo.
+    (p.medications || []).forEach(m => {
+      const st = medSupplyStatus(m);
+      if (!st || st.level === 'ok') return;
+      const edit = canEditPet(p);
+      attention.push({ petId: p.id, level: 1, date: st.runOutDate, title: `Se acaba · ${esc(m.name)}`, sub: `${name} · ${st.label}`,
+        actionLabel: edit ? 'Compré de nuevo' : 'Ver tratamiento',
+        action: edit ? `openMedPurchaseModal('${safeId(p.id)}','${safeId(m.id)}')` : `navigate('petProfile',{currentPetId:'${safeId(p.id)}',currentTab:'medicamentos'})` });
+    });
+
     const ageYears = p.dateOfBirth ? Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / (365.25*86400000)) : 0;
     const lastVaccDate = (p.vaccines || []).reduce((max, v) => v.date > max ? v.date : max, '');
     const vaccineAge = lastVaccDate ? Math.floor((Date.now() - new Date(lastVaccDate).getTime()) / (30.44*86400000)) : 999;

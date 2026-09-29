@@ -35,7 +35,7 @@ async function loadDataFromSupabase() {
 
     const petIds = accessRows.map(r => r.pet_id);
 
-    const [vaccRes, dewRes, medRes, histRes, wRes, moodRes, symRes, foodRes, actRes, doseRes, evRes, expRes, botRes, invRes, purRes, setRes] = await Promise.all([
+    const [vaccRes, dewRes, medRes, histRes, wRes, moodRes, symRes, foodRes, actRes, doseRes, evRes, expRes, botRes, invRes, purRes, setRes, mpRes] = await Promise.all([
       sb.from('vaccines').select('*').in('pet_id', petIds),
       sb.from('dewormings').select('*').in('pet_id', petIds),
       sb.from('medications').select('*').in('pet_id', petIds),
@@ -57,6 +57,8 @@ async function loadDataFromSupabase() {
       sb.from('food_purchases').select('*').in('pet_id', petIds),
       // Pagos entre tutores (supabase/schema/shared_expenses.sql): opcional, igual que las compras de alimento.
       sb.from('expense_settlements').select('*').in('pet_id', petIds),
+      // Compras de tratamientos de uso continuo (supabase/schema/medication_purchases.sql): opcional, igual que las anteriores.
+      sb.from('medication_purchases').select('*').in('pet_id', petIds),
     ]);
 
     // Ninguna de estas 14 queries revisaba `.error` — un fallo puntual
@@ -76,6 +78,7 @@ async function loadDataFromSupabase() {
     const dose = doseRes.data || [];
     const invites = invRes.data || [];
     const purchases = purRes?.error ? [] : (purRes?.data || []);
+    const medPurchases = mpRes?.error ? [] : (mpRes?.data || []);
 
     state.pets = accessRows.map(row => {
       const pet = row.pets;
@@ -118,6 +121,9 @@ async function loadDataFromSupabase() {
           treatmentDays: m.treatment_days, endDate: m.end_date, active: m.active,
           reminder: m.reminder, stockTotal: m.stock_qty, stockUnit: m.stock_unit,
           expiry: m.expiry_date, cost: m.cost,
+          purchases: medPurchases.filter(x => x.med_id === m.id).map(x => ({
+            id: x.id, date: x.purchase_date, price: x.price, quantity: x.quantity, daysSupply: x.days_supply,
+            createdBy: x.created_by || null, createdByName: x.created_by_name || null })),
           createdBy: m.created_by || null, createdByName: m.created_by_name || null })),
         clinicalHistory: hist.filter(h => h.pet_id === pid).map(h => ({
           id: h.id, title: h.title, type: h.type, date: h.date,
@@ -242,9 +248,16 @@ function getFinanceExpenses() {
     (pet.deworming || []).forEach(d => { if (Number(d.cost) > 0) push(pet, d, {
       id: 'dew-'+d.id, date: d.date, category: 'Veterinaria',
       amount: d.cost, description: `Desparasitación: ${d.product}`, source: 'deworming' }); });
-    (pet.medications || []).forEach(m => { if (Number(m.cost) > 0) push(pet, m, {
-      id: 'med-'+m.id, date: m.startDate, category: 'Medicamentos',
-      amount: m.cost, description: `Tratamiento: ${m.name}`, source: 'medication' }); });
+    // Con compras registradas, cada una es un gasto (la del inicio, si tenía costo, quedó como la primera); sin ellas, el costo del tratamiento.
+    (pet.medications || []).forEach(m => {
+      if (m.purchases?.length) {
+        m.purchases.forEach(pu => { if (Number(pu.price) > 0) push(pet, pu, {
+          id: 'medbuy-'+pu.id, date: pu.date, category: 'Medicamentos',
+          amount: pu.price, description: `Compra: ${m.name}`, source: 'medication' }); });
+      } else if (Number(m.cost) > 0) push(pet, m, {
+        id: 'med-'+m.id, date: m.startDate, category: 'Medicamentos',
+        amount: m.cost, description: `Tratamiento: ${m.name}`, source: 'medication' });
+    });
     (pet.clinicalHistory || []).forEach(h => { if (Number(h.cost) > 0) push(pet, h, {
       id: 'his-'+h.id, date: h.date, category: 'Veterinaria',
       amount: h.cost, description: h.title, source: 'history' }); });
