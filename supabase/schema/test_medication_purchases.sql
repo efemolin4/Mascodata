@@ -1,13 +1,14 @@
 -- Prueba de medication_purchases.sql: permisos por rol y consistencia. Termina con un error a propósito: no se guarda nada.
--- Necesita un tratamiento con mascota con dueño y otra cuenta.
+-- Necesita una mascota con dueño y otra cuenta; crea un tratamiento temporal.
 
 do $$
 declare a uuid; b uuid; pet uuid; med uuid; n int; res text := '';
 begin
-  select p.owner_id, p.id into a, pet from pets p join medications m on m.pet_id = p.id order by p.created_at limit 1;
-  select m.id into med from medications m where m.pet_id = pet limit 1;
+  select p.owner_id, p.id into a, pet from pets p join pet_access x on x.pet_id = p.id and x.user_id = p.owner_id order by p.created_at limit 1;
   select id into b from profiles where id <> a order by created_at limit 1;
-  if a is null or med is null or b is null then raise exception 'Se necesita una mascota con tratamiento y otra cuenta'; end if;
+  if a is null or b is null then raise exception 'Se necesita una mascota con dueño y otra cuenta'; end if;
+  -- Tratamiento temporal de prueba (se deshace al final, como todo lo demás).
+  insert into medications(pet_id, name, start_date, active) values (pet, 'zz-prueba-compras', current_date, true) returning id into med;
 
   -- ===== Dueño =====
   perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
